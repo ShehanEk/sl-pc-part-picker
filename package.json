@@ -12,7 +12,8 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "scrape": "tsx --env-file-if-exists=.env.local scripts/scrape.ts",
-    "normalize": "tsx --env-file-if-exists=.env.local scripts/normalize.ts"
+    "normalize": "tsx --env-file-if-exists=.env.local scripts/normalize.ts",
+    "seed:specs": "tsx --env-file-if-exists=.env.local scripts/seed-specs.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.120.0",

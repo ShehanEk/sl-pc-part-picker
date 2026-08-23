@@ -1,5 +1,7 @@
 import { and, eq, inArray, isNull, sql } from 'drizzle-orm'
 
+import { applyCuratedSpecs } from '@/catalog/apply'
+import { canonicalPartId, CURATED_BY_ID } from '@/catalog/gpu-specs'
 import { getDb } from '@/db'
 import { listings, parts, priceHistory, rawListings } from '@/db/schema'
 import type { NewPart } from '@/db/schema'
@@ -96,15 +98,20 @@ function parsePowerConnector(
 /** Build the row for a newly discovered canonical part. */
 function toNewPart(identity: Identity, specs: ObservedSpecs | undefined): NewPart {
   if (identity.category === 'gpu') {
+    // The curated catalog is authoritative where it has an entry: it is a
+    // chip-level fact checked against a cited source, whereas a retailer's
+    // spec table describes one board partner's card and is often absent.
+    const curated = CURATED_BY_ID.get(identity.partId)
     return {
       partId: identity.partId,
       category: 'gpu',
       brand: identity.brand,
       model: identity.model,
-      vramGb: identity.vramGb,
+      vramGb: curated?.vramGb ?? identity.vramGb,
+      tdpWatts: curated?.tdpWatts ?? null,
       // Only ever from a spec table the retailer published, never inferred.
       recommendedPsuWatts: parseWatts(specs?.['Recommended PSU']),
-      powerConnector: parsePowerConnector(specs?.['Power Connectors']),
+      powerConnector: curated?.powerConnector ?? parsePowerConnector(specs?.['Power Connectors']),
       lengthMm: parseLengthMm(specs?.['Dimensions']),
     }
   }
@@ -239,7 +246,13 @@ export async function runNormalize(
     const category = String(payload.category ?? '') as Category
     const specs = payload.specs as ObservedSpecs | undefined
 
-    const identity = extractIdentity(category, row.rawTitle)
+    const extracted = extractIdentity(category, row.rawTitle)
+    // Listings that omit the memory size mint a capacity-less id ("rtx-5090"),
+    // which would otherwise sit alongside "rtx-5090-32gb" as a separate product
+    // and split that card's prices across two entries.
+    const identity: Identity | null = extracted
+      ? { ...extracted, partId: canonicalPartId(extracted.partId) }
+      : null
     let partId: string | null = identity?.partId ?? null
 
     if (identity) {
@@ -408,6 +421,15 @@ export async function runNormalize(
   log(
     `wrote ${result.partsCreated} new parts, ${result.listingsWritten} listings, ` +
       `${result.historyRows} price-history rows`,
+  )
+
+  // Curated specs go on last so they overwrite anything a retailer's spec table
+  // contributed during this run.
+  const curated = await applyCuratedSpecs()
+  log(
+    `curated catalog: ${curated.partsUpdated}/${curated.curatedEntries} entries applied` +
+      (curated.aliasesFolded.length ? `, ${curated.aliasesFolded.length} duplicate parts folded` : '') +
+      (curated.uncovered.length ? `, ${curated.uncovered.length} GPU parts still uncovered` : ''),
   )
 
   return result
