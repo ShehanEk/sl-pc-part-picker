@@ -112,8 +112,10 @@ export async function applyCuratedSpecs(): Promise<ApplyResult> {
       .update(parts)
       .set({
         tdpWatts: curated.tdpWatts,
-        powerConnector: curated.powerConnector,
         vramGb: curated.vramGb,
+        // Only set when the catalog has it. Writing undefined here would erase
+        // a connector a retailer's spec table did supply.
+        ...(curated.powerConnector ? { powerConnector: curated.powerConnector } : {}),
         updatedAt: new Date(),
       })
       .where(eq(parts.partId, curated.partId))

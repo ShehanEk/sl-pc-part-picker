@@ -1,7 +1,7 @@
 import { and, eq, inArray, isNull, sql } from 'drizzle-orm'
 
 import { applyCuratedSpecs } from '@/catalog/apply'
-import { canonicalPartId, CURATED_BY_ID } from '@/catalog/gpu-specs'
+import { canonicalPartId, CURATED_BY_ID, isImpossibleGpu } from '@/catalog/gpu-specs'
 import { getDb } from '@/db'
 import { listings, parts, priceHistory, rawListings } from '@/db/schema'
 import type { NewPart } from '@/db/schema'
@@ -250,9 +250,18 @@ export async function runNormalize(
     // Listings that omit the memory size mint a capacity-less id ("rtx-5090"),
     // which would otherwise sit alongside "rtx-5090-32gb" as a separate product
     // and split that card's prices across two entries.
-    const identity: Identity | null = extracted
+    const candidate: Identity | null = extracted
       ? { ...extracted, partId: canonicalPartId(extracted.partId) }
       : null
+
+    // Drop extractions the catalog can prove wrong (a capacity that chip never
+    // shipped in) so they fall through to the AI pass rather than minting a
+    // part for a card that does not exist.
+    const identity: Identity | null =
+      candidate && isImpossibleGpu(candidate.partId) ? null : candidate
+    if (candidate && !identity) {
+      log(`  implausible: "${row.rawTitle}" parsed as ${candidate.partId}, no such card`)
+    }
     let partId: string | null = identity?.partId ?? null
 
     if (identity) {
