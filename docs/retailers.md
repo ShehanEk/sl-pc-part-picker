@@ -1,0 +1,109 @@
+# Retailer inspection
+
+Hand-inspection of each retailer before writing scraper code, per the project
+spec. Re-check this page whenever a scraper starts failing — the usual cause is
+one of these sites changing shape.
+
+Last inspected: 2026-08-23.
+
+## Summary
+
+| Retailer | Platform | Prices in initial HTML? | Requests per product | robots.txt |
+|---|---|---|---|---|
+| gamestreet.lk | Plain PHP | **Yes**, on category listings | ~0 (whole category in 1 request) | No directives at all |
+| chamacomputers.lk | Next.js + Sanity | **Yes**, as JSON in the RSC payload | ~0 (12 products per page request) | Allows all but `/api`, `/privacy`, `/cart`, `/survey` |
+| nanotek.lk | Tyno storefront | No — loaded by XHR | 3 | Only disallows `/admin` |
+| redlinetech.lk | Tyno storefront | No — loaded by XHR | 3 | **Disallows every query-string URL** |
+
+None of the four needs a headless browser. All are reachable with plain `fetch`.
+
+## gamestreet.lk
+
+Cheapest to scrape. Category listings are server-rendered with title, brand and
+price together, and there is no pagination — one request returns the full
+listing.
+
+- Categories: `products.php?cat=<base64>&scat=<base64>`, e.g. `cat=2` (Components),
+  `scat=6` (GRAPHIC CARD). Base64 of the plain integer id.
+- Cards: `.product_content` → `.product_title a` (href + title), `.product_brand`,
+  `.redPrice`, and `[data-id]` for the numeric id.
+- The listing repeats each product (grid + carousel), so rows must be deduped by id.
+- No stock indicator on the listing; the product page has one.
+- robots.txt contains only Cloudflare's content-signal boilerplate — explanatory
+  comments with no `User-agent`/`Disallow` lines and no signals declared.
+
+## chamacomputers.lk
+
+Best-structured source. Product objects are embedded verbatim in the React Server
+Component flight payload, so no HTML parsing is needed.
+
+- Categories: `/products/<name>`, e.g. `/products/graphics%20cards`.
+- Products appear as `"product":{...}` inside `self.__next_f.push([1,"..."])`
+  chunks, escaped (`\"`). Unescape, then brace-match to extract the objects —
+  they nest, so a regex terminator is not enough.
+- Fields: `id`, `name`, `category`, `instock`, `price`, `undiscountedPrice`,
+  `discount`, `preOrder`, `quantity`, `image`.
+- Paginates at 12/page via `?page=N`.
+
+## nanotek.lk and redlinetech.lk (shared platform)
+
+Both run the same storefront (both built by callmetyno.com) with different themes,
+so they share a fetch flow but **not** parsers — a redesign on one must not break
+the other.
+
+Flow per product:
+
+1. `GET /category/{slug}` → product URLs (no prices in the HTML)
+2. `GET /product/{slug}` → product id (`[data-product-id]`) + title
+3. `GET /product/{id}/variants/0` → price + stock
+4. `GET /product/{id}/variants/0/description` → manufacturer spec table
+
+Gotchas found the hard way:
+
+- **The CSRF `_token` query parameter is not required.** The browser sends it, but
+  both endpoints answer without it. This matters for redlinetech (see below).
+- **The two endpoints return different JSON shapes.** `/variants/0` returns a bare
+  JSON string (`"<div>…"`); `/variants/0/description` returns an object
+  (`{"description":"<div>…"}`). Feeding undecoded JSON to cheerio does not throw —
+  it parses the escaped markup into junk nodes and silently yields nothing.
+- **Title selectors differ.** nanotek puts a cart-total `<h1 class="ty-quoteValue">`
+  ahead of the product name, so a bare `h1` picks up `"0 LKR"`. It needs
+  `h1.ty-productTitle`. redlinetech has no such header and uses a bare `h1`.
+- **Prices are per payment method** (cash / bank / card / BNPL). Cash is the lowest
+  and is what both shops market as the real price, so it is taken as the headline
+  price; the rest are kept in the payload.
+
+### Spec tables are a real source of GPU data
+
+Where a product page carries the manufacturer's spec table, it includes exactly
+the fields the data model wants — no model recall required:
+
+```
+Recommended PSU  = 750W          → recommended_psu_watts
+Power Connectors = 1 x 16-pin    → power_connector
+Dimensions       = 249 x 126 x 50.6 mm → length_mm
+```
+
+Not every product has one (the ASUS RTX 5090 listings do not), so treat it as a
+bonus, not a guarantee.
+
+### redlinetech.lk is restricted by robots.txt
+
+Its robots.txt disallows **all** query-string URLs:
+
+```
+Disallow: /*?*
+Disallow: /*&*
+Disallow: /*?page=
+Disallow: */page/*
+```
+
+Consequences:
+
+- Category pagination (`?page=N`) is off limits, so only the **first page (12
+  products) per category** can be fetched. Coverage is capped accordingly.
+- The price endpoint is still reachable because it works without the `_token`
+  query parameter, so `/product/{id}/variants/0` is a clean, compliant path.
+
+If fuller coverage from redlinetech matters, the way to get it is to ask them for
+permission or a feed — not to ignore the file.

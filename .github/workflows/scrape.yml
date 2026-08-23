@@ -1,0 +1,47 @@
+name: scrape
+
+# Reusable scrape job. One caller workflow per retailer, each on its own
+# schedule, so a retailer changing shape fails only its own run.
+on:
+  workflow_call:
+    inputs:
+      shop:
+        description: Shop key, e.g. nanotek.lk
+        required: true
+        type: string
+      categories:
+        description: Comma-separated canonical categories
+        required: false
+        type: string
+        default: gpu,psu
+      timeout-minutes:
+        required: false
+        type: number
+        default: 45
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    # Never let two runs for the same shop overlap — they would double-write
+    # raw rows and double the request load on the retailer.
+    concurrency:
+      group: scrape-${{ inputs.shop }}
+      cancel-in-progress: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Scrape ${{ inputs.shop }}
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SCRAPER_USER_AGENT: ${{ vars.SCRAPER_USER_AGENT }}
+          SCRAPER_DELAY_MS: ${{ vars.SCRAPER_DELAY_MS }}
+        run: npm run scrape -- "${{ inputs.shop }}" --categories "${{ inputs.categories }}"

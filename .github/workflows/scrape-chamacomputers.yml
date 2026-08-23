@@ -1,0 +1,17 @@
+name: scrape chamacomputers.lk
+
+# 30 20 * * * UTC = 02:00 Sri Lanka time. Staggered against the other retailers so the
+# scrapers never run all at once.
+on:
+  schedule:
+    - cron: '30 20 * * *'
+  workflow_dispatch:
+
+jobs:
+  scrape:
+    uses: ./.github/workflows/scrape.yml
+    with:
+      shop: chamacomputers.lk
+      categories: gpu,psu
+      timeout-minutes: 30
+    secrets: inherit
