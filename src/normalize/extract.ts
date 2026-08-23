@@ -54,7 +54,11 @@ const PSU_NOISE = new RegExp(
   [
     '80\\s*\\+?\\s*plus', '80\\s*\\+', 'plus',
     'gold', 'bronze', 'platinum', 'titanium', 'silver', 'white',
-    'fully\\s*modular', 'full\\s*modular', 'semi\\s*modular', 'non\\s*modular', 'modular',
+    // Separators here must allow a hyphen: retailers write "Non-Modular" as
+    // often as "Non Modular", and matching only whitespace left a stray "Non-"
+    // in the model name.
+    'fully[\\s-]*modular', 'full[\\s-]*modular', 'semi[\\s-]*modular',
+    'non[\\s-]*modular', 'modular',
     'power\\s*supply', 'psu', 'certified', 'certificate', 'cybernetics',
     'watts?', 'atx\\s*\\d+(\\.\\d+)?', 'pcie\\s*\\d+', 'premium\\s*edition',
     'edition', 'series', 'gaming', 'digital', 'sfx',

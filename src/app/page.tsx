@@ -16,10 +16,6 @@ export const dynamic = 'force-dynamic'
 
 const rs = (n: number) => `Rs ${n.toLocaleString('en-LK')}`
 
-/**
- * The whole app: pick a card, see what it costs locally, see what can power it.
- * One decision at a time, per the project spec.
- */
 export default async function Home({
   searchParams,
 }: {
@@ -30,27 +26,33 @@ export default async function Home({
   const part = selectedId ? await getPart(selectedId) : null
 
   return (
-    <main className="mx-auto max-w-3xl px-5 py-10 sm:py-16">
-      <header className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight">SL PC Parts Tracker</h1>
-        <p className="mt-1 text-black/55 dark:text-white/55">
-          What PC parts actually cost in Sri Lanka, and what works together.
+    <main className="mx-auto w-full max-w-[42rem] px-4 pb-24 pt-12 sm:px-6 sm:pt-20">
+      <header className="mb-9 px-1">
+        <h1 className="large-title">PC parts,<br />priced in Sri Lanka.</h1>
+        <p className="mt-3 text-[1.0625rem] leading-snug text-label-secondary">
+          Every price below is from a shop here. Pick a card and we&apos;ll work out what can
+          power it.
         </p>
       </header>
 
       <PartPicker parts={gpus} selected={selectedId ?? null} />
 
-      {!part ? (
-        <p className="mt-10 text-black/50 dark:text-white/50">
-          {gpus.length} graphics cards in stock across {stats.shops} local shops.
-        </p>
-      ) : (
+      {part ? (
         <PartView part={part} />
+      ) : (
+        <p className="mt-8 px-1 text-[0.9375rem] text-label-secondary">
+          {gpus.length} graphics cards tracked across {stats.shops} shops.
+        </p>
       )}
 
-      <footer className="mt-16 border-t border-black/10 pt-5 text-sm text-black/45 dark:border-white/10 dark:text-white/45">
+      <footer className="mt-14 px-1 text-[0.8125rem] leading-relaxed text-label-tertiary">
         {stats.parts} parts · {stats.listings} live listings · {stats.shops} shops
-        {stats.lastScrape && <> · last checked {new Date(stats.lastScrape).toLocaleString('en-LK')}</>}
+        {stats.lastScrape && (
+          <>
+            <br />
+            Last checked {new Date(stats.lastScrape).toLocaleString('en-LK')}
+          </>
+        )}
       </footer>
     </main>
   )
@@ -69,75 +71,85 @@ async function PartView({ part }: { part: PartDetail }) {
   const cheapestInStock = shops.find((s) => s.inStock) ?? null
   const cheapestListed = shops[0] ?? null
 
-  return (
-    <div className="mt-10 space-y-10">
-      <section>
-        <h2 className="text-xl font-semibold">{part.model}</h2>
-        <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-black/55 dark:text-white/55">
-          <span>{part.brand}</span>
-          {part.tdpWatts !== null && <span>{part.tdpWatts}W draw</span>}
-          {part.powerConnector && <span>{connectorLabel(part.powerConnector)}</span>}
-          {part.lengthMm !== null && <span>{part.lengthMm}mm long</span>}
-        </div>
+  const specs = [
+    part.tdpWatts !== null && `${part.tdpWatts}W`,
+    part.vramGb !== null && `${part.vramGb}GB`,
+    part.powerConnector && connectorLabel(part.powerConnector),
+    part.lengthMm !== null && `${part.lengthMm}mm`,
+  ].filter(Boolean) as string[]
 
-        {cheapestInStock ? (
-          <p className="mt-4 text-3xl font-semibold tracking-tight">
-            {rs(cheapestInStock.priceLkr)}{' '}
-            <span className="text-base font-normal text-black/50 dark:text-white/50">
-              in stock at {cheapestInStock.shop}
-            </span>
-          </p>
-        ) : cheapestListed ? (
-          <div className="mt-4">
-            <p className="text-3xl font-semibold tracking-tight text-black/40 dark:text-white/40">
-              {rs(cheapestListed.priceLkr)}
-            </p>
-            <p className="mt-1 text-sm text-amber-700 dark:text-amber-500">
-              Out of stock everywhere we track — that is the last listed price, not one you can pay
-              today.
-            </p>
-          </div>
-        ) : (
-          <p className="mt-4 text-black/50 dark:text-white/50">No shop is listing this right now.</p>
+  return (
+    <div className="mt-9 space-y-9">
+      <section className="rounded-[var(--radius)] bg-surface px-5 py-6">
+        <h2 className="text-[1.5rem] font-semibold leading-tight tracking-[-0.02em]">
+          {part.model}
+        </h2>
+        {specs.length > 0 && (
+          <p className="mt-1.5 text-[0.9375rem] text-label-secondary">{specs.join(' · ')}</p>
         )}
 
-        <div className="mt-4">
+        {cheapestInStock ? (
+          <>
+            <p className="mt-5 text-[2.5rem] font-semibold leading-none tracking-[-0.03em] tabular-nums">
+              {rs(cheapestInStock.priceLkr)}
+            </p>
+            <p className="mt-2 text-[0.9375rem] text-label-secondary">
+              <Dot className="bg-green" /> In stock at {cheapestInStock.shop}
+            </p>
+          </>
+        ) : cheapestListed ? (
+          <>
+            <p className="mt-5 text-[2.5rem] font-semibold leading-none tracking-[-0.03em] tabular-nums text-label-tertiary">
+              {rs(cheapestListed.priceLkr)}
+            </p>
+            <p className="mt-2 text-[0.9375rem] text-orange">
+              <Dot className="bg-orange" /> Out of stock everywhere — last listed price, not one you
+              can pay today.
+            </p>
+          </>
+        ) : (
+          <p className="mt-5 text-[0.9375rem] text-label-secondary">No shop is listing this.</p>
+        )}
+
+        <div className="mt-5 border-t border-separator pt-4">
           <Sparkline points={series} />
         </div>
       </section>
 
       <section>
-        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-black/50 dark:text-white/50">
-          Available at
-        </h3>
-        <ul className="divide-y divide-black/10 dark:divide-white/10">
+        <h3 className="ios-section-header uppercase">Available at</h3>
+        <ul className="ios-list">
           {shops.map((s) => (
-            <li
-              key={s.shop}
-              className={`flex items-center justify-between gap-4 py-3 ${
-                s.inStock ? '' : 'opacity-55'
-              }`}
-            >
-              <div className="min-w-0">
-                <a
-                  href={s.url}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  className="underline decoration-black/20 underline-offset-4 hover:decoration-black/60 dark:decoration-white/25"
-                >
-                  {s.shop}
-                </a>
-                {!s.inStock && (
-                  <span className="ml-2 text-sm text-black/50 dark:text-white/50">
-                    · out of stock
+            <li key={s.shop}>
+              <a
+                href={s.url}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="flex items-center justify-between gap-4 px-4 py-3 transition-colors active:bg-fill"
+              >
+                <span className="min-w-0">
+                  <span className={`block truncate text-[1.0625rem] ${s.inStock ? '' : 'text-label-secondary'}`}>
+                    {s.shop}
                   </span>
-                )}
-              </div>
-              <div className="flex shrink-0 items-center gap-3">
-                {/* Only ever badge something you can buy. */}
-                {s === cheapestInStock && shops.length > 1 && <Badge>Best price</Badge>}
-                <span className="tabular-nums">{rs(s.priceLkr)}</span>
-              </div>
+                  <span className="mt-0.5 block text-[0.8125rem] text-label-secondary">
+                    {s.inStock ? 'In stock' : 'Out of stock'}
+                  </span>
+                </span>
+                <span className="flex shrink-0 items-center gap-2.5">
+                  {/* Only ever badge something you can buy. */}
+                  {s === cheapestInStock && shops.length > 1 && (
+                    <Pill tone="green">Best price</Pill>
+                  )}
+                  <span
+                    className={`text-[1.0625rem] tabular-nums ${
+                      s.inStock ? '' : 'text-label-tertiary'
+                    }`}
+                  >
+                    {rs(s.priceLkr)}
+                  </span>
+                  <Chevron />
+                </span>
+              </a>
             </li>
           ))}
         </ul>
@@ -158,13 +170,11 @@ function PsuSection({
   if (psus.requiredWatts === null) {
     return (
       <section>
-        <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-black/50 dark:text-white/50">
-          Power supplies
-        </h3>
-        <p className="text-black/55 dark:text-white/55">
+        <h3 className="ios-section-header uppercase">Power supplies</h3>
+        <div className="rounded-[var(--radius)] bg-surface px-4 py-4 text-[0.9375rem] text-label-secondary">
           We don&apos;t have the power draw for the {gpuModel} yet, so we can&apos;t work out which
           PSUs will run it.
-        </p>
+        </div>
       </section>
     )
   }
@@ -176,8 +186,7 @@ function PsuSection({
   // cheapest fully-checked option into the list when it falls outside the top
   // eight, rather than reordering and burying the genuinely cheapest.
   const cheapestVerified = psus.options.find((o) => o.status === 'pass') ?? null
-  const pinned =
-    cheapestVerified && !byPrice.includes(cheapestVerified) ? cheapestVerified : null
+  const pinned = cheapestVerified && !byPrice.includes(cheapestVerified) ? cheapestVerified : null
   const shown = pinned ? [...byPrice, pinned] : byPrice
 
   const allShareConnectorCaveat =
@@ -186,24 +195,32 @@ function PsuSection({
 
   return (
     <section>
-      <h3 className="mb-1 text-sm font-semibold uppercase tracking-wide text-black/50 dark:text-white/50">
-        Power supplies that can run it
-      </h3>
-      <p className="mb-2 text-sm text-black/55 dark:text-white/55">
-        Needs about <strong className="font-medium">{psus.requiredWatts}W</strong> ({psus.requiredBasis}).
-        {psus.failing > 0 && <> {psus.failing} in-stock PSUs are too weak and are hidden.</>}
-      </p>
+      <h3 className="ios-section-header uppercase">Power supplies that can run it</h3>
 
-      {/* Every PSU currently shares the same caveat, so say it once rather than
-          repeating it on all eight rows. */}
-      {allShareConnectorCaveat && (
-        <p className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-sm text-amber-700 dark:text-amber-500">
-          Wattage checked, connectors not. We don&apos;t have published connector lists for these
-          PSUs yet, so confirm the card&apos;s plug before buying.
+      <div className="mb-2.5 rounded-[var(--radius)] bg-surface px-4 py-3.5">
+        <p className="text-[0.9375rem] leading-snug">
+          Needs about <strong className="font-semibold">{psus.requiredWatts}W</strong>
+          <span className="text-label-secondary"> — {psus.requiredBasis}.</span>
         </p>
-      )}
+        {psus.failing > 0 && (
+          <p className="mt-1 text-[0.8125rem] text-label-secondary">
+            {psus.failing} in-stock supplies are too weak and are hidden.
+          </p>
+        )}
+        {/* Every PSU shown shares the same caveat, so say it once rather than
+            repeating it on all eight rows. */}
+        {allShareConnectorCaveat && (
+          <p className="mt-2 flex gap-2 text-[0.8125rem] leading-snug text-orange">
+            <Dot className="mt-[0.4rem] shrink-0 bg-orange" />
+            <span>
+              Wattage checked, connectors not. We don&apos;t have published connector lists for
+              these yet — confirm the card&apos;s plug before buying.
+            </span>
+          </p>
+        )}
+      </div>
 
-      <ul className="divide-y divide-black/10 dark:divide-white/10">
+      <ul className="ios-list">
         {shown.map((o) => (
           <PsuRow
             key={o.partId}
@@ -215,7 +232,7 @@ function PsuSection({
       </ul>
 
       {psus.options.length > byPrice.length && (
-        <p className="mt-3 text-sm text-black/45 dark:text-white/45">
+        <p className="ios-section-header pt-2">
           and {psus.options.length - byPrice.length} more that fit.
         </p>
       )}
@@ -233,56 +250,97 @@ function PsuRow({
   verified?: boolean
 }) {
   // Only surface caveats. A clean pass needs no explanation; anything less does.
+  // Kept terse and in the secondary label colour: neither missing connector
+  // data nor a bundled adapter is a hazard, and colouring them warning-orange
+  // on every row shouts about something that is merely worth knowing.
   const caveat = hideCaveat
     ? undefined
     : option.checks.find((c) => c.status === 'unknown' || c.status === 'warn')
+  const caveatText =
+    caveat?.id === 'gpu-connector'
+      ? caveat.status === 'warn'
+        ? 'Uses the adapter supplied with the card'
+        : 'Connectors not published — check before buying'
+      : caveat?.message
 
   return (
-    <li className="flex items-start justify-between gap-4 py-3">
-      <div className="min-w-0">
-        <a
-          href={option.url}
-          target="_blank"
-          rel="noreferrer noopener"
-          className="underline decoration-black/20 underline-offset-4 hover:decoration-black/60 dark:decoration-white/25"
-        >
-          {option.brand} {option.model}
-        </a>
-        <div className="mt-0.5 text-sm text-black/55 dark:text-white/55">
-          {option.ratedWatts}W
-          {option.efficiencyRating && <> · {option.efficiencyRating}</>} · {option.shop}
-        </div>
-        {caveat && (
-          <div className="mt-1 text-sm text-amber-700 dark:text-amber-500">{caveat.message}</div>
-        )}
-      </div>
-      <div className="flex shrink-0 items-center gap-2">
-        {option.cheapestFit && <Badge>Cheapest fit</Badge>}
-        {verified && <Badge>Connector verified</Badge>}
-        <span className="tabular-nums">{rs(option.cheapestLkr)}</span>
-      </div>
+    <li>
+      <a
+        href={option.url}
+        target="_blank"
+        rel="noreferrer noopener"
+        className="flex items-start justify-between gap-4 px-4 py-3 transition-colors active:bg-fill"
+      >
+        <span className="min-w-0">
+          <span className="block truncate text-[1.0625rem]">
+            {option.brand} {option.model}
+          </span>
+          <span className="mt-0.5 block text-[0.8125rem] text-label-secondary">
+            {option.ratedWatts}W
+            {option.efficiencyRating && <> · {option.efficiencyRating}</>} · {option.shop}
+          </span>
+          {caveatText && (
+            <span className="mt-0.5 block text-[0.8125rem] leading-snug text-label-tertiary">
+              {caveatText}
+            </span>
+          )}
+        </span>
+        <span className="flex shrink-0 items-center gap-2.5 pt-0.5">
+          {option.cheapestFit && <Pill tone="blue">Cheapest fit</Pill>}
+          {verified && <Pill tone="green">Verified</Pill>}
+          <span className="text-[1.0625rem] tabular-nums">{rs(option.cheapestLkr)}</span>
+          <Chevron />
+        </span>
+      </a>
     </li>
   )
 }
 
-function Badge({ children }: { children: React.ReactNode }) {
+function Pill({ children, tone }: { children: React.ReactNode; tone: 'blue' | 'green' }) {
+  const color = tone === 'blue' ? 'text-blue' : 'text-green'
   return (
-    <span className="rounded-full border border-black/15 px-2 py-0.5 text-xs font-medium dark:border-white/25">
+    <span
+      className={`rounded-full bg-fill px-2 py-[0.1875rem] text-[0.6875rem] font-semibold uppercase tracking-[0.03em] ${color}`}
+    >
       {children}
     </span>
+  )
+}
+
+/** The small status dot Apple uses instead of an icon for inline state. */
+function Dot({ className = '' }: { className?: string }) {
+  return <span className={`inline-block h-1.5 w-1.5 rounded-full align-middle ${className}`} />
+}
+
+function Chevron() {
+  return (
+    <svg
+      viewBox="0 0 8 13"
+      className="h-3 w-2 shrink-0 text-label-tertiary"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M1.5 1.5 6.5 6.5l-5 5"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   )
 }
 
 function connectorLabel(c: string) {
   switch (c) {
     case '8pin':
-      return '1× 8-pin power'
+      return '8-pin power'
     case '2x8pin':
       return '2× 8-pin power'
     case '12vhpwr':
-      return '12VHPWR power'
+      return '12VHPWR'
     case '12v-2x6':
-      return '12V-2x6 (16-pin) power'
+      return '12V-2×6'
     default:
       return c
   }
