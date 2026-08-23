@@ -68,6 +68,11 @@
 
 html {
   -webkit-text-size-adjust: 100%;
+  /* Tells the browser to draw native UI it owns — the <select> popup, scrollbars,
+     focus rings — in the matching scheme. Without it the dropdown renders on a
+     white sheet while its options inherit the page's white text, which is
+     invisible in dark mode. */
+  color-scheme: light dark;
 }
 
 body {

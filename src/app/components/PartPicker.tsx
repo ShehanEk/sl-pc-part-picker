@@ -64,9 +64,14 @@ export function PartPicker({
           }}
           className="absolute inset-0 h-full w-full cursor-pointer appearance-none opacity-0"
         >
-          <option value="">Choose a graphics card…</option>
+          {/* The popup is drawn by the browser, not by us: the transparent
+              select is invisible but its options are not, so they need real
+              colours rather than the page's inherited white-on-nothing. */}
+          <option value="" className="bg-surface text-label">
+            Choose a graphics card…
+          </option>
           {parts.map((p) => (
-            <option key={p.partId} value={p.partId}>
+            <option key={p.partId} value={p.partId} className="bg-surface text-label">
               {p.model}
               {p.cheapestInStockLkr !== null
                 ? ` — from Rs ${p.cheapestInStockLkr.toLocaleString('en-LK')}`
