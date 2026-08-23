@@ -10,8 +10,11 @@ import { applyCuratedSpecs } from '@/catalog/apply'
 async function main() {
   const r = await applyCuratedSpecs()
 
-  console.log(`curated entries : ${r.curatedEntries}`)
-  console.log(`parts updated   : ${r.partsUpdated}`)
+  console.log(`GPU entries : ${r.curatedEntries} curated, ${r.partsUpdated} applied`)
+  console.log(
+    `PSU entries : ${r.psuEntries} curated, ${r.psusUpdated} applied, ` +
+      `${r.psusUncovered} still without a connector list`,
+  )
 
   if (r.aliasesFolded.length) {
     console.log(`\nfolded duplicate parts (listings omitting memory size):`)

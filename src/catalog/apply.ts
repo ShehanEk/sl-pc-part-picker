@@ -4,6 +4,10 @@ import { getDb } from '@/db'
 import { listings, parts, priceHistory } from '@/db/schema'
 
 import { CURATED_GPUS, PART_ALIASES } from './gpu-specs'
+import { CURATED_PSUS, PSU_ALIASES } from './psu-specs'
+
+/** Both catalogs fold duplicate ids the same way, so they share one alias map. */
+const ALL_ALIASES: Record<string, string> = { ...PART_ALIASES, ...PSU_ALIASES }
 
 /**
  * Push the curated catalog onto the `parts` table.
@@ -22,6 +26,10 @@ export type ApplyResult = {
   aliasesFolded: string[]
   /** GPU parts in the database the curated catalog does not cover yet. */
   uncovered: { partId: string; shops: number }[]
+  psuEntries: number
+  psusUpdated: number
+  /** PSU parts still without a connector list, so the connector rule stays unknown. */
+  psusUncovered: number
 }
 
 /**
@@ -35,7 +43,7 @@ async function foldAliases(): Promise<string[]> {
   const db = getDb()
   const folded: string[] = []
 
-  for (const [alias, canonical] of Object.entries(PART_ALIASES)) {
+  for (const [alias, canonical] of Object.entries(ALL_ALIASES)) {
     const aliasPart = await db.select().from(parts).where(eq(parts.partId, alias))
     if (aliasPart.length === 0) continue
 
@@ -122,6 +130,24 @@ export async function applyCuratedSpecs(): Promise<ApplyResult> {
     partsUpdated++
   }
 
+  let psusUpdated = 0
+  for (const curated of CURATED_PSUS) {
+    if (!present.has(curated.partId)) {
+      notStocked.push(curated.partId)
+      continue
+    }
+    await db
+      .update(parts)
+      .set({ connectors: curated.connectors, updatedAt: new Date() })
+      .where(eq(parts.partId, curated.partId))
+    psusUpdated++
+  }
+
+  const [psuGap] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(parts)
+    .where(sql`${parts.category} = 'psu' and ${parts.connectors} is null`)
+
   const curatedIds = new Set(CURATED_GPUS.map((p) => p.partId))
   const gpuRows = await db
     .select({
@@ -141,5 +167,8 @@ export async function applyCuratedSpecs(): Promise<ApplyResult> {
     uncovered: gpuRows
       .filter((r) => !curatedIds.has(r.partId))
       .sort((a, b) => b.shops - a.shops),
+    psuEntries: CURATED_PSUS.length,
+    psusUpdated,
+    psusUncovered: psuGap?.n ?? 0,
   }
 }

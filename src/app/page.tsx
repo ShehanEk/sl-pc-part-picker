@@ -169,9 +169,20 @@ function PsuSection({
     )
   }
 
-  const shown = psus.options.slice(0, 8)
+  const byPrice = psus.options.slice(0, 8)
+
+  // The cheapest options are usually the ones we have no connector data for, so
+  // a buyer who wants certainty would never see a verified unit. Pin the
+  // cheapest fully-checked option into the list when it falls outside the top
+  // eight, rather than reordering and burying the genuinely cheapest.
+  const cheapestVerified = psus.options.find((o) => o.status === 'pass') ?? null
+  const pinned =
+    cheapestVerified && !byPrice.includes(cheapestVerified) ? cheapestVerified : null
+  const shown = pinned ? [...byPrice, pinned] : byPrice
+
   const allShareConnectorCaveat =
-    shown.length > 1 && shown.every((o) => o.checks.some((c) => c.id === 'gpu-connector' && c.status === 'unknown'))
+    shown.length > 1 &&
+    shown.every((o) => o.checks.some((c) => c.id === 'gpu-connector' && c.status === 'unknown'))
 
   return (
     <section>
@@ -193,21 +204,34 @@ function PsuSection({
       )}
 
       <ul className="divide-y divide-black/10 dark:divide-white/10">
-        {psus.options.slice(0, 8).map((o) => (
-          <PsuRow key={o.partId} option={o} hideCaveat={allShareConnectorCaveat} />
+        {shown.map((o) => (
+          <PsuRow
+            key={o.partId}
+            option={o}
+            hideCaveat={allShareConnectorCaveat}
+            verified={o === cheapestVerified}
+          />
         ))}
       </ul>
 
-      {psus.options.length > 8 && (
+      {psus.options.length > byPrice.length && (
         <p className="mt-3 text-sm text-black/45 dark:text-white/45">
-          and {psus.options.length - 8} more that fit.
+          and {psus.options.length - byPrice.length} more that fit.
         </p>
       )}
     </section>
   )
 }
 
-function PsuRow({ option, hideCaveat }: { option: PsuOption; hideCaveat?: boolean }) {
+function PsuRow({
+  option,
+  hideCaveat,
+  verified,
+}: {
+  option: PsuOption
+  hideCaveat?: boolean
+  verified?: boolean
+}) {
   // Only surface caveats. A clean pass needs no explanation; anything less does.
   const caveat = hideCaveat
     ? undefined
@@ -232,8 +256,9 @@ function PsuRow({ option, hideCaveat }: { option: PsuOption; hideCaveat?: boolea
           <div className="mt-1 text-sm text-amber-700 dark:text-amber-500">{caveat.message}</div>
         )}
       </div>
-      <div className="flex shrink-0 items-center gap-3">
+      <div className="flex shrink-0 items-center gap-2">
         {option.cheapestFit && <Badge>Cheapest fit</Badge>}
+        {verified && <Badge>Connector verified</Badge>}
         <span className="tabular-nums">{rs(option.cheapestLkr)}</span>
       </div>
     </li>

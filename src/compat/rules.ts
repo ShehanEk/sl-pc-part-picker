@@ -147,9 +147,16 @@ export function checkPsuWattage(gpu: Gpu, psu: Psu, cpu?: Cpu | null): CheckResu
       }
 }
 
-/** How many 8-pin PCIe leads a PSU offers. */
+/**
+ * How many 8-pin PCIe leads a PSU offers.
+ *
+ * Guards the shape rather than trusting the type: Postgres array columns arrive
+ * as a JS array through Drizzle but as a raw string through the underlying
+ * driver, and this runs inside a server component where a TypeError would take
+ * the whole page down.
+ */
 function countEightPin(connectors: Psu['connectors']): number {
-  if (!connectors) return 0
+  if (!Array.isArray(connectors)) return 0
   return connectors.reduce((n, c) => n + (c === '8pin' ? 1 : c === '2x8pin' ? 2 : 0), 0)
 }
 
@@ -170,7 +177,7 @@ export function checkGpuPowerConnector(gpu: Gpu, psu: Psu): CheckResult {
       message: `We don't have the power connector for the ${gpu.model} yet.`,
     }
   }
-  if (psu.connectors === null || psu.connectors.length === 0) {
+  if (!Array.isArray(psu.connectors) || psu.connectors.length === 0) {
     return {
       id,
       status: 'unknown',
