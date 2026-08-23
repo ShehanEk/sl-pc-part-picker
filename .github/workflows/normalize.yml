@@ -1,0 +1,33 @@
+name: normalize
+
+# Runs after the last scraper of the night (chamacomputers starts 20:30 UTC).
+# Kept on its own schedule rather than chained to the scrape workflows so that
+# one retailer failing still lets the rest of the night's rows be normalized.
+on:
+  schedule:
+    - cron: '30 21 * * *' # 03:00 Sri Lanka time
+  workflow_dispatch:
+
+jobs:
+  normalize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: normalize
+      cancel-in-progress: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Normalize raw listings
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: npm run normalize

@@ -11,9 +11,11 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "scrape": "tsx --env-file-if-exists=.env.local scripts/scrape.ts"
+    "scrape": "tsx --env-file-if-exists=.env.local scripts/scrape.ts",
+    "normalize": "tsx --env-file-if-exists=.env.local scripts/normalize.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.120.0",
     "@neondatabase/serverless": "^1.1.0",
     "cheerio": "^1.2.0",
     "drizzle-orm": "^0.45.2",
