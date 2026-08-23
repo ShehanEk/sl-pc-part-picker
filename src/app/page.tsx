@@ -12,7 +12,10 @@ import {
   type PsuOption,
 } from '@/queries/parts'
 
-export const dynamic = 'force-dynamic'
+// Deliberately not `force-dynamic`. Reading searchParams already makes this
+// route render per request, and force-dynamic additionally opts data fetching
+// out of the cache — which would undo the caching in the query layer and send
+// every visitor straight to the database.
 
 const rs = (n: number) => `Rs ${n.toLocaleString('en-LK')}`
 

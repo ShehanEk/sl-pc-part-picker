@@ -1,3 +1,4 @@
+import { unstable_cache } from 'next/cache'
 import { and, asc, desc, eq, gte, sql } from 'drizzle-orm'
 
 import { getDb } from '@/db'
@@ -28,6 +29,17 @@ import type { Category } from '@/scrapers/types'
  */
 export const STALE_AFTER_DAYS = 7
 
+/**
+ * How long a read is reused before hitting the database again.
+ *
+ * The scrapers run once nightly, so nothing here changes between runs and a
+ * request-per-render would be pure waste — six queries against Neon for every
+ * page view, against a free tier metered in compute-hours. Half an hour is far
+ * shorter than the data's actual update rate, so it is conservative rather than
+ * clever.
+ */
+const CACHE_SECONDS = 1800
+
 const freshOnly = gte(
   listings.scrapedAt,
   sql`now() - make_interval(days => ${STALE_AFTER_DAYS})`,
@@ -56,7 +68,13 @@ export type PickerEntry = {
  * advertises a number nobody can pay. Availability is carried through
  * everywhere a price is shown.
  */
-export async function listPartsForPicker(category?: Category): Promise<PickerEntry[]> {
+export const listPartsForPicker = unstable_cache(
+  _listPartsForPicker,
+  ['parts-picker'],
+  { revalidate: CACHE_SECONDS, tags: ['catalog'] },
+)
+
+async function _listPartsForPicker(category?: Category): Promise<PickerEntry[]> {
   const db = getDb()
   const rows = await db
     .select({
@@ -110,7 +128,12 @@ export type PartDetail = {
   connectors: Psu['connectors']
 }
 
-export async function getPart(partId: string): Promise<PartDetail | null> {
+export const getPart = unstable_cache(_getPart, ['part'], {
+  revalidate: CACHE_SECONDS,
+  tags: ['catalog'],
+})
+
+async function _getPart(partId: string): Promise<PartDetail | null> {
   const db = getDb()
   const [row] = await db.select().from(parts).where(eq(parts.partId, partId))
   if (!row) return null
@@ -135,11 +158,18 @@ export type ShopListing = {
   priceLkr: number
   url: string
   inStock: boolean
-  scrapedAt: Date
+  /** ISO string, not a Date: these rows travel through the cache, which does
+   *  not round-trip Date objects. */
+  scrapedAt: string
 }
 
 /** Where a part can be bought: in-stock first, then cheapest. */
-export async function getShopListings(partId: string): Promise<ShopListing[]> {
+export const getShopListings = unstable_cache(_getShopListings, ['shop-listings'], {
+  revalidate: CACHE_SECONDS,
+  tags: ['catalog'],
+})
+
+async function _getShopListings(partId: string): Promise<ShopListing[]> {
   const db = getDb()
   const rows = await db
     .select()
@@ -152,7 +182,7 @@ export async function getShopListings(partId: string): Promise<ShopListing[]> {
     priceLkr: money(r.priceLkr)!,
     url: r.url,
     inStock: r.inStock,
-    scrapedAt: r.scrapedAt,
+    scrapedAt: r.scrapedAt.toISOString(),
   }))
 }
 
@@ -162,7 +192,12 @@ export type PricePoint = { day: string; lowestLkr: number }
  * Cheapest price per day across all shops — the trend a buyer cares about is
  * "what would this have cost me", not any single shop's number.
  */
-export async function getPriceSeries(partId: string, days = 30): Promise<PricePoint[]> {
+export const getPriceSeries = unstable_cache(_getPriceSeries, ['price-series'], {
+  revalidate: CACHE_SECONDS,
+  tags: ['catalog'],
+})
+
+async function _getPriceSeries(partId: string, days = 30): Promise<PricePoint[]> {
   const db = getDb()
   const rows = await db
     .select({
@@ -216,9 +251,33 @@ export type PsuMatches = {
  * arithmetic in a different shape. The count is still reported so the UI can
  * say how many were filtered.
  */
-export async function getPsuOptionsFor(gpu: PartDetail): Promise<PsuMatches> {
+type PsuCandidate = {
+  partId: string
+  model: string
+  brand: string
+  ratedWatts: number | null
+  efficiencyRating: string | null
+  connectors: Psu['connectors']
+  cheapest: string
+  shop: string
+  url: string
+}
+
+/**
+ * Every in-stock PSU, before any GPU is considered.
+ *
+ * Split out and cached on its own because this query is identical whichever
+ * card you picked — only the rules applied to it differ, and those are pure
+ * functions costing nothing.
+ */
+const getPsuCandidates = unstable_cache(_getPsuCandidates, ['psu-candidates'], {
+  revalidate: CACHE_SECONDS,
+  tags: ['catalog'],
+})
+
+async function _getPsuCandidates(): Promise<PsuCandidate[]> {
   const db = getDb()
-  const rows = await db
+  return db
     .select({
       partId: parts.partId,
       model: parts.model,
@@ -242,6 +301,10 @@ export async function getPsuOptionsFor(gpu: PartDetail): Promise<PsuMatches> {
       parts.connectors,
     )
     .orderBy(asc(sql`min(${listings.priceLkr})`))
+}
+
+export async function getPsuOptionsFor(gpu: PartDetail): Promise<PsuMatches> {
+  const rows = await getPsuCandidates()
 
   const asGpu: Gpu = {
     model: gpu.model,
@@ -287,7 +350,12 @@ export async function getPsuOptionsFor(gpu: PartDetail): Promise<PsuMatches> {
 }
 
 /** Totals for the footer, so the page says how much data it is standing on. */
-export async function getCatalogStats() {
+export const getCatalogStats = unstable_cache(_getCatalogStats, ['catalog-stats'], {
+  revalidate: CACHE_SECONDS,
+  tags: ['catalog'],
+})
+
+async function _getCatalogStats() {
   const db = getDb()
   const [row] = await db
     .select({
