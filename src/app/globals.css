@@ -125,6 +125,44 @@ body {
   padding: 0 1rem 0.4375rem;
 }
 
+/**
+ * Floating panel, in the vein of a macOS menu: translucent with the content
+ * behind it blurred, a hairline edge, and a soft shadow to lift it off the
+ * page. Falls back to an opaque surface where backdrop-filter is unsupported,
+ * since a see-through menu with nothing blurring it is unreadable.
+ */
+.popover {
+  background: var(--surface);
+  border: 0.5px solid var(--separator);
+  box-shadow:
+    0 0 0 0.5px rgb(0 0 0 / 4%),
+    0 10px 40px -8px rgb(0 0 0 / 22%),
+    0 4px 12px -4px rgb(0 0 0 / 12%);
+  animation: popover-in 160ms cubic-bezier(0.32, 0.72, 0, 1);
+  transform-origin: top center;
+}
+
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .popover {
+    background: color-mix(in srgb, var(--surface) 82%, transparent);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    backdrop-filter: saturate(180%) blur(20px);
+  }
+}
+
+@keyframes popover-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.985);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .popover {
+    animation: none;
+  }
+}
+
 /* Large Title, tracked in the way Apple tightens display type. */
 .large-title {
   font-size: clamp(2rem, 1.4rem + 2.6vw, 3rem);
