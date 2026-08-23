@@ -30,6 +30,10 @@
   --red: #ff3b30;
 
   --radius: 12px;
+
+  /* Wallpaper strength. Roughly 90% transparent, as asked — enough to notice
+     if you look for it, never enough to compete with a price. */
+  --doodle-opacity: 0.09;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -49,6 +53,9 @@
     --green: #30d158;
     --orange: #ff9f0a;
     --red: #ff453a;
+
+    /* White hairlines on black read fainter than black on grey, so lift it. */
+    --doodle-opacity: 0.11;
   }
 }
 
