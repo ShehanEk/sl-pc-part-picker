@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
 import {
+  BUILD_SLOTS,
   buildPowerDraw,
   evaluateBuild,
   rankCandidates,
@@ -78,7 +79,8 @@ describe('evaluateBuild on partial builds', () => {
     assert.equal(r.checks.length, 0)
     assert.equal(r.pending.length, 0)
     assert.equal(r.status, 'pass')
-    assert.deepEqual(r.empty.length, 5)
+    // Derived, not hardcoded: adding a slot should not break an unrelated test.
+    assert.equal(r.empty.length, BUILD_SLOTS.length)
   })
 
   it('treats a missing counterpart as pending, not as a failure', () => {
@@ -220,9 +222,9 @@ describe('suggestNextSlot', () => {
   })
 
   it('returns null when every slot is filled', () => {
-    assert.equal(
-      suggestNextSlot({ cpu: cpu(), motherboard: board(), ram: ram(), gpu: gpu(), psu: psu() }),
-      null,
-    )
+    const full = Object.fromEntries(
+      BUILD_SLOTS.map((s) => [s, { partId: s, category: s, brand: 'x', model: 'x' }]),
+    ) as Build
+    assert.equal(suggestNextSlot(full), null)
   })
 })

@@ -65,7 +65,9 @@ async function _loadCatalogue(): Promise<Catalogue> {
     else byPart.set(l.partId, [offer])
   }
 
-  const empty: Catalogue = { cpu: [], motherboard: [], ram: [], gpu: [], psu: [] }
+  const empty: Catalogue = {
+    cpu: [], motherboard: [], ram: [], gpu: [], storage: [], psu: [], case: [],
+  }
 
   for (const p of allParts) {
     if (!BUILD_SLOTS.includes(p.category as BuildSlot)) continue
@@ -97,6 +99,8 @@ async function _loadCatalogue(): Promise<Catalogue> {
       capacityGb: p.capacityGb,
       modules: p.modules,
       ratedWatts: p.ratedWatts,
+      storageInterface: p.storageInterface,
+      formFactor: p.formFactor,
       connectors: p.connectors,
       vramGb: p.vramGb,
       efficiencyRating: p.efficiencyRating,

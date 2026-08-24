@@ -24,6 +24,8 @@ const CATEGORY_IDS: Partial<Record<Category, { cat: number; scat: number; label:
   cpu: { cat: 2, scat: 1, label: 'PROCESSOR' },
   motherboard: { cat: 2, scat: 2, label: 'MOTHERBOARD' },
   ram: { cat: 2, scat: 3, label: 'MEMORY' },
+  storage: { cat: 2, scat: 13, label: 'SSD' },
+  case: { cat: 2, scat: 4, label: 'COMPUTER CASE' },
 }
 
 const b64 = (n: number) => Buffer.from(String(n), 'utf8').toString('base64')

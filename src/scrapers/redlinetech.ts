@@ -53,6 +53,8 @@ export const redlinetech = createTynoScraper({
     cpu: 'processors',
     motherboard: 'motherboards',
     ram: 'memory-ram',
+    storage: 'storage',
+    case: 'cases',
   },
   parsePrice,
 })

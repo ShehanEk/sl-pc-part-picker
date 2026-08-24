@@ -21,6 +21,8 @@ const CATEGORY_PATHS: Partial<Record<Category, string>> = {
   cpu: 'processors',
   motherboard: 'motherboards',
   ram: 'memory',
+  storage: 'ssd',
+  case: 'pc cases',
 }
 
 type ChamaProduct = {

@@ -45,6 +45,10 @@ export type Cpu = {
   ramType: 'DDR4' | 'DDR5' | null
 }
 
+/** Board sizes, smallest first. A case takes its own size and anything below. */
+const FORM_FACTOR_ORDER = ['ITX', 'mATX', 'ATX'] as const
+export type FormFactor = (typeof FORM_FACTOR_ORDER)[number]
+
 export type Motherboard = {
   model: string
   socket: string | null
@@ -52,6 +56,8 @@ export type Motherboard = {
   ramSlots: number | null
   maxRamGb: number | null
   maxSupportedSpeedMhz: number | null
+  /** The board's own size, checked against what a case accepts. */
+  formFactor?: FormFactor | null
 }
 
 export type Ram = {
@@ -312,6 +318,52 @@ export function checkRamSpeed(ram: Ram, mb: Motherboard): CheckResult {
         message: `Compatible — runs at the board's ${mb.maxSupportedSpeedMhz}MHz unless XMP/EXPO is enabled.`,
       }
     : { id, status: 'pass', message: `Runs at its rated ${ram.speedMhz}MHz.` }
+}
+
+export type Case = {
+  model: string
+  /** Largest board the case accepts. */
+  formFactor: FormFactor | null
+}
+
+/**
+ * Board fits the case.
+ *
+ * The only physical-fit check we can honestly make: board size is derivable
+ * from the chipset suffix, and tower class tells us what a case accepts. Card
+ * length and cooler height are not published anywhere we read, so they stay
+ * unchecked and are named as such in the interface.
+ */
+export function checkCaseFitsBoard(mb: Motherboard, pcCase: Case): CheckResult {
+  const id = 'case-fit'
+  const boardSize = mb.formFactor as FormFactor | null
+  if (!boardSize || !pcCase.formFactor) {
+    return {
+      id,
+      status: 'unknown',
+      message: !pcCase.formFactor
+        ? "This case doesn't state which board sizes it takes."
+        : "This board's size isn't listed.",
+    }
+  }
+
+  const boardRank = FORM_FACTOR_ORDER.indexOf(boardSize)
+  const caseRank = FORM_FACTOR_ORDER.indexOf(pcCase.formFactor)
+
+  return boardRank <= caseRank
+    ? {
+        id,
+        status: 'pass',
+        message:
+          boardRank === caseRank
+            ? `${boardSize} board in an ${pcCase.formFactor} case.`
+            : `${boardSize} board fits this ${pcCase.formFactor} case with room to spare.`,
+      }
+    : {
+        id,
+        status: 'fail',
+        message: `An ${boardSize} board is too big for this ${pcCase.formFactor} case.`,
+      }
 }
 
 /** Every GPU↔PSU check, in the order a buyer cares about. */

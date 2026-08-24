@@ -52,6 +52,8 @@ export const nanotek = createTynoScraper({
     cpu: 'processor',
     motherboard: 'motherboards',
     ram: 'memory-ram',
+    storage: 'storage-nas',
+    case: 'casings',
   },
   parsePrice,
 })

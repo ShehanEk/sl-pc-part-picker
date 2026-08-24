@@ -161,6 +161,20 @@ function toNewPart(identity: Identity, specs: ObservedSpecs | undefined): NewPar
         capacityGb: identity.capacityGb,
         modules: identity.modules,
       }
+    case 'storage':
+      return {
+        ...base,
+        category: 'storage',
+        capacityGb: identity.capacityGb,
+        storageInterface: identity.storageInterface,
+      }
+    case 'case':
+      return {
+        ...base,
+        category: 'case',
+        // The largest board it takes; a case for ATX also takes mATX and ITX.
+        formFactor: identity.formFactor,
+      }
   }
 }
 

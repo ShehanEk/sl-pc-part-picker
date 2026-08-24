@@ -20,6 +20,18 @@ export const categoryEnum = pgEnum('category', [
   'psu',
   'motherboard',
   'ram',
+  'storage',
+  'case',
+])
+
+/**
+ * How a drive attaches. The distinction matters because an M.2 stick and a
+ * 2.5-inch SATA drive need different things from the board.
+ */
+export const storageInterfaceEnum = pgEnum('storage_interface', [
+  'm2-nvme',
+  'm2-sata',
+  'sata',
 ])
 
 export const powerConnectorEnum = pgEnum('power_connector', [
@@ -74,6 +86,13 @@ export const parts = pgTable(
     speedMhz: integer('speed_mhz'),
     capacityGb: integer('capacity_gb'),
     modules: integer('modules'),
+
+    // storage
+    storageInterface: storageInterfaceEnum('storage_interface'),
+
+    // case — `formFactor` above is reused, meaning the LARGEST board it takes.
+    // A case that fits ATX also fits mATX and ITX, so one value plus an
+    // ordering covers the check without a list of supported sizes.
 
     // psu
     ratedWatts: integer('rated_watts'),

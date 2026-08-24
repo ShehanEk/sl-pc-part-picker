@@ -84,6 +84,7 @@ export function Configurator({ catalogue }: { catalogue: Catalogue }) {
     if (failing.some((f) => f.startsWith('ram-')) && (s === 'ram' || s === 'motherboard')) return true
     if (failing.includes('psu-wattage') && s === 'psu') return true
     if (failing.includes('gpu-connector') && (s === 'gpu' || s === 'psu')) return true
+    if (failing.includes('case-fit') && (s === 'case' || s === 'motherboard')) return true
     return false
   })
 
@@ -232,6 +233,8 @@ export function Configurator({ catalogue }: { catalogue: Catalogue }) {
                   part.vramGb ? `${part.vramGb}GB` : null,
                   part.tdpWatts ? `${part.tdpWatts}W` : null,
                   part.ratedWatts ? `${part.ratedWatts}W` : null,
+                  part.storageInterface,
+                  part.category === 'case' ? part.formFactor : null,
                 ]
                   .filter(Boolean)
                   .slice(0, 3)
@@ -324,9 +327,9 @@ export function Configurator({ catalogue }: { catalogue: Catalogue }) {
         <section className="mt-8">
           <h2 className="ios-section-header uppercase">What we don&apos;t check</h2>
           <div className="rounded-[var(--radius)] bg-surface px-4 py-3.5 text-[0.8125rem] leading-relaxed text-label-secondary">
-            We check sockets, memory type and power. We don&apos;t check whether the card and
-            cooler physically fit the case, or that you have storage — those specs aren&apos;t
-            published in local listings, so we&apos;d be guessing.
+            We check sockets, memory type, power, and that the board fits the case. We don&apos;t
+            check whether the graphics card or cooler physically clear it — card length and
+            cooler height aren&apos;t published in local listings, so we&apos;d be guessing.
           </div>
         </section>
       )}

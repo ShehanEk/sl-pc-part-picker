@@ -67,12 +67,32 @@ export type RamIdentity = {
   modules: number | null
 }
 
+export type StorageIdentity = {
+  category: 'storage'
+  partId: string
+  brand: string
+  model: string
+  capacityGb: number
+  storageInterface: 'm2-nvme' | 'm2-sata' | 'sata' | null
+}
+
+export type CaseIdentity = {
+  category: 'case'
+  partId: string
+  brand: string
+  model: string
+  /** Largest board the case accepts. */
+  formFactor: 'ATX' | 'mATX' | 'ITX' | null
+}
+
 export type Identity =
   | GpuIdentity
   | PsuIdentity
   | CpuIdentity
   | MotherboardIdentity
   | RamIdentity
+  | StorageIdentity
+  | CaseIdentity
 
 const GPU_BOARD_PARTNERS = [
   'asus', 'msi', 'gigabyte', 'zotac', 'inno3d', 'pny', 'palit', 'galax',
@@ -535,6 +555,150 @@ export function extractRam(rawTitle: string): RamIdentity | null {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Storage
+
+const STORAGE_BRANDS = [
+  'samsung', 'western digital', 'wd', 'seagate', 'crucial', 'kingston',
+  'lexar', 'adata', 'xpg', 'corsair', 'msi', 'gigabyte', 'addlink', 'twinmos',
+  'netac', 'transcend', 'sandisk', 'pny', 'teamgroup', 'team', 'patriot',
+  'hikvision', 'silicon power', 'intel', 'kioxia',
+]
+
+/** Filed under storage but not a drive. */
+const NOT_STORAGE = /\b(enclosure|caddy|docking|adapter|cable|bracket|cooler|heat\s*sink)\b/i
+
+/**
+ * Drives.
+ *
+ * The interface is the useful part: an M.2 stick and a 2.5-inch SATA drive want
+ * different things from the board. It is only recorded when the title says so —
+ * a bare "240GB SSD" could be either, and no rule depends on this yet, so a
+ * guess would buy nothing.
+ */
+export function extractStorage(rawTitle: string): StorageIdentity | null {
+  const title = stripAsides(rawTitle)
+  if (NOT_STORAGE.test(title)) return null
+
+  // A range like "1TB - 4TB" describes several products, not one.
+  if (/\d+\s*(tb|gb)\s*[-–]\s*\d+\s*(tb|gb)/i.test(title)) return null
+
+  const tb = title.match(/(?<![a-z0-9])(\d+(?:\.\d+)?)\s*tb\b/i)
+  const gb = title.match(/(?<![a-z0-9])(\d{2,4})\s*gb\b/i)
+  const capacityGb = tb ? Math.round(Number(tb[1]) * 1000) : gb ? Number(gb[1]) : null
+  if (capacityGb === null || capacityGb < 60 || capacityGb > 32000) return null
+
+  const isM2 = /\bm\.?2\b|\b2280\b/i.test(title)
+  const isNvme = /\bnvme\b|\bpcie\s*gen|\bpci-?e\s*\d/i.test(title)
+  // "SATA3" and "SATA III" are as common as a bare "SATA", and a trailing digit
+  // defeats a plain word boundary — which quietly labelled SATA M.2 drives NVMe.
+  const isSata = /\bsata\s?(?:3|iii)?\b/i.test(title) || /\b2\.5\b|6gb\/s/i.test(title)
+
+  const storageInterface: StorageIdentity['storageInterface'] = isNvme
+    ? 'm2-nvme'
+    : isM2 && isSata
+      ? 'm2-sata'
+      : isM2
+        ? 'm2-nvme' // bare "M.2" on a modern drive is overwhelmingly NVMe
+        : isSata
+          ? 'sata'
+          : null
+
+  const brand = findBrand(title, STORAGE_BRANDS)
+  const label = capacityGb >= 1000 ? `${capacityGb / 1000}TB` : `${capacityGb}GB`
+
+  // The model code is what separates two drives of the same size from one maker.
+  const modelTokens = title
+    .replace(brand ? new RegExp(`\\b${brand.replace(/\s/g, '\\s*')}\\b`, 'gi') : /(?!)/g, ' ')
+    .replace(
+      /\b(ssd|hdd|nvme|sata\d?|m\.?2|2280|pcie|gen\s*\d(x\d)?|solid\s*state\s*drive|internal|desktop|drive|6gb\/s|2\.5"?|up\s*to|r:|w:|\d+\s*mb\/s)\b/gi,
+      ' ',
+    )
+    .replace(/(?<![a-z0-9])\d+(\.\d+)?\s*(tb|gb)\b/gi, ' ')
+    .replace(/[^a-z0-9+\-\s]/gi, ' ')
+    .split(/\s+/)
+    .map((t) => t.trim())
+    .filter((t) => t.length > 1 && !/^\d+$/.test(t))
+    .filter((t, i, all) => i === 0 || t.toLowerCase() !== all[i - 1].toLowerCase())
+    .slice(0, 3)
+
+  return {
+    category: 'storage',
+    partId: slug([brand ?? 'generic', modelTokens.join('-'), label, storageInterface].filter(Boolean).join('-')),
+    brand: brand ? brand.replace(/\b\w/g, (c) => c.toUpperCase()) : 'Unbranded',
+    model: [modelTokens.join(' '), label].filter(Boolean).join(' ').trim(),
+    capacityGb,
+    storageInterface,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Case
+
+const CASE_BRANDS = [
+  'nzxt', 'corsair', 'lian li', 'fractal', 'cooler master', 'coolermaster',
+  'thermaltake', 'antec', 'asus', 'msi', 'gigabyte', 'deepcool', 'segotep',
+  'gamdias', 'raidmax', 'darkflash', 'dark flash', 'cougar', 'aerocool',
+  'phanteks', 'be quiet', 'montech', 'arctic', 'xigmatek', 'ant esports',
+  'gamemax', 'tian', 'zalman',
+]
+
+/** Filed under cases but not a case. */
+const NOT_A_CASE =
+  /\b(stand\s*kit|bracket|panel|riser|fan\s*kit|filter|handle|wheel|accessor|cable|mini\s*pc|barebone|lcd|kit\s*for|screws?)\b/i
+
+/**
+ * Cases.
+ *
+ * `formFactor` records the LARGEST board the case accepts, so one value plus an
+ * ordering answers the fit question — a case that takes ATX also takes mATX and
+ * ITX. Tower class is the signal: full and mid towers are ATX, micro towers are
+ * mATX. Where a title says nothing it stays null and the check reports unknown
+ * rather than assuming the roomier answer, which would be the unsafe direction.
+ */
+export function extractCase(rawTitle: string): CaseIdentity | null {
+  const title = stripAsides(rawTitle)
+  // The shop already filed this under cases, so the job is rejecting the
+  // accessories that share the shelf — not demanding the word "case". Plenty of
+  // real ones are listed as "COUGAR GEMINI S IRON GRAY RGB GAMING".
+  if (NOT_A_CASE.test(title)) return null
+
+  const formFactor: CaseIdentity['formFactor'] = /\bmini[\s-]*itx\b|\bitx\b/i.test(title)
+    ? 'ITX'
+    : /\bmicro\b|\bm-?atx\b|\bmatx\b/i.test(title)
+      ? 'mATX'
+      : /\bfull[\s-]*(tower|atx)?\b|\bmid[\s-]*tower\b|\batx\b|\bе?-?atx\b/i.test(title)
+        ? 'ATX'
+        : null
+
+  const brand = findBrand(title, CASE_BRANDS)
+
+  const modelTokens = title
+    .replace(brand ? new RegExp(`\\b${brand.replace(/\s/g, '\\s*')}\\b`, 'gi') : /(?!)/g, ' ')
+    .replace(
+      /\b(case|casing|chassis|gaming|mid|full|micro|mini|tower|atx|matx|itx|argb|rgb|with|fans?|tempered|glass|tg|black|white|grey|gray|edition)\b/gi,
+      ' ',
+    )
+    .replace(/[^a-z0-9+\-\s]/gi, ' ')
+    .split(/\s+/)
+    .map((t) => t.trim())
+    // Numbers are kept here, unlike elsewhere: a case model is frequently just
+    // one — A290, VX320, "Tower 600" — and dropping it leaves "The".
+    .filter((t) => t.length > 1)
+    .filter((t, i, all) => i === 0 || t.toLowerCase() !== all[i - 1].toLowerCase())
+    .slice(0, 3)
+
+  if (!brand && modelTokens.length === 0) return null
+
+  return {
+    category: 'case',
+    partId: slug([brand ?? 'generic', modelTokens.join('-'), formFactor].filter(Boolean).join('-')),
+    brand: brand ? brand.replace(/\b\w/g, (c) => c.toUpperCase()) : 'Unbranded',
+    model: [modelTokens.join(' '), formFactor].filter(Boolean).join(' ').trim() || 'Case',
+    formFactor,
+  }
+}
+
 /** Extract using the category the retailer claimed, returning null if it disagrees. */
 export function extractIdentity(
   category: string,
@@ -545,5 +709,7 @@ export function extractIdentity(
   if (category === 'cpu') return extractCpu(rawTitle)
   if (category === 'motherboard') return extractMotherboard(rawTitle)
   if (category === 'ram') return extractRam(rawTitle)
+  if (category === 'storage') return extractStorage(rawTitle)
+  if (category === 'case') return extractCase(rawTitle)
   return null
 }

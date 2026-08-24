@@ -2,6 +2,7 @@ import {
   ASSUMED_CPU_WATTS,
   PSU_HEADROOM_MULTIPLIER,
   checkCpuSocket,
+  checkCaseFitsBoard,
   checkGpuPowerConnector,
   checkRamFits,
   checkRamSpeed,
@@ -9,6 +10,7 @@ import {
   overallStatus,
   type CheckResult,
   type CheckStatus,
+  type Case,
   type Cpu,
   type Gpu,
   type Motherboard,
@@ -31,9 +33,17 @@ import {
  * only defensible way to tell someone their parts will work.
  */
 
-export type BuildSlot = 'cpu' | 'motherboard' | 'ram' | 'gpu' | 'psu'
+export type BuildSlot = 'cpu' | 'motherboard' | 'ram' | 'gpu' | 'storage' | 'psu' | 'case'
 
-export const BUILD_SLOTS: BuildSlot[] = ['cpu', 'motherboard', 'ram', 'gpu', 'psu']
+export const BUILD_SLOTS: BuildSlot[] = [
+  'cpu',
+  'motherboard',
+  'ram',
+  'gpu',
+  'storage',
+  'psu',
+  'case',
+]
 
 export const SLOT_LABEL: Record<BuildSlot, string> = {
   cpu: 'processor',
@@ -41,6 +51,8 @@ export const SLOT_LABEL: Record<BuildSlot, string> = {
   ram: 'memory',
   gpu: 'graphics card',
   psu: 'power supply',
+  storage: 'drive',
+  case: 'case',
 }
 
 /**
@@ -73,6 +85,9 @@ export type BuildPart = {
   capacityGb?: number | null
   modules?: number | null
   ratedWatts?: number | null
+  storageInterface?: 'm2-nvme' | 'm2-sata' | 'sata' | null
+  /** motherboard: its own size. case: the largest board it takes. */
+  formFactor?: 'ATX' | 'mATX' | 'ITX' | null
   connectors?: Psu['connectors']
 }
 
@@ -122,6 +137,12 @@ const asMotherboard = (p: BuildPart): Motherboard => ({
   ramSlots: p.ramSlots ?? null,
   maxRamGb: p.maxRamGb ?? null,
   maxSupportedSpeedMhz: p.maxSupportedSpeedMhz ?? null,
+  formFactor: p.formFactor ?? null,
+})
+
+const asCase = (p: BuildPart): Case => ({
+  model: p.model,
+  formFactor: p.formFactor ?? null,
 })
 
 const asRam = (p: BuildPart): Ram => ({
@@ -225,6 +246,7 @@ export function evaluateBuild(build: Build): BuildReport {
   const pending: PendingCheck[] = []
 
   const { cpu, motherboard, ram, gpu, psu } = build
+  const pcCase = build.case
 
   // CPU ↔ motherboard
   if (cpu && motherboard) checks.push(checkCpuSocket(asCpu(cpu), asMotherboard(motherboard)))
@@ -263,6 +285,16 @@ export function evaluateBuild(build: Build): BuildReport {
       id: 'psu-wattage',
       needs: ['psu'],
       message: 'Add a power supply and we’ll work out whether it can run this.',
+    })
+  }
+
+  // Board ↔ case
+  if (motherboard && pcCase) checks.push(checkCaseFitsBoard(asMotherboard(motherboard), asCase(pcCase)))
+  else if (pcCase && !motherboard) {
+    pending.push({
+      id: 'case-fit',
+      needs: ['motherboard'],
+      message: 'Add a motherboard and we’ll check it fits the case.',
     })
   }
 
@@ -331,10 +363,12 @@ export function rankCandidates<T extends BuildPart>(
 /** Which checks a given slot participates in. */
 const CHECKS_BY_SLOT: Record<BuildSlot, string[]> = {
   cpu: ['cpu-socket', 'psu-wattage'],
-  motherboard: ['cpu-socket', 'ram-type', 'ram-fits', 'ram-speed'],
+  motherboard: ['cpu-socket', 'ram-type', 'ram-fits', 'ram-speed', 'case-fit'],
   ram: ['ram-type', 'ram-fits', 'ram-speed'],
   gpu: ['psu-wattage', 'gpu-connector'],
   psu: ['psu-wattage', 'gpu-connector'],
+  storage: [],
+  case: ['case-fit'],
 }
 
 export type Suggestion = {
