@@ -13,5 +13,5 @@ jobs:
     with:
       shop: nanotek.lk
       categories: gpu,psu
-      timeout-minutes: 90
+      timeout_minutes: 90
     secrets: inherit

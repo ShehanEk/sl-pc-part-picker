@@ -13,5 +13,5 @@ jobs:
     with:
       shop: redlinetech.lk
       categories: gpu,psu
-      timeout-minutes: 45
+      timeout_minutes: 45
     secrets: inherit

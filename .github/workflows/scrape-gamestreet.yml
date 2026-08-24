@@ -13,5 +13,5 @@ jobs:
     with:
       shop: gamestreet.lk
       categories: gpu,psu
-      timeout-minutes: 20
+      timeout_minutes: 20
     secrets: inherit

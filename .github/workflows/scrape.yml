@@ -14,7 +14,7 @@ on:
         required: false
         type: string
         default: gpu,psu
-      timeout-minutes:
+      timeout_minutes:
         required: false
         type: number
         default: 45
@@ -22,7 +22,7 @@ on:
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ inputs.timeout-minutes }}
+    timeout-minutes: ${{ inputs.timeout_minutes }}
     # Never let two runs for the same shop overlap — they would double-write
     # raw rows and double the request load on the retailer.
     concurrency:

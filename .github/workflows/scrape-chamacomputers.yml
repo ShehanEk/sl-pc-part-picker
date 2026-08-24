@@ -13,5 +13,5 @@ jobs:
     with:
       shop: chamacomputers.lk
       categories: gpu,psu
-      timeout-minutes: 30
+      timeout_minutes: 30
     secrets: inherit
