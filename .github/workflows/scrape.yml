@@ -13,7 +13,7 @@ on:
         description: Comma-separated canonical categories
         required: false
         type: string
-        default: gpu,psu
+        default: gpu,psu,cpu,motherboard,ram
       timeout_minutes:
         required: false
         type: number

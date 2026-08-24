@@ -12,6 +12,6 @@ jobs:
     uses: ./.github/workflows/scrape.yml
     with:
       shop: gamestreet.lk
-      categories: gpu,psu
+      categories: gpu,psu,cpu,motherboard,ram
       timeout_minutes: 20
     secrets: inherit
