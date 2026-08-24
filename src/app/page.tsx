@@ -58,11 +58,16 @@ export default async function Home({
 
   return (
     <main className="mx-auto w-full max-w-[46rem] px-4 pb-24 pt-10 sm:px-6 sm:pt-16">
-      <header className="mb-8 px-1">
+      {/* Kept short on purpose: on a phone the previous four-line intro pushed
+          the build itself below the fold. The longer explanation only appears
+          where there is room for it. */}
+      <header className="mb-7 px-1">
         <h1 className="large-title">Build a PC,<br />priced in Sri Lanka.</h1>
         <p className="mt-3 text-[1.0625rem] leading-snug text-label-secondary">
-          Pick parts one at a time. We check they work together and show which local shop has
-          each one cheapest — take them from whichever shops you like.
+          Parts that work together, from local shops.
+          <span className="hidden sm:inline">
+            {' '}Pick one at a time — we check compatibility and show who has each cheapest.
+          </span>
         </p>
       </header>
 
@@ -83,12 +88,19 @@ export default async function Home({
   )
 }
 
-function statusTone(status: CheckStatus) {
-  return status === 'fail'
-    ? 'text-red'
-    : status === 'warn' || status === 'unknown'
-      ? 'text-orange'
-      : 'text-green'
+/**
+ * Written out in full rather than derived.
+ *
+ * These class names have to appear literally in the source for Tailwind to
+ * generate them. Building them with `'text-green'.replace('text-','bg-')`
+ * produced markup referencing a `bg-green` rule that was never emitted, so
+ * every status dot rendered transparent.
+ */
+const TONE: Record<CheckStatus, { text: string; dot: string }> = {
+  pass: { text: 'text-green', dot: 'bg-green' },
+  fail: { text: 'text-red', dot: 'bg-red' },
+  warn: { text: 'text-orange', dot: 'bg-orange' },
+  unknown: { text: 'text-orange', dot: 'bg-orange' },
 }
 
 async function BuildPanel({
@@ -167,8 +179,8 @@ async function BuildPanel({
             <ul className="mt-3 space-y-1.5 border-t border-separator pt-3">
               {report.checks.map((c) => (
                 <li key={c.id} className="flex gap-2 text-[0.8125rem] leading-snug">
-                  <Dot className={`mt-[0.4rem] shrink-0 ${statusTone(c.status).replace('text-', 'bg-')}`} />
-                  <span className={c.status === 'pass' ? 'text-label-secondary' : statusTone(c.status)}>
+                  <Dot className={`mt-[0.4rem] shrink-0 ${TONE[c.status].dot}`} />
+                  <span className={c.status === 'pass' ? 'text-label-secondary' : TONE[c.status].text}>
                     {c.message}
                   </span>
                 </li>
@@ -204,6 +216,41 @@ async function SlotChooser({
   const chosen = build[slot]
   const expandShopsFor = params.shops
 
+  const shown = options.fitting.slice(0, 25)
+  const caveatOf = (o: (typeof shown)[number]) =>
+    o.checks.find((c) => c.status === 'unknown' || c.status === 'warn')
+
+  /**
+   * Rows carry a short tag, not a sentence.
+   *
+   * On a phone the full wording cost two lines on every row — the same
+   * explanation repeated down 24 options, roughly 860px of identical text and
+   * more than a whole screen, which pushed the actual choices out of view. The
+   * reasoning belongs once, above the list; the row only needs to flag that
+   * there is a reservation.
+   */
+  const shortCaveat = (o: (typeof shown)[number]): string | undefined => {
+    const c = caveatOf(o)
+    if (!c) return undefined
+    if (c.id === 'gpu-connector') {
+      return c.status === 'warn' ? 'Uses the bundled adapter' : 'Connectors not published'
+    }
+    if (c.id === 'ram-fits') return 'Slot count not published'
+    if (c.id === 'ram-speed') return 'Rated speed not published'
+    return c.message
+  }
+
+  // The long form, said once, when most of the list shares a reservation.
+  const majorityCaveat = (() => {
+    const counts = new Map<string, number>()
+    for (const o of shown) {
+      const m = caveatOf(o)?.message
+      if (m) counts.set(m, (counts.get(m) ?? 0) + 1)
+    }
+    const top = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]
+    return top && top[1] >= Math.max(2, shown.length / 2) ? top[0] : null
+  })()
+
   return (
     <section>
       <h2 className="ios-section-header uppercase">Choose a {SLOT_LABEL[slot]}</h2>
@@ -217,10 +264,16 @@ async function SlotChooser({
             {options.blocked.length} hidden because they don&apos;t fit — {options.blocked[0].blockedBy}
           </p>
         )}
+        {majorityCaveat && (
+          <p className="mt-2 flex gap-2 text-[0.8125rem] leading-snug text-orange">
+            <Dot className="mt-[0.4rem] shrink-0 bg-orange" />
+            <span>{majorityCaveat}</span>
+          </p>
+        )}
         {chosen && (
           <Link
             href={href({ [slot]: null, shops: null })}
-            className="mt-2 inline-block text-[0.9375rem] text-blue"
+            className="-mx-1 mt-1 inline-block px-1 py-2 text-[0.9375rem] text-blue"
           >
             Remove {chosen.model}
           </Link>
@@ -233,11 +286,11 @@ async function SlotChooser({
         </div>
       ) : (
         <ul className="ios-list">
-          {options.fitting.slice(0, 25).map((o) => (
+          {shown.map((o) => (
             <OptionRow
               key={o.part.partId}
               option={o.part}
-              caveat={o.checks.find((c) => c.status === 'unknown' || c.status === 'warn')?.message}
+              caveat={shortCaveat(o)}
               selected={chosen?.partId === o.part.partId}
               href={href}
               slot={slot}
@@ -318,10 +371,12 @@ async function OptionRow({
       </Link>
 
       {option.shopCount > 1 && (
-        <div className="px-4 pb-2.5">
+        <div className="px-4 pb-1.5">
+          {/* Padded to a 44px target: the bare text link was 17px tall, well
+              under what a thumb can reliably hit. */}
           <Link
             href={href({ shops: expanded ? null : option.partId })}
-            className="text-[0.8125rem] text-blue"
+            className="-mx-2 inline-block px-2 py-3 text-[0.8125rem] text-blue"
           >
             {expanded ? 'Hide' : `Compare ${option.shopCount} shops`}
           </Link>
@@ -331,7 +386,7 @@ async function OptionRow({
                 <li key={o.shop}>
                   <Link
                     href={href({ [slot]: encodeSlot(option.partId, o.shop), shops: null })}
-                    className={`flex items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-[0.8125rem] ${
+                    className={`flex items-center justify-between gap-3 rounded-lg px-2 py-2.5 text-[0.8125rem] ${
                       o.inStock ? '' : 'opacity-55'
                     } ${chosenShop === o.shop ? 'bg-fill' : ''}`}
                   >
