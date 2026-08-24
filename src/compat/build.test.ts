@@ -199,6 +199,18 @@ describe('suggestNextSlot', () => {
     assert.match(s!.message, /RTX 5070/)
   })
 
+  it('asks for the card before the supply, since the supply depends on it', () => {
+    // A supply chosen against a bare processor is sized for a draw that is
+    // about to change, and will usually be too small once a card goes in.
+    const partial: Build = { cpu: cpu(), motherboard: board(), ram: ram() }
+    assert.equal(suggestNextSlot(partial)?.slot, 'gpu')
+    assert.equal(suggestNextSlot({ ...partial, gpu: gpu() })?.slot, 'psu')
+  })
+
+  it('opens on the processor for an empty build', () => {
+    assert.equal(suggestNextSlot({})?.slot, 'cpu')
+  })
+
   it('asks for a board after a processor', () => {
     assert.equal(suggestNextSlot({ cpu: cpu() })?.slot, 'motherboard')
   })

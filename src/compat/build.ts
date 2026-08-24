@@ -354,23 +354,16 @@ export type Suggestion = {
 export function suggestNextSlot(build: Build): Suggestion | null {
   const has = (s: BuildSlot) => Boolean(build[s])
 
+  // Nothing chosen: the processor decides the platform, so it opens the most
+  // doors.
+  if (BUILD_SLOTS.every((s) => !has(s))) {
+    return { slot: 'cpu', message: 'Start with a processor — it decides the platform.' }
+  }
+
   if (has('cpu') && !has('motherboard')) {
     return {
       slot: 'motherboard',
       message: `Find a motherboard that fits the ${build.cpu!.model}.`,
-    }
-  }
-  if (has('motherboard') && !has('ram')) {
-    return {
-      slot: 'ram',
-      message: `Find memory that works with the ${build.motherboard!.model}.`,
-    }
-  }
-  if ((has('gpu') || has('cpu')) && !has('psu')) {
-    const driver = build.gpu ?? build.cpu!
-    return {
-      slot: 'psu',
-      message: `Find a power supply that can run the ${driver.model}.`,
     }
   }
   if (has('motherboard') && !has('cpu')) {
@@ -379,8 +372,25 @@ export function suggestNextSlot(build: Build): Suggestion | null {
       message: `Find a processor for the ${build.motherboard!.model}.`,
     }
   }
-  if (has('psu') && !has('gpu')) {
-    return { slot: 'gpu', message: 'Add a graphics card to this build.' }
+  if (has('motherboard') && !has('ram')) {
+    return {
+      slot: 'ram',
+      message: `Find memory that works with the ${build.motherboard!.model}.`,
+    }
+  }
+
+  // The card before the supply, always. How much power the build needs depends
+  // on the card, so choosing the supply first means sizing it against a draw
+  // that is about to change — and a supply picked for a bare processor will
+  // usually be too small once a card goes in.
+  if (!has('gpu')) {
+    return { slot: 'gpu', message: 'Add a graphics card.' }
+  }
+  if (!has('psu')) {
+    return {
+      slot: 'psu',
+      message: `Find a power supply that can run the ${build.gpu!.model}.`,
+    }
   }
 
   const next = BUILD_SLOTS.find((s) => !has(s))

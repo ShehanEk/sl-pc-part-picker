@@ -74,11 +74,6 @@ export function CartoonPC({
       }
     >
       <defs>
-        <linearGradient id="pcStage" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#161a2e" />
-          <stop offset="100%" stopColor="#0a0c18" />
-        </linearGradient>
-
         {/* RGB sweep, used on fans and edge lighting */}
         <linearGradient id="pcRgb" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stopColor="#00d4ff" />
@@ -112,15 +107,14 @@ export function CartoonPC({
           </feMerge>
         </filter>
 
-        <radialGradient id="pcHalo" cx="50%" cy="55%" r="55%">
-          <stop offset="0%" stopColor="#6d5cff" stopOpacity="0.42" />
-          <stop offset="100%" stopColor="#6d5cff" stopOpacity="0" />
-        </radialGradient>
       </defs>
 
-      {/* Stage — neon only reads as neon against dark */}
-      <rect x="0" y="0" width="340" height="268" rx="16" fill="url(#pcStage)" />
-      <ellipse className="pc-halo" cx="172" cy="150" rx="150" ry="110" fill="url(#pcHalo)" />
+      {/*
+        No stage: the machine sits directly on the page.
+        The chassis keeps its dark navy faces, which is what a real case looks
+        like anyway, so it reads as an object on the desk in either theme rather
+        than needing a panel of its own.
+      */}
 
       {/* Floor plate the machine stands on */}
       <polygon

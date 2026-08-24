@@ -238,16 +238,7 @@ body {
   to { transform: rotate(360deg); }
 }
 
-/* The stage brightens when everything is in and nothing conflicts. */
-.pc-halo {
-  transition: opacity 700ms ease;
-  opacity: 0.5;
-}
-
-.pc-powered .pc-halo {
-  opacity: 1;
-}
-
+/* Edge lighting comes up when everything is in and nothing conflicts. */
 .pc-edge {
   transition: opacity 500ms ease;
   opacity: 0.7;
@@ -273,7 +264,6 @@ body {
   .pc-powered .pc-led {
     animation: none;
   }
-  .pc-halo,
   .pc-edge {
     transition: none;
   }

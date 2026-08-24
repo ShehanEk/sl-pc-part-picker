@@ -1,107 +1,23 @@
 import { unstable_cache } from 'next/cache'
-import { and, asc, eq, gte, sql } from 'drizzle-orm'
+import { and, eq, gte, sql } from 'drizzle-orm'
 
 import { getDb } from '@/db'
 import { listings, parts } from '@/db/schema'
-import {
-  BUILD_SLOTS,
-  rankCandidates,
-  type Build,
-  type BuildPart,
-  type BuildSlot,
-  type CandidateVerdict,
-} from '@/compat/build'
+import { BUILD_SLOTS, type BuildPart, type BuildSlot } from '@/compat/build'
 
 /**
- * Read side of the configurator.
+ * Catalogue for the configurator.
  *
- * A candidate is a part *and* a seller, because mixing shops is the point of
- * the product. Every option therefore carries the cheapest in-stock listing for
- * that part, and the shop offering it.
+ * The whole thing is loaded once and handed to the client, because the build is
+ * assembled there: every list is a filter over parts the browser already holds,
+ * so choosing something is instant instead of a round trip. The compatibility
+ * rules are pure functions and run equally well on either side.
+ *
+ * Each part carries every shop selling it, so switching seller needs no fetch.
  */
 
 const STALE_AFTER_DAYS = 7
 const CACHE_SECONDS = 1800
-
-const fresh = gte(listings.scrapedAt, sql`now() - make_interval(days => ${STALE_AFTER_DAYS})`)
-
-export type PartOffer = BuildPart & {
-  /** How many shops list this part at all, in stock or not. */
-  shopCount: number
-  /** Display-only, not used by any rule. */
-  vramGb: number | null
-  efficiencyRating: string | null
-}
-
-/**
- * Every in-stock part in a category, priced at its cheapest seller.
- *
- * Cached per category rather than per build: the rows are identical whatever
- * the shopper has already chosen, and only the rules applied afterwards differ.
- */
-const loadCategory = unstable_cache(_loadCategory, ['build-category'], {
-  revalidate: CACHE_SECONDS,
-  tags: ['catalog'],
-})
-
-async function _loadCategory(category: BuildSlot): Promise<PartOffer[]> {
-  const db = getDb()
-  const rows = await db
-    .select({
-      partId: parts.partId,
-      category: parts.category,
-      brand: parts.brand,
-      model: parts.model,
-      socket: parts.socket,
-      ramType: parts.ramType,
-      tdpWatts: parts.tdpWatts,
-      recommendedPsuWatts: parts.recommendedPsuWatts,
-      powerConnector: parts.powerConnector,
-      ramSlots: parts.ramSlots,
-      maxRamGb: parts.maxRamGb,
-      maxSupportedSpeedMhz: parts.maxSupportedSpeedMhz,
-      speedMhz: parts.speedMhz,
-      capacityGb: parts.capacityGb,
-      modules: parts.modules,
-      ratedWatts: parts.ratedWatts,
-      efficiencyRating: parts.efficiencyRating,
-      vramGb: parts.vramGb,
-      connectors: parts.connectors,
-      price: sql<string>`min(${listings.priceLkr})`,
-      shop: sql<string>`(array_agg(${listings.shop} order by ${listings.priceLkr}))[1]`,
-      shopCount: sql<number>`count(distinct ${listings.shop})::int`,
-    })
-    .from(parts)
-    .innerJoin(listings, eq(listings.partId, parts.partId))
-    .where(and(eq(parts.category, category), fresh, eq(listings.inStock, true)))
-    .groupBy(parts.partId)
-    .orderBy(asc(sql`min(${listings.priceLkr})`))
-
-  return rows.map((r) => ({
-    partId: r.partId,
-    category: r.category as BuildSlot,
-    brand: r.brand,
-    model: r.model,
-    shop: r.shop,
-    priceLkr: Number(r.price),
-    socket: r.socket,
-    ramType: r.ramType,
-    tdpWatts: r.tdpWatts,
-    recommendedPsuWatts: r.recommendedPsuWatts,
-    powerConnector: r.powerConnector,
-    ramSlots: r.ramSlots,
-    maxRamGb: r.maxRamGb,
-    maxSupportedSpeedMhz: r.maxSupportedSpeedMhz,
-    speedMhz: r.speedMhz,
-    capacityGb: r.capacityGb,
-    modules: r.modules,
-    ratedWatts: r.ratedWatts,
-    connectors: r.connectors,
-    shopCount: r.shopCount,
-    vramGb: r.vramGb,
-    efficiencyRating: r.efficiencyRating,
-  }))
-}
 
 export type ShopOffer = {
   shop: string
@@ -110,114 +26,107 @@ export type ShopOffer = {
   inStock: boolean
 }
 
-/** Every seller of one part, so a shopper can take it from someone else. */
-export const getOffersForPart = unstable_cache(_getOffersForPart, ['part-offers'], {
+export type PartOffer = BuildPart & {
+  /** Every seller, cheapest first. In-stock ones come first. */
+  offers: ShopOffer[]
+  /** Display only, never used by a rule. */
+  vramGb: number | null
+  efficiencyRating: string | null
+}
+
+export type Catalogue = Record<BuildSlot, PartOffer[]>
+
+export const loadCatalogue = unstable_cache(_loadCatalogue, ['configurator-catalogue'], {
   revalidate: CACHE_SECONDS,
   tags: ['catalog'],
 })
 
-async function _getOffersForPart(partId: string): Promise<ShopOffer[]> {
+async function _loadCatalogue(): Promise<Catalogue> {
   const db = getDb()
-  const rows = await db
-    .select()
-    .from(listings)
-    .where(and(eq(listings.partId, partId), fresh))
-    .orderBy(asc(listings.priceLkr))
-  return rows.map((r) => ({
-    shop: r.shop,
-    priceLkr: Number(r.priceLkr),
-    url: r.url,
-    inStock: r.inStock,
-  }))
-}
 
-/**
- * A build slot as encoded in the URL: `partId~shop`.
- *
- * The build lives in the address bar so it can be shared and linked, which is
- * how people actually pass a parts list to someone else.
- */
-export function encodeSlot(partId: string, shop: string): string {
-  return `${partId}~${shop}`
-}
+  const [allParts, allListings] = await Promise.all([
+    db.select().from(parts),
+    db
+      .select()
+      .from(listings)
+      .where(gte(listings.scrapedAt, sql`now() - make_interval(days => ${STALE_AFTER_DAYS})`)),
+  ])
 
-function decodeSlot(value: string | undefined): { partId: string; shop: string } | null {
-  if (!value) return null
-  const i = value.lastIndexOf('~')
-  if (i === -1) return { partId: value, shop: '' }
-  return { partId: value.slice(0, i), shop: value.slice(i + 1) }
-}
-
-/** Rebuild the chosen parts from the URL, priced at the shop the shopper picked. */
-export async function hydrateBuild(
-  params: Record<string, string | undefined>,
-): Promise<Build> {
-  const build: Build = {}
-
-  // Only the known slots. The caller hands us the whole query string, which
-  // also carries `slot` and `shops` for UI state — reading those as categories
-  // sent "slot" to a Postgres enum and crashed the page on every click.
-  const slots = BUILD_SLOTS.filter((s) => params[s])
-
-  await Promise.all(
-    slots.map(async (slot) => {
-      const chosen = decodeSlot(params[slot])
-      if (!chosen) return
-      const catalogue = await loadCategory(slot)
-      const part = catalogue.find((p) => p.partId === chosen.partId)
-      if (!part) return
-
-      // Honour the shop in the URL even when it is not the cheapest, since the
-      // shopper chose it deliberately.
-      if (chosen.shop && chosen.shop !== part.shop) {
-        const offers = await getOffersForPart(part.partId)
-        const picked = offers.find((o) => o.shop === chosen.shop)
-        if (picked) {
-          build[slot] = { ...part, shop: picked.shop, priceLkr: picked.priceLkr }
-          return
-        }
-      }
-      build[slot] = part
-    }),
-  )
-
-  return build
-}
-
-export type SlotOptions = {
-  slot: BuildSlot
-  fitting: CandidateVerdict<PartOffer>[]
-  blocked: CandidateVerdict<PartOffer>[]
-  total: number
-}
-
-/** Options for one slot, judged against everything already chosen. */
-export async function getSlotOptions(build: Build, slot: BuildSlot): Promise<SlotOptions> {
-  const catalogue = await loadCategory(slot)
-  const ranked = rankCandidates(build, slot, catalogue)
-  return {
-    slot,
-    fitting: ranked.filter((r) => r.status !== 'fail'),
-    blocked: ranked.filter((r) => r.status === 'fail'),
-    total: ranked.length,
+  const byPart = new Map<string, ShopOffer[]>()
+  for (const l of allListings) {
+    const offer: ShopOffer = {
+      shop: l.shop,
+      priceLkr: Number(l.priceLkr),
+      url: l.url,
+      inStock: l.inStock,
+    }
+    const existing = byPart.get(l.partId)
+    if (existing) existing.push(offer)
+    else byPart.set(l.partId, [offer])
   }
+
+  const empty: Catalogue = { cpu: [], motherboard: [], ram: [], gpu: [], psu: [] }
+
+  for (const p of allParts) {
+    if (!BUILD_SLOTS.includes(p.category as BuildSlot)) continue
+    const offers = byPart.get(p.partId)
+    if (!offers) continue
+
+    // In stock first, then cheapest — the headline price has to be one you can
+    // actually pay, and most parts here have an out-of-stock listing underneath.
+    offers.sort((a, b) => Number(b.inStock) - Number(a.inStock) || a.priceLkr - b.priceLkr)
+    const buyable = offers.find((o) => o.inStock)
+    if (!buyable) continue
+
+    empty[p.category as BuildSlot].push({
+      partId: p.partId,
+      category: p.category as BuildSlot,
+      brand: p.brand,
+      model: p.model,
+      shop: buyable.shop,
+      priceLkr: buyable.priceLkr,
+      socket: p.socket,
+      ramType: p.ramType,
+      tdpWatts: p.tdpWatts,
+      recommendedPsuWatts: p.recommendedPsuWatts,
+      powerConnector: p.powerConnector,
+      ramSlots: p.ramSlots,
+      maxRamGb: p.maxRamGb,
+      maxSupportedSpeedMhz: p.maxSupportedSpeedMhz,
+      speedMhz: p.speedMhz,
+      capacityGb: p.capacityGb,
+      modules: p.modules,
+      ratedWatts: p.ratedWatts,
+      connectors: p.connectors,
+      vramGb: p.vramGb,
+      efficiencyRating: p.efficiencyRating,
+      offers,
+    })
+  }
+
+  for (const slot of BUILD_SLOTS) {
+    empty[slot].sort((a, b) => (a.priceLkr ?? 0) - (b.priceLkr ?? 0))
+  }
+
+  return empty
 }
 
-/** How many in-stock options exist per slot, for the overview. */
-export const getSlotCounts = unstable_cache(
-  async (): Promise<Record<string, number>> => {
+/** Totals for the footer. */
+export const getCatalogStats = unstable_cache(
+  async () => {
     const db = getDb()
-    const rows = await db
+    const [row] = await db
       .select({
-        category: parts.category,
-        n: sql<number>`count(distinct ${parts.partId})::int`,
+        parts: sql<number>`(select count(*) from ${parts})::int`,
+        listings: sql<number>`(select count(*) from ${listings})::int`,
+        shops: sql<number>`(select count(distinct shop) from ${listings})::int`,
+        lastScrape: sql<string | null>`(select max(scraped_at)::text from ${listings})`,
       })
-      .from(parts)
-      .innerJoin(listings, eq(listings.partId, parts.partId))
-      .where(and(fresh, eq(listings.inStock, true)))
-      .groupBy(parts.category)
-    return Object.fromEntries(rows.map((r) => [r.category, r.n]))
+      .from(sql`(select 1) as _`)
+    return row
   },
-  ['slot-counts'],
+  ['configurator-stats'],
   { revalidate: CACHE_SECONDS, tags: ['catalog'] },
 )
+
+export { and, eq }
