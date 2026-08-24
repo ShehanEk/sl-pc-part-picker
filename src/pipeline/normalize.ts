@@ -116,13 +116,51 @@ function toNewPart(identity: Identity, specs: ObservedSpecs | undefined): NewPar
     }
   }
 
-  return {
+  const base = {
     partId: identity.partId,
-    category: 'psu',
     brand: identity.brand,
     model: identity.model,
-    ratedWatts: identity.ratedWatts,
-    efficiencyRating: identity.efficiencyRating,
+  }
+
+  switch (identity.category) {
+    case 'psu':
+      return {
+        ...base,
+        category: 'psu',
+        ratedWatts: identity.ratedWatts,
+        efficiencyRating: identity.efficiencyRating,
+      }
+    case 'cpu':
+      return {
+        ...base,
+        category: 'cpu',
+        socket: identity.socket,
+        ramType: identity.ramType,
+        // Never inferred: draw varies from 35W to 170W within one generation
+        // and is not printed in listings, so it waits for curated data.
+        tdpWatts: null,
+      }
+    case 'motherboard':
+      return {
+        ...base,
+        category: 'motherboard',
+        socket: identity.socket,
+        ramType: identity.ramType,
+        formFactor: identity.formFactor,
+        // Slot count and capacity ceiling are not stated in listings. Left null
+        // so the kit-fits check reports unknown rather than inventing a limit.
+        ramSlots: null,
+        maxRamGb: null,
+      }
+    case 'ram':
+      return {
+        ...base,
+        category: 'ram',
+        ramType: identity.ramType,
+        speedMhz: identity.speedMhz,
+        capacityGb: identity.capacityGb,
+        modules: identity.modules,
+      }
   }
 }
 

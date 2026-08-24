@@ -12,6 +12,13 @@
  * category must fall through rather than be forced into it.
  */
 
+import {
+  findChipset,
+  intelCorePlatform,
+  intelUltraPlatform,
+  ryzenPlatform,
+} from '@/catalog/platforms'
+
 export type GpuIdentity = {
   category: 'gpu'
   partId: string
@@ -30,7 +37,42 @@ export type PsuIdentity = {
   efficiencyRating: string | null
 }
 
-export type Identity = GpuIdentity | PsuIdentity
+export type CpuIdentity = {
+  category: 'cpu'
+  partId: string
+  brand: string
+  model: string
+  socket: string
+  ramType: 'DDR4' | 'DDR5' | null
+}
+
+export type MotherboardIdentity = {
+  category: 'motherboard'
+  partId: string
+  brand: string
+  model: string
+  socket: string
+  ramType: 'DDR4' | 'DDR5' | null
+  formFactor: 'ATX' | 'mATX' | 'ITX' | null
+}
+
+export type RamIdentity = {
+  category: 'ram'
+  partId: string
+  brand: string
+  model: string
+  ramType: 'DDR4' | 'DDR5'
+  speedMhz: number | null
+  capacityGb: number
+  modules: number | null
+}
+
+export type Identity =
+  | GpuIdentity
+  | PsuIdentity
+  | CpuIdentity
+  | MotherboardIdentity
+  | RamIdentity
 
 const GPU_BOARD_PARTNERS = [
   'asus', 'msi', 'gigabyte', 'zotac', 'inno3d', 'pny', 'palit', 'galax',
@@ -253,6 +295,246 @@ export function extractPsu(rawTitle: string): PsuIdentity | null {
   }
 }
 
+// ---------------------------------------------------------------------------
+// CPU
+
+/**
+ * Processors.
+ *
+ * The socket comes from the model number rather than a per-chip lookup, so this
+ * resolves chips the catalogue has never seen. Power draw is deliberately left
+ * null: it ranges from 35W to 170W within one generation and never appears in a
+ * listing, and the PSU rule may not run on a guess.
+ */
+export function extractCpu(rawTitle: string): CpuIdentity | null {
+  const title = stripAsides(rawTitle)
+
+  // Intel Core Ultra 200 series: "Core Ultra 9 Processor 285K"
+  const ultra = title.match(/\bcore\s+ultra\s+(\d)\b[^0-9]{0,20}(\d{3})([a-z]{0,2})\b/i)
+  if (ultra) {
+    const platform = intelUltraPlatform(Number(ultra[2]))
+    if (platform) {
+      const suffix = ultra[3].toUpperCase()
+      const model = `Core Ultra ${ultra[1]} ${ultra[2]}${suffix}`
+      return {
+        category: 'cpu',
+        partId: slug(`intel-core-ultra-${ultra[1]}-${ultra[2]}${suffix}`),
+        brand: 'Intel',
+        model,
+        socket: platform.socket,
+        ramType: platform.ramType,
+      }
+    }
+  }
+
+  // Intel Core i-series: "CORE i5 13600K", "Core I5-14400F", "i7 12700"
+  const corei = title.match(/\bi([3579])[\s-]*(\d{4,5})\s*([a-z]{0,2})\b/i)
+  if (corei) {
+    const platform = intelCorePlatform(Number(corei[2]))
+    if (platform) {
+      const suffix = corei[3].toUpperCase()
+      const model = `Core i${corei[1]}-${corei[2]}${suffix}`
+      return {
+        category: 'cpu',
+        partId: slug(`intel-core-i${corei[1]}-${corei[2]}${suffix}`),
+        brand: 'Intel',
+        model,
+        socket: platform.socket,
+        ramType: platform.ramType,
+      }
+    }
+  }
+
+  // AMD Ryzen: "Ryzen 7 7800X3D", "Ryzen 5 5600GT"
+  // "Pro" is a business-line badge that does not change the socket, so it is
+  // skipped rather than blocking the match.
+  const ryzen = title.match(/\bryzen\s+(\d)\s+(?:pro\s+)?(\d{4})\s*([a-z0-9]{0,4}?)\b/i)
+  if (ryzen) {
+    const platform = ryzenPlatform(Number(ryzen[2]))
+    if (platform) {
+      const suffix = ryzen[3].toUpperCase()
+      const model = `Ryzen ${ryzen[1]} ${ryzen[2]}${suffix}`
+      return {
+        category: 'cpu',
+        partId: slug(`amd-ryzen-${ryzen[1]}-${ryzen[2]}${suffix}`),
+        brand: 'AMD',
+        model,
+        socket: platform.socket,
+        ramType: platform.ramType,
+      }
+    }
+  }
+
+  return null
+}
+
+// ---------------------------------------------------------------------------
+// Motherboard
+
+const BOARD_BRANDS = [
+  'asus', 'msi', 'gigabyte', 'asrock', 'nzxt', 'biostar', 'colorful', 'maxsun',
+  'aorus', 'evga',
+]
+
+/** Marketing words that must not survive into a board's model name. */
+const BOARD_NOISE = new RegExp(
+  [
+    'motherboard', 'mother\\s*board', 'mainboard',
+    'wi[\\s-]*fi', 'wifi', 'ax\\b',
+    'ddr[45]', '\\bd[45]\\b',
+    'micro\\s*atx', 'matx', 'mini[\\s-]*itx', '\\bitx\\b', '\\batx\\b',
+    'gaming', 'series', 'edition',
+  ].join('|'),
+  'gi',
+)
+
+/**
+ * Motherboards.
+ *
+ * The chipset in the title determines the socket and, for most platforms, the
+ * memory generation. Intel's 600 and 700 series ship in both DDR4 and DDR5
+ * variants, so for those the title has to say — and it nearly always does.
+ */
+export function extractMotherboard(rawTitle: string): MotherboardIdentity | null {
+  const title = stripAsides(rawTitle)
+  const chip = findChipset(title)
+  if (!chip) return null
+
+  const explicitDdr = /\bddr5\b|\bd5\b/i.test(title)
+    ? 'DDR5'
+    : /\bddr4\b|\bd4\b/i.test(title)
+      ? 'DDR4'
+      : null
+
+  // The platform wins where it is unambiguous; the title only decides for the
+  // generations that genuinely ship both.
+  const ramType = chip.ramType ?? explicitDdr
+
+  const formFactor: MotherboardIdentity['formFactor'] = /mini[\s-]*itx|\bitx\b/i.test(title)
+    ? 'ITX'
+    : chip.microAtx || /micro\s*atx|\bmatx\b/i.test(title)
+      ? 'mATX'
+      : 'ATX'
+
+  const brand = findBrand(title, BOARD_BRANDS)
+
+  const modelTokens = title
+    .replace(brand ? new RegExp(`\\b${brand.replace(/\s/g, '\\s*')}\\b`, 'gi') : /(?!)/g, ' ')
+    .replace(BOARD_NOISE, ' ')
+    .replace(/[^a-z0-9+\-\s]/gi, ' ')
+    .split(/\s+/)
+    .map((t) => t.trim())
+    .filter((t) => t.length > 1)
+    .filter((t, i, all) => i === 0 || t.toLowerCase() !== all[i - 1].toLowerCase())
+
+  return {
+    category: 'motherboard',
+    partId: slug([brand, modelTokens.join('-'), ramType].filter(Boolean).join('-')),
+    brand: brand ? brand.replace(/\b\w/g, (c) => c.toUpperCase()) : 'Unknown',
+    model: [modelTokens.join(' '), ramType].filter(Boolean).join(' ').trim(),
+    socket: chip.socket,
+    ramType,
+    formFactor,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// RAM
+
+const RAM_BRANDS = [
+  'corsair', 'kingston', 'adata', 'xpg', 'g.skill', 'gskill', 'crucial',
+  'teamgroup', 'team', 't-force', 'tforce', 't-create', 'patriot', 'lexar',
+  'netac', 'transcend', 'pny', 'addgame', 'memoryghost', 'silicon power',
+  'apacer', 'klevv', 'zadak', 'v-color', 'vcolor',
+]
+
+/** Memory that cannot go in a desktop build, whatever the shop filed it under. */
+const NOT_DESKTOP_RAM = /\bso[\s-]*dimm\b|\blaptop\b|\bnotebook\b|\blap\s*ram\b|\bsodimm\b/i
+
+/**
+ * Memory.
+ *
+ * The most extractable category by far — capacity, generation, speed and often
+ * the kit layout are all stated in the title.
+ *
+ * Laptop modules are rejected outright. Shops file SO-DIMM memory in the same
+ * category, and it physically cannot go in a desktop board, so offering it in a
+ * build would be worse than omitting it.
+ */
+export function extractRam(rawTitle: string): RamIdentity | null {
+  const title = stripAsides(rawTitle)
+  if (NOT_DESKTOP_RAM.test(rawTitle)) return null
+
+  const stated = /\bddr5\b/i.test(title) ? 'DDR5' : /\bddr4\b/i.test(title) ? 'DDR4' : null
+
+  // Kit layout: "(2X16GB)", "(1x8GB)", "(2X16)".
+  // Read from the raw title on purpose — stripAsides removes parenthesised
+  // text, which is exactly where the stick count lives.
+  // The GB is optional: shops write "(2X16GB)" and bare "(2X16)" alike.
+  const kit = rawTitle.match(/\((\d)\s*[x×]\s*(\d{1,3})\s*(?:gb?)?\)/i)
+  const modules = kit ? Number(kit[1]) : null
+
+  // Total capacity is the standalone figure, not the per-stick one inside the kit.
+  const capacityMatch = [...title.matchAll(/(?<![a-z0-9x×])(\d{1,3})\s*gb\b/gi)]
+    .map((m) => Number(m[1]))
+    .filter((n) => n >= 2 && n <= 512)
+  const capacityGb = capacityMatch[0] ?? null
+  if (capacityGb === null) return null
+
+  // "3200MHZ", "3600MT/s", "DDR5-4800"
+  const speed =
+    title.match(/(\d{4,5})\s*(?:mhz|mt\/s)/i)?.[1] ??
+    title.match(/ddr[45][\s-](\d{4,5})/i)?.[1] ??
+    null
+  const speedMhz = speed ? Number(speed) : null
+
+  /**
+   * A third of desktop memory listings never name the generation — "Kingston
+   * 16GB 3200MHZ Desktop Memory". The data rate settles it: DDR5's JEDEC floor
+   * is 4800 MT/s and no DDR5 module runs slower, while DDR4 tops out around
+   * 4000 even on aggressive XMP kits.
+   *
+   * The band between is left unresolved rather than guessed. Getting this wrong
+   * puts a DDR4 stick in a DDR5 board, which is a hard failure, so the gap is
+   * deliberately wide — in this corpus the labelled titles cluster at 3200/3600
+   * for DDR4 and 4800 and above for DDR5, with nothing in between.
+   */
+  const ramType =
+    stated ??
+    (speedMhz === null ? null : speedMhz <= 4000 ? 'DDR4' : speedMhz >= 4800 ? 'DDR5' : null)
+  if (!ramType) return null
+
+  const brand = findBrand(title, RAM_BRANDS)
+
+  return {
+    category: 'ram',
+    partId: slug(
+      [
+        brand ?? 'generic',
+        `${capacityGb}gb`,
+        modules ? `${modules}x` : null,
+        ramType,
+        speedMhz ? `${speedMhz}` : null,
+      ]
+        .filter(Boolean)
+        .join('-'),
+    ),
+    brand: brand ? brand.replace(/\b\w/g, (c) => c.toUpperCase()) : 'Unbranded',
+    model: [
+      `${capacityGb}GB`,
+      modules ? `(${modules}x${capacityGb / modules}GB)` : null,
+      ramType,
+      speedMhz ? `${speedMhz}MHz` : null,
+    ]
+      .filter(Boolean)
+      .join(' '),
+    ramType,
+    speedMhz,
+    capacityGb,
+    modules,
+  }
+}
+
 /** Extract using the category the retailer claimed, returning null if it disagrees. */
 export function extractIdentity(
   category: string,
@@ -260,5 +542,8 @@ export function extractIdentity(
 ): Identity | null {
   if (category === 'gpu') return extractGpu(rawTitle)
   if (category === 'psu') return extractPsu(rawTitle)
+  if (category === 'cpu') return extractCpu(rawTitle)
+  if (category === 'motherboard') return extractMotherboard(rawTitle)
+  if (category === 'ram') return extractRam(rawTitle)
   return null
 }
