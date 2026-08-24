@@ -3,7 +3,14 @@ import { and, asc, eq, gte, sql } from 'drizzle-orm'
 
 import { getDb } from '@/db'
 import { listings, parts } from '@/db/schema'
-import { rankCandidates, type Build, type BuildPart, type BuildSlot, type CandidateVerdict } from '@/compat/build'
+import {
+  BUILD_SLOTS,
+  rankCandidates,
+  type Build,
+  type BuildPart,
+  type BuildSlot,
+  type CandidateVerdict,
+} from '@/compat/build'
 
 /**
  * Read side of the configurator.
@@ -143,10 +150,14 @@ function decodeSlot(value: string | undefined): { partId: string; shop: string }
 
 /** Rebuild the chosen parts from the URL, priced at the shop the shopper picked. */
 export async function hydrateBuild(
-  params: Partial<Record<BuildSlot, string>>,
+  params: Record<string, string | undefined>,
 ): Promise<Build> {
   const build: Build = {}
-  const slots = Object.keys(params) as BuildSlot[]
+
+  // Only the known slots. The caller hands us the whole query string, which
+  // also carries `slot` and `shops` for UI state — reading those as categories
+  // sent "slot" to a Postgres enum and crashed the page on every click.
+  const slots = BUILD_SLOTS.filter((s) => params[s])
 
   await Promise.all(
     slots.map(async (slot) => {
