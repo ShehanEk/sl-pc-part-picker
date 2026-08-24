@@ -5,28 +5,36 @@ import { useEffect, useRef, useState } from 'react'
 import type { BuildSlot } from '@/compat/build'
 
 /**
- * The build, drawn as a machine coming together.
+ * The build, drawn as an isometric machine assembling itself.
  *
- * The layout is the real one — board on the right, processor and memory on the
- * board, card in a slot below, supply in the basement — so watching it fill in
- * teaches someone who has never opened a case where things actually go. That is
- * the point: it reads as a picture of your build rather than decoration beside
- * it.
+ * Isometric rather than flat: a side-on outline reads as a wiring diagram,
+ * whereas boxes with three visible faces read as objects you could pick up. The
+ * parts float above the case until chosen and then drop into place, so the
+ * picture is an exploded view that resolves as you shop.
  *
- * Empty slots are dashed ghosts, so the drawing doubles as a progress bar. Only
- * the part just chosen animates: this component survives navigation between
- * search params, so it can compare against what it drew last time rather than
- * replaying the whole assembly on every click.
+ * It sits on its own dark stage in both themes. Neon needs darkness to look
+ * like neon — the same glow on a light grey page reads as a smudge.
  */
+
+/** Top face of an isometric box: a rhombus, twice as wide as it is tall. */
+const top = (cx: number, cy: number, w: number, h: number) =>
+  `${cx},${cy - h} ${cx + w},${cy} ${cx},${cy + h} ${cx - w},${cy}`
+
+/** Left-facing side, dropped by `d`. */
+const left = (cx: number, cy: number, w: number, h: number, d: number) =>
+  `${cx - w},${cy} ${cx},${cy + h} ${cx},${cy + h + d} ${cx - w},${cy + d}`
+
+/** Right-facing side, dropped by `d`. */
+const right = (cx: number, cy: number, w: number, h: number, d: number) =>
+  `${cx},${cy + h} ${cx + w},${cy} ${cx + w},${cy + d} ${cx},${cy + h + d}`
+
 export function CartoonPC({
   filled,
   conflicted,
   complete,
 }: {
   filled: BuildSlot[]
-  /** Slots whose part conflicts with the rest of the build. */
   conflicted: BuildSlot[]
-  /** Everything chosen and nothing failing — the machine powers on. */
   complete: boolean
 }) {
   const seen = useRef<Set<BuildSlot> | null>(null)
@@ -35,25 +43,20 @@ export function CartoonPC({
   useEffect(() => {
     const previous = seen.current
     seen.current = new Set(filled)
-
-    // First render: everything is already in place, so nothing should drop in.
     if (previous === null) return
-
     const added = filled.find((s) => !previous.has(s))
     if (!added) return
-
     setJustAdded(added)
-    const timer = setTimeout(() => setJustAdded(null), 600)
+    const timer = setTimeout(() => setJustAdded(null), 700)
     return () => clearTimeout(timer)
   }, [filled])
 
   const has = (s: BuildSlot) => filled.includes(s)
-
   const cls = (s: BuildSlot) =>
     [
       'pc-part',
       has(s) ? '' : 'pc-part--empty',
-      justAdded === s ? 'pc-part--dropping' : '',
+      justAdded === s ? 'pc-part--fly' : '',
       conflicted.includes(s) ? 'pc-part--conflict' : '',
     ]
       .filter(Boolean)
@@ -61,82 +64,158 @@ export function CartoonPC({
 
   return (
     <svg
-      viewBox="0 0 320 190"
-      className={`w-full max-w-[22rem] ${complete ? 'pc-powered' : ''}`}
+      viewBox="0 0 340 268"
+      className={`w-full max-w-[23rem] ${complete ? 'pc-powered' : ''}`}
       role="img"
       aria-label={
         complete
-          ? 'Your build, complete and powered on'
+          ? 'Your build, assembled and powered on'
           : `Your build so far: ${filled.length} of 5 parts fitted`
       }
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
     >
-      {/* Case — always present, it is the thing being filled */}
-      <g className="text-label-secondary">
-        <rect x="8" y="8" width="304" height="174" rx="12" />
-        {/* Front panel divider */}
-        <path d="M104 8v174" />
-        {/* Drive bays */}
-        <rect x="20" y="24" width="70" height="14" rx="3" />
-        <rect x="20" y="46" width="70" height="14" rx="3" />
-        {/* Power button, lit once running */}
-        <circle cx="55" cy="80" r="8" />
-        <circle
-          className="pc-led"
-          cx="55"
-          cy="80"
-          r="3.5"
-          fill={complete ? 'var(--green)' : 'currentColor'}
-          stroke="none"
-          opacity={complete ? 1 : 0.35}
+      <defs>
+        <linearGradient id="pcStage" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#161a2e" />
+          <stop offset="100%" stopColor="#0a0c18" />
+        </linearGradient>
+
+        {/* RGB sweep, used on fans and edge lighting */}
+        <linearGradient id="pcRgb" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#00d4ff" />
+          <stop offset="50%" stopColor="#a855f7" />
+          <stop offset="100%" stopColor="#ff2d78" />
+        </linearGradient>
+
+        {/* Three faces of every box: lit top, mid left, dark right. */}
+        <linearGradient id="faceTop" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#3b4570" />
+          <stop offset="100%" stopColor="#232b4d" />
+        </linearGradient>
+        <linearGradient id="faceLeft" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#1d2340" />
+          <stop offset="100%" stopColor="#141930" />
+        </linearGradient>
+        <linearGradient id="faceRight" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#141930" />
+          <stop offset="100%" stopColor="#0d1124" />
+        </linearGradient>
+        <linearGradient id="boardTop" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#1c5c4a" />
+          <stop offset="100%" stopColor="#123c33" />
+        </linearGradient>
+
+        <filter id="pcGlow" x="-60%" y="-60%" width="220%" height="220%">
+          <feGaussianBlur stdDeviation="3.5" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+
+        <radialGradient id="pcHalo" cx="50%" cy="55%" r="55%">
+          <stop offset="0%" stopColor="#6d5cff" stopOpacity="0.42" />
+          <stop offset="100%" stopColor="#6d5cff" stopOpacity="0" />
+        </radialGradient>
+      </defs>
+
+      {/* Stage — neon only reads as neon against dark */}
+      <rect x="0" y="0" width="340" height="268" rx="16" fill="url(#pcStage)" />
+      <ellipse className="pc-halo" cx="172" cy="150" rx="150" ry="110" fill="url(#pcHalo)" />
+
+      {/* Floor plate the machine stands on */}
+      <polygon
+        points={top(170, 214, 132, 66)}
+        fill="none"
+        stroke="url(#pcRgb)"
+        strokeWidth="1.5"
+        opacity="0.5"
+      />
+
+      {/* --- Case ------------------------------------------------------------ */}
+      <g>
+        <polygon points={left(150, 196, 74, 37, 34)} fill="url(#faceLeft)" />
+        <polygon points={right(150, 196, 74, 37, 34)} fill="url(#faceRight)" />
+        <polygon points={top(150, 196, 74, 37)} fill="url(#faceTop)" opacity="0.55" />
+        {/* Glass side panel catching the light */}
+        <polygon
+          points={left(150, 196, 74, 37, 34)}
+          fill="url(#pcRgb)"
+          opacity="0.16"
         />
-      </g>
-
-      {/* Power supply — the basement */}
-      <g className={cls('psu')} style={{ ['--tint' as string]: 'rgb(255 149 0 / 14%)' }}>
-        <rect className="pc-tint" x="20" y="130" width="72" height="40" rx="5" />
-        <circle className="pc-fan" cx="44" cy="150" r="12" />
-        <path className="pc-fan" d="M44 138a12 12 0 0 1 10 6M56 154a12 12 0 0 1-18 6M32 156a12 12 0 0 1 4-16" />
-        <path d="M72 140h12M72 150h12M72 160h12" />
-      </g>
-
-      {/* Motherboard — the backplane everything else attaches to */}
-      <g className={cls('motherboard')} style={{ ['--tint' as string]: 'rgb(52 199 89 / 12%)' }}>
-        <rect className="pc-tint" x="120" y="22" width="180" height="146" rx="6" />
-        <circle cx="130" cy="32" r="2.5" fill="currentColor" stroke="none" />
-        <circle cx="290" cy="32" r="2.5" fill="currentColor" stroke="none" />
-        <circle cx="130" cy="158" r="2.5" fill="currentColor" stroke="none" />
-        <circle cx="290" cy="158" r="2.5" fill="currentColor" stroke="none" />
-      </g>
-
-      {/* Processor — seats on the board, under its cooler */}
-      <g className={cls('cpu')} style={{ ['--tint' as string]: 'rgb(0 122 255 / 16%)' }}>
-        <rect className="pc-tint" x="138" y="40" width="52" height="52" rx="5" />
-        <circle className="pc-fan" cx="164" cy="66" r="18" />
-        <circle cx="164" cy="66" r="5" />
-        <path
-          className="pc-fan"
-          d="M164 48a18 18 0 0 1 15 9M179 75a18 18 0 0 1-15 9M149 75a18 18 0 0 1 0-18"
+        <polygon
+          points={left(150, 196, 74, 37, 34)}
+          fill="none"
+          stroke="url(#pcRgb)"
+          strokeWidth="1.6"
+          filter="url(#pcGlow)"
+          className="pc-edge"
         />
+        {/* Front intake fans */}
+        <g className="pc-fan-wrap">
+          <ellipse className="pc-fan" cx="112" cy="222" rx="11" ry="6" fill="none" stroke="url(#pcRgb)" strokeWidth="1.8" filter="url(#pcGlow)" />
+          <ellipse className="pc-fan" cx="112" cy="238" rx="11" ry="6" fill="none" stroke="url(#pcRgb)" strokeWidth="1.8" filter="url(#pcGlow)" />
+        </g>
+        {/* Power light */}
+        <circle className="pc-led" cx="196" cy="220" r="3.2" fill={complete ? '#4ade80' : '#3b4570'} filter={complete ? 'url(#pcGlow)' : undefined} />
       </g>
 
-      {/* Memory — sticks standing beside the processor */}
-      <g className={cls('ram')} style={{ ['--tint' as string]: 'rgb(88 86 214 / 16%)' }}>
-        <rect className="pc-tint" x="208" y="36" width="13" height="62" rx="2" />
-        <rect className="pc-tint" x="228" y="36" width="13" height="62" rx="2" />
-        <path d="M208 88h13M228 88h13" />
+      {/* --- Power supply, floating to the left ------------------------------ */}
+      <g className={cls('psu')} style={{ ['--fly' as string]: '-26px' }}>
+        <polygon points={left(52, 168, 30, 15, 18)} fill="url(#faceLeft)" />
+        <polygon points={right(52, 168, 30, 15, 18)} fill="url(#faceRight)" />
+        <polygon points={top(52, 168, 30, 15)} fill="url(#faceTop)" />
+        <ellipse className="pc-fan" cx="52" cy="168" rx="12" ry="6" fill="none" stroke="url(#pcRgb)" strokeWidth="1.6" filter="url(#pcGlow)" />
       </g>
 
-      {/* Graphics card — slots in horizontally below */}
-      <g className={cls('gpu')} style={{ ['--tint' as string]: 'rgb(255 59 48 / 12%)' }}>
-        <rect className="pc-tint" x="132" y="112" width="152" height="38" rx="5" />
-        <circle className="pc-fan" cx="168" cy="131" r="13" />
-        <circle className="pc-fan" cx="212" cy="131" r="13" />
-        <path d="M256 120h20M256 131h20M256 142h20" />
+      {/* --- Motherboard, the plane everything mounts to --------------------- */}
+      <g className={cls('motherboard')} style={{ ['--fly' as string]: '-34px' }}>
+        <polygon points={top(186, 126, 76, 38)} fill="url(#boardTop)" />
+        <polygon
+          points={top(186, 126, 76, 38)}
+          fill="none"
+          stroke="#3ddc97"
+          strokeWidth="1.3"
+          opacity="0.85"
+          filter="url(#pcGlow)"
+        />
+        {/* Traces */}
+        <path d="M150 126 L186 108 M186 144 L222 126 M162 138 L198 120" stroke="#3ddc97" strokeWidth="0.9" opacity="0.5" fill="none" />
+        <rect x="240" y="118" width="8" height="4" fill="#3ddc97" opacity="0.6" />
+      </g>
+
+      {/* --- Processor ------------------------------------------------------- */}
+      <g className={cls('cpu')} style={{ ['--fly' as string]: '-52px' }}>
+        <polygon points={left(168, 108, 17, 9, 7)} fill="url(#faceLeft)" />
+        <polygon points={right(168, 108, 17, 9, 7)} fill="url(#faceRight)" />
+        <polygon points={top(168, 108, 17, 9)} fill="url(#faceTop)" />
+        <polygon points={top(168, 108, 17, 9)} fill="none" stroke="#38bdf8" strokeWidth="1.4" filter="url(#pcGlow)" />
+        <ellipse className="pc-fan" cx="168" cy="108" rx="9" ry="4.6" fill="none" stroke="url(#pcRgb)" strokeWidth="1.5" filter="url(#pcGlow)" />
+      </g>
+
+      {/* --- Memory, standing sticks ----------------------------------------- */}
+      <g className={cls('ram')} style={{ ['--fly' as string]: '-46px' }}>
+        {[0, 1].map((i) => {
+          const cx = 232 + i * 13
+          const cy = 106 + i * 6.5
+          return (
+            <g key={i}>
+              <polygon points={left(cx, cy, 15, 7.5, 16)} fill="#2a1f4d" />
+              <polygon points={right(cx, cy, 15, 7.5, 16)} fill="#1d1636" />
+              <polygon points={top(cx, cy, 15, 7.5)} fill="#3b2d6b" />
+              <polygon points={top(cx, cy, 15, 7.5)} fill="none" stroke="#a855f7" strokeWidth="1.3" filter="url(#pcGlow)" />
+            </g>
+          )
+        })}
+      </g>
+
+      {/* --- Graphics card --------------------------------------------------- */}
+      <g className={cls('gpu')} style={{ ['--fly' as string]: '-40px' }}>
+        <polygon points={left(178, 164, 62, 31, 9)} fill="url(#faceLeft)" />
+        <polygon points={right(178, 164, 62, 31, 9)} fill="url(#faceRight)" />
+        <polygon points={top(178, 164, 62, 31)} fill="url(#faceTop)" />
+        <polygon points={top(178, 164, 62, 31)} fill="none" stroke="#ff2d78" strokeWidth="1.4" filter="url(#pcGlow)" />
+        <ellipse className="pc-fan" cx="152" cy="164" rx="13" ry="6.6" fill="none" stroke="url(#pcRgb)" strokeWidth="1.6" filter="url(#pcGlow)" />
+        <ellipse className="pc-fan" cx="196" cy="164" rx="13" ry="6.6" fill="none" stroke="url(#pcRgb)" strokeWidth="1.6" filter="url(#pcGlow)" />
       </g>
     </svg>
   )

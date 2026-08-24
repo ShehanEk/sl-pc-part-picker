@@ -175,25 +175,31 @@ body {
   transform-origin: center;
 }
 
-/* Slots not yet chosen: a faint dashed ghost, so the case doubles as progress. */
+/* Slots not yet chosen: a dim ghost of where the part will go. */
 .pc-part--empty {
-  opacity: 0.22;
-  stroke-dasharray: 4 4;
+  opacity: 0.14;
+  filter: grayscale(1);
 }
 
-/* Only the part just chosen animates; the rest are already seated. */
-.pc-part--dropping {
-  animation: pc-drop 520ms cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+/*
+ * The chosen part flies down into place from above the case, each from its own
+ * height so an exploded view resolves rather than everything sliding uniformly.
+ * The overshoot at the end is what makes it land rather than arrive.
+ */
+.pc-part--fly {
+  animation: pc-fly 700ms cubic-bezier(0.22, 1.4, 0.36, 1) backwards;
 }
 
-@keyframes pc-drop {
+@keyframes pc-fly {
   0% {
     opacity: 0;
-    transform: translateY(-18px) scale(0.94);
+    transform: translateY(var(--fly, -30px)) scale(0.9);
   }
-  70% {
+  60% {
     opacity: 1;
-    transform: translateY(2px) scale(1.02);
+  }
+  78% {
+    transform: translateY(3px) scale(1.03);
   }
   100% {
     opacity: 1;
@@ -213,18 +219,42 @@ body {
   70% { transform: translateX(-2px); }
 }
 
-/* Fans turn once the machine has everything it needs. */
+/*
+ * Fans idle slowly from the start and spin up once the machine is complete —
+ * an isometric fan is an ellipse, so it reads as rotation only because the
+ * highlight travels round it.
+ */
 .pc-fan {
   transform-box: fill-box;
   transform-origin: center;
+  animation: pc-spin 6s linear infinite;
 }
 
 .pc-powered .pc-fan {
-  animation: pc-spin 2.4s linear infinite;
+  animation-duration: 1.6s;
 }
 
 @keyframes pc-spin {
   to { transform: rotate(360deg); }
+}
+
+/* The stage brightens when everything is in and nothing conflicts. */
+.pc-halo {
+  transition: opacity 700ms ease;
+  opacity: 0.5;
+}
+
+.pc-powered .pc-halo {
+  opacity: 1;
+}
+
+.pc-edge {
+  transition: opacity 500ms ease;
+  opacity: 0.7;
+}
+
+.pc-powered .pc-edge {
+  opacity: 1;
 }
 
 .pc-powered .pc-led {
@@ -236,24 +266,15 @@ body {
   50% { opacity: 1; }
 }
 
-/* Colour floods in only when the build is complete — the payoff for finishing. */
-.pc-tint {
-  fill: transparent;
-  transition: fill 600ms ease;
-}
-
-.pc-powered .pc-tint {
-  fill: var(--tint);
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .pc-part--dropping,
+  .pc-part--fly,
   .pc-part--conflict,
-  .pc-powered .pc-fan,
+  .pc-fan,
   .pc-powered .pc-led {
     animation: none;
   }
-  .pc-tint {
+  .pc-halo,
+  .pc-edge {
     transition: none;
   }
 }
