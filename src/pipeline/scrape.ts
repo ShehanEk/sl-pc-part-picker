@@ -65,7 +65,19 @@ function looksLikeBadTitle(title: string): boolean {
  * the cart total ("0 LKR"). Better to fail the run than to land garbage.
  */
 function assertPlausible(shop: string, rows: ScrapedRow[], withPrice: number) {
-  if (rows.length === 0) return
+  // Zero rows is never normal for a shop we track — every one of them has
+  // hundreds of products. It means we were blocked, or the site moved.
+  //
+  // This used to return quietly, so a run that scraped nothing exited 0 and the
+  // nightly job reported success. gamestreet.lk began answering the CI runner
+  // with 403 on every category and the workflow still went green, which is the
+  // worst possible outcome: the data silently stops arriving and nothing says so.
+  if (rows.length === 0) {
+    throw new Error(
+      `[${shop}] returned no rows at all — the shop is likely blocking us, or its ` +
+        `page structure changed. Check the log above for HTTP status codes.`,
+    )
+  }
 
   if (withPrice === 0) {
     throw new Error(
