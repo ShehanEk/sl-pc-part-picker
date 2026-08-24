@@ -163,6 +163,101 @@ body {
   }
 }
 
+/**
+ * Assembly animations for the cartoon build.
+ *
+ * transform-box: fill-box makes percentage transform-origins resolve against
+ * each part's own bounding box rather than the whole SVG, so a component scales
+ * about itself instead of swinging across the case.
+ */
+.pc-part {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* Slots not yet chosen: a faint dashed ghost, so the case doubles as progress. */
+.pc-part--empty {
+  opacity: 0.22;
+  stroke-dasharray: 4 4;
+}
+
+/* Only the part just chosen animates; the rest are already seated. */
+.pc-part--dropping {
+  animation: pc-drop 520ms cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+}
+
+@keyframes pc-drop {
+  0% {
+    opacity: 0;
+    transform: translateY(-18px) scale(0.94);
+  }
+  70% {
+    opacity: 1;
+    transform: translateY(2px) scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* A conflicting part refuses to seat rather than sliding home. */
+.pc-part--conflict {
+  animation: pc-reject 420ms ease-in-out;
+}
+
+@keyframes pc-reject {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-3px); }
+  45% { transform: translateX(3px); }
+  70% { transform: translateX(-2px); }
+}
+
+/* Fans turn once the machine has everything it needs. */
+.pc-fan {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.pc-powered .pc-fan {
+  animation: pc-spin 2.4s linear infinite;
+}
+
+@keyframes pc-spin {
+  to { transform: rotate(360deg); }
+}
+
+.pc-powered .pc-led {
+  animation: pc-glow 2s ease-in-out infinite;
+}
+
+@keyframes pc-glow {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
+/* Colour floods in only when the build is complete — the payoff for finishing. */
+.pc-tint {
+  fill: transparent;
+  transition: fill 600ms ease;
+}
+
+.pc-powered .pc-tint {
+  fill: var(--tint);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pc-part--dropping,
+  .pc-part--conflict,
+  .pc-powered .pc-fan,
+  .pc-powered .pc-led {
+    animation: none;
+  }
+  .pc-tint {
+    transition: none;
+  }
+}
+
 /* Large Title, tracked in the way Apple tightens display type. */
 .large-title {
   font-size: clamp(2rem, 1.4rem + 2.6vw, 3rem);

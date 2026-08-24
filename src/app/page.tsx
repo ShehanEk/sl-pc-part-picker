@@ -1,5 +1,7 @@
 import Link from 'next/link'
 
+import { CartoonPC } from './components/CartoonPC'
+
 
 import {
   BUILD_SLOTS,
@@ -118,8 +120,28 @@ async function BuildPanel({
 }) {
   const shops = new Set(report.filled.map((s) => build[s]!.shop).filter(Boolean))
 
+  // Which parts are implicated in a hard conflict, so the drawing can refuse to
+  // seat them rather than pretending the machine is fine.
+  const failing = report.checks.filter((c) => c.status === 'fail').map((c) => c.id)
+  const conflicted = BUILD_SLOTS.filter((s) => {
+    if (!build[s]) return false
+    if (failing.includes('cpu-socket') && (s === 'cpu' || s === 'motherboard')) return true
+    if (failing.some((f) => f.startsWith('ram-')) && (s === 'ram' || s === 'motherboard')) return true
+    if (failing.includes('psu-wattage') && s === 'psu') return true
+    if (failing.includes('gpu-connector') && (s === 'gpu' || s === 'psu')) return true
+    return false
+  })
+
   return (
     <section className="mb-8">
+      <div className="mb-2 flex justify-center px-1">
+        <CartoonPC
+          filled={report.filled}
+          conflicted={conflicted}
+          complete={report.empty.length === 0 && report.status !== 'fail'}
+        />
+      </div>
+
       <h2 className="ios-section-header uppercase">Your build</h2>
       <ul className="ios-list">
         {BUILD_SLOTS.map((slot) => {
