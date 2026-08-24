@@ -1,350 +1,382 @@
-import { PartPicker } from './components/PartPicker'
-import { Sparkline } from './components/Sparkline'
+import Link from 'next/link'
+
 
 import {
-  getCatalogStats,
-  getPart,
-  getPriceSeries,
-  getPsuOptionsFor,
-  getShopListings,
-  listPartsForPicker,
-  type PartDetail,
-  type PsuOption,
-} from '@/queries/parts'
-
-// Deliberately not `force-dynamic`. Reading searchParams already makes this
-// route render per request, and force-dynamic additionally opts data fetching
-// out of the cache — which would undo the caching in the query layer and send
-// every visitor straight to the database.
+  BUILD_SLOTS,
+  SLOT_LABEL,
+  evaluateBuild,
+  suggestNextSlot,
+  type Build,
+  type BuildSlot,
+} from '@/compat/build'
+import type { CheckStatus } from '@/compat/rules'
+import {
+  encodeSlot,
+  getOffersForPart,
+  getSlotCounts,
+  getSlotOptions,
+  hydrateBuild,
+  type PartOffer,
+} from '@/queries/build'
 
 const rs = (n: number) => `Rs ${n.toLocaleString('en-LK')}`
 
+type SearchParams = Partial<Record<BuildSlot, string>> & { slot?: string; shops?: string }
+
+/**
+ * The configurator.
+ *
+ * The whole build lives in the query string, so a parts list can be shared as a
+ * link — which is how people actually pass one to a friend or a shop. One slot
+ * is active at a time, per the project's "one decision at a time" brief.
+ */
 export default async function Home({
   searchParams,
 }: {
-  searchParams: Promise<{ part?: string }>
+  searchParams: Promise<SearchParams>
 }) {
-  const { part: selectedId } = await searchParams
-  const [gpus, stats] = await Promise.all([listPartsForPicker('gpu'), getCatalogStats()])
-  const part = selectedId ? await getPart(selectedId) : null
+  const params = await searchParams
+  const build = await hydrateBuild(params)
+  const report = evaluateBuild(build)
+  const counts = await getSlotCounts()
+
+  const suggestion = suggestNextSlot(build)
+  const requested = params.slot as BuildSlot | undefined
+  const activeSlot: BuildSlot | null =
+    requested && BUILD_SLOTS.includes(requested) ? requested : (suggestion?.slot ?? null)
+
+  const href = (over: Partial<Record<string, string | null>>) => {
+    const next = new URLSearchParams()
+    for (const s of BUILD_SLOTS) if (params[s]) next.set(s, params[s]!)
+    for (const [k, v] of Object.entries(over)) {
+      if (v === null) next.delete(k)
+      else if (v !== undefined) next.set(k, v)
+    }
+    const q = next.toString()
+    return q ? `/?${q}` : '/'
+  }
 
   return (
-    <main className="mx-auto w-full max-w-[42rem] px-4 pb-24 pt-12 sm:px-6 sm:pt-20">
-      <header className="mb-9 px-1">
-        <h1 className="large-title">PC parts,<br />priced in Sri Lanka.</h1>
+    <main className="mx-auto w-full max-w-[46rem] px-4 pb-24 pt-10 sm:px-6 sm:pt-16">
+      <header className="mb-8 px-1">
+        <h1 className="large-title">Build a PC,<br />priced in Sri Lanka.</h1>
         <p className="mt-3 text-[1.0625rem] leading-snug text-label-secondary">
-          Every price below is from a shop here. Pick a card and we&apos;ll work out what can
-          power it.
+          Pick parts one at a time. We check they work together and show which local shop has
+          each one cheapest — take them from whichever shops you like.
         </p>
       </header>
 
-      <PartPicker parts={gpus} selected={selectedId ?? null} />
+      <BuildPanel build={build} report={report} counts={counts} href={href} activeSlot={activeSlot} />
 
-      {part ? (
-        <PartView part={part} />
-      ) : (
-        <p className="mt-8 px-1 text-[0.9375rem] text-label-secondary">
-          {gpus.length} graphics cards tracked across {stats.shops} shops.
-        </p>
+      {activeSlot && (
+        <SlotChooser
+          build={build}
+          slot={activeSlot}
+          suggestionMessage={suggestion?.slot === activeSlot ? suggestion.message : null}
+          href={href}
+          params={params}
+        />
       )}
 
-      <footer className="mt-14 px-1 text-[0.8125rem] leading-relaxed text-label-tertiary">
-        {stats.parts} parts · {stats.listings} live listings · {stats.shops} shops
-        {stats.lastScrape && (
-          <>
-            <br />
-            Last checked {new Date(stats.lastScrape).toLocaleString('en-LK')}
-          </>
-        )}
-      </footer>
+      {report.filled.length > 0 && <WhatWeDontCheck />}
     </main>
   )
 }
 
-async function PartView({ part }: { part: PartDetail }) {
-  const [shops, series, psus] = await Promise.all([
-    getShopListings(part.partId),
-    getPriceSeries(part.partId),
-    part.category === 'gpu' ? getPsuOptionsFor(part) : Promise.resolve(null),
-  ])
+function statusTone(status: CheckStatus) {
+  return status === 'fail'
+    ? 'text-red'
+    : status === 'warn' || status === 'unknown'
+      ? 'text-orange'
+      : 'text-green'
+}
 
-  // The headline has to be a price someone can actually pay. Most parts here
-  // have an out-of-stock listing as their cheapest, so quoting the raw minimum
-  // would advertise a number no shop will honour.
-  const cheapestInStock = shops.find((s) => s.inStock) ?? null
-  const cheapestListed = shops[0] ?? null
-
-  const specs = [
-    part.tdpWatts !== null && `${part.tdpWatts}W`,
-    part.vramGb !== null && `${part.vramGb}GB`,
-    part.powerConnector && connectorLabel(part.powerConnector),
-    part.lengthMm !== null && `${part.lengthMm}mm`,
-  ].filter(Boolean) as string[]
+async function BuildPanel({
+  build,
+  report,
+  counts,
+  href,
+  activeSlot,
+}: {
+  build: Build
+  report: ReturnType<typeof evaluateBuild>
+  counts: Record<string, number>
+  href: (o: Partial<Record<string, string | null>>) => string
+  activeSlot: BuildSlot | null
+}) {
+  const shops = new Set(report.filled.map((s) => build[s]!.shop).filter(Boolean))
 
   return (
-    <div className="mt-9 space-y-9">
-      <section className="rounded-[var(--radius)] bg-surface px-5 py-6">
-        <h2 className="text-[1.5rem] font-semibold leading-tight tracking-[-0.02em]">
-          {part.model}
-        </h2>
-        {specs.length > 0 && (
-          <p className="mt-1.5 text-[0.9375rem] text-label-secondary">{specs.join(' · ')}</p>
-        )}
-
-        {cheapestInStock ? (
-          <>
-            <p className="mt-5 text-[2.5rem] font-semibold leading-none tracking-[-0.03em] tabular-nums">
-              {rs(cheapestInStock.priceLkr)}
-            </p>
-            <p className="mt-2 text-[0.9375rem] text-label-secondary">
-              <Dot className="bg-green" /> In stock at {cheapestInStock.shop}
-            </p>
-          </>
-        ) : cheapestListed ? (
-          <>
-            <p className="mt-5 text-[2.5rem] font-semibold leading-none tracking-[-0.03em] tabular-nums text-label-tertiary">
-              {rs(cheapestListed.priceLkr)}
-            </p>
-            <p className="mt-2 text-[0.9375rem] text-orange">
-              <Dot className="bg-orange" /> Out of stock everywhere — last listed price, not one you
-              can pay today.
-            </p>
-          </>
-        ) : (
-          <p className="mt-5 text-[0.9375rem] text-label-secondary">No shop is listing this.</p>
-        )}
-
-        <div className="mt-5 border-t border-separator pt-4">
-          <Sparkline points={series} />
-        </div>
-      </section>
-
-      <section>
-        <h3 className="ios-section-header uppercase">Available at</h3>
-        <ul className="ios-list">
-          {shops.map((s) => (
-            <li key={s.shop}>
-              <a
-                href={s.url}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="flex items-center justify-between gap-4 px-4 py-3 transition-colors active:bg-fill"
+    <section className="mb-8">
+      <h2 className="ios-section-header uppercase">Your build</h2>
+      <ul className="ios-list">
+        {BUILD_SLOTS.map((slot) => {
+          const part = build[slot]
+          const isActive = slot === activeSlot
+          return (
+            <li key={slot}>
+              <Link
+                href={href({ slot })}
+                className={`flex items-center justify-between gap-3 px-4 py-3 transition-colors active:bg-fill ${
+                  isActive ? 'bg-fill' : ''
+                }`}
               >
                 <span className="min-w-0">
-                  <span className={`block truncate text-[1.0625rem] ${s.inStock ? '' : 'text-label-secondary'}`}>
-                    {s.shop}
+                  <span className="block text-[0.8125rem] capitalize text-label-secondary">
+                    {SLOT_LABEL[slot]}
                   </span>
-                  <span className="mt-0.5 block text-[0.8125rem] text-label-secondary">
-                    {s.inStock ? 'In stock' : 'Out of stock'}
-                  </span>
-                </span>
-                <span className="flex shrink-0 items-center gap-2.5">
-                  {/* Only ever badge something you can buy. */}
-                  {s === cheapestInStock && shops.length > 1 && (
-                    <Pill tone="green">Best price</Pill>
-                  )}
                   <span
-                    className={`text-[1.0625rem] tabular-nums ${
-                      s.inStock ? '' : 'text-label-tertiary'
+                    className={`block truncate text-[1.0625rem] ${
+                      part ? '' : 'text-label-tertiary'
                     }`}
                   >
-                    {rs(s.priceLkr)}
+                    {part ? part.model : `Choose — ${counts[slot] ?? 0} in stock`}
                   </span>
+                  {part?.shop && (
+                    <span className="block text-[0.8125rem] text-label-secondary">
+                      {part.shop}
+                    </span>
+                  )}
+                </span>
+                <span className="flex shrink-0 items-center gap-2">
+                  {part?.priceLkr != null && (
+                    <span className="text-[1.0625rem] tabular-nums">{rs(part.priceLkr)}</span>
+                  )}
                   <Chevron />
                 </span>
-              </a>
+              </Link>
             </li>
-          ))}
-        </ul>
-      </section>
+          )
+        })}
+      </ul>
 
-      {psus && <PsuSection psus={psus} gpuModel={part.model} />}
-    </div>
+      {report.filled.length > 0 && (
+        <div className="mt-2.5 rounded-[var(--radius)] bg-surface px-4 py-3.5">
+          <div className="flex items-baseline justify-between gap-4">
+            <span className="text-[1.0625rem] font-semibold">Total so far</span>
+            <span className="text-[1.375rem] font-semibold tabular-nums">
+              {rs(report.totalLkr)}
+            </span>
+          </div>
+          <p className="mt-1 text-[0.8125rem] text-label-secondary">
+            {report.filled.length} of {BUILD_SLOTS.length} parts
+            {shops.size > 0 && <> · from {shops.size} {shops.size === 1 ? 'shop' : 'shops'}</>}
+          </p>
+
+          {(report.checks.length > 0 || report.pending.length > 0) && (
+            <ul className="mt-3 space-y-1.5 border-t border-separator pt-3">
+              {report.checks.map((c) => (
+                <li key={c.id} className="flex gap-2 text-[0.8125rem] leading-snug">
+                  <Dot className={`mt-[0.4rem] shrink-0 ${statusTone(c.status).replace('text-', 'bg-')}`} />
+                  <span className={c.status === 'pass' ? 'text-label-secondary' : statusTone(c.status)}>
+                    {c.message}
+                  </span>
+                </li>
+              ))}
+              {report.pending.map((p) => (
+                <li key={p.id} className="flex gap-2 text-[0.8125rem] leading-snug text-label-tertiary">
+                  <Dot className="mt-[0.4rem] shrink-0 bg-label-tertiary" />
+                  <span>{p.message}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </section>
   )
 }
 
-function PsuSection({
-  psus,
-  gpuModel,
+async function SlotChooser({
+  build,
+  slot,
+  suggestionMessage,
+  href,
+  params,
 }: {
-  psus: NonNullable<Awaited<ReturnType<typeof getPsuOptionsFor>>>
-  gpuModel: string
+  build: Build
+  slot: BuildSlot
+  suggestionMessage: string | null
+  href: (o: Partial<Record<string, string | null>>) => string
+  params: SearchParams
 }) {
-  if (psus.requiredWatts === null) {
-    return (
-      <section>
-        <h3 className="ios-section-header uppercase">Power supplies</h3>
-        <div className="rounded-[var(--radius)] bg-surface px-4 py-4 text-[0.9375rem] text-label-secondary">
-          We don&apos;t have the power draw for the {gpuModel} yet, so we can&apos;t work out which
-          PSUs will run it.
-        </div>
-      </section>
-    )
-  }
-
-  const byPrice = psus.options.slice(0, 8)
-
-  // The cheapest options are usually the ones we have no connector data for, so
-  // a buyer who wants certainty would never see a verified unit. Pin the
-  // cheapest fully-checked option into the list when it falls outside the top
-  // eight, rather than reordering and burying the genuinely cheapest.
-  const cheapestVerified = psus.options.find((o) => o.status === 'pass') ?? null
-  const pinned = cheapestVerified && !byPrice.includes(cheapestVerified) ? cheapestVerified : null
-  const shown = pinned ? [...byPrice, pinned] : byPrice
-
-  const allShareConnectorCaveat =
-    shown.length > 1 &&
-    shown.every((o) => o.checks.some((c) => c.id === 'gpu-connector' && c.status === 'unknown'))
+  const options = await getSlotOptions(build, slot)
+  const chosen = build[slot]
+  const expandShopsFor = params.shops
 
   return (
     <section>
-      <h3 className="ios-section-header uppercase">Power supplies that can run it</h3>
+      <h2 className="ios-section-header uppercase">Choose a {SLOT_LABEL[slot]}</h2>
 
-      <div className="mb-2.5 rounded-[var(--radius)] bg-surface px-4 py-3.5">
+      <div className="mb-2.5 rounded-[var(--radius)] bg-surface px-4 py-3">
         <p className="text-[0.9375rem] leading-snug">
-          Needs about <strong className="font-semibold">{psus.requiredWatts}W</strong>
-          <span className="text-label-secondary"> — {psus.requiredBasis}.</span>
+          {suggestionMessage ?? `${options.fitting.length} of ${options.total} in stock will work.`}
         </p>
-        {psus.failing > 0 && (
+        {options.blocked.length > 0 && (
           <p className="mt-1 text-[0.8125rem] text-label-secondary">
-            {psus.failing} in-stock supplies are too weak and are hidden.
+            {options.blocked.length} hidden because they don&apos;t fit — {options.blocked[0].blockedBy}
           </p>
         )}
-        {/* Every PSU shown shares the same caveat, so say it once rather than
-            repeating it on all eight rows. */}
-        {allShareConnectorCaveat && (
-          <p className="mt-2 flex gap-2 text-[0.8125rem] leading-snug text-orange">
-            <Dot className="mt-[0.4rem] shrink-0 bg-orange" />
-            <span>
-              Wattage checked, connectors not. We don&apos;t have published connector lists for
-              these yet — confirm the card&apos;s plug before buying.
-            </span>
-          </p>
+        {chosen && (
+          <Link
+            href={href({ [slot]: null, shops: null })}
+            className="mt-2 inline-block text-[0.9375rem] text-blue"
+          >
+            Remove {chosen.model}
+          </Link>
         )}
       </div>
 
-      <ul className="ios-list">
-        {shown.map((o) => (
-          <PsuRow
-            key={o.partId}
-            option={o}
-            hideCaveat={allShareConnectorCaveat}
-            verified={o === cheapestVerified}
-          />
-        ))}
-      </ul>
+      {options.fitting.length === 0 ? (
+        <div className="rounded-[var(--radius)] bg-surface px-4 py-5 text-[0.9375rem] text-label-secondary">
+          Nothing in stock fits the parts you&apos;ve chosen. Try changing another slot.
+        </div>
+      ) : (
+        <ul className="ios-list">
+          {options.fitting.slice(0, 25).map((o) => (
+            <OptionRow
+              key={o.part.partId}
+              option={o.part}
+              caveat={o.checks.find((c) => c.status === 'unknown' || c.status === 'warn')?.message}
+              selected={chosen?.partId === o.part.partId}
+              href={href}
+              slot={slot}
+              expanded={expandShopsFor === o.part.partId}
+              chosenShop={chosen?.partId === o.part.partId ? (chosen.shop ?? null) : null}
+            />
+          ))}
+        </ul>
+      )}
 
-      {psus.options.length > byPrice.length && (
+      {options.fitting.length > 25 && (
         <p className="ios-section-header pt-2">
-          and {psus.options.length - byPrice.length} more that fit.
+          and {options.fitting.length - 25} more that fit.
         </p>
       )}
     </section>
   )
 }
 
-function PsuRow({
+async function OptionRow({
   option,
-  hideCaveat,
-  verified,
+  caveat,
+  selected,
+  href,
+  slot,
+  expanded,
+  chosenShop,
 }: {
-  option: PsuOption
-  hideCaveat?: boolean
-  verified?: boolean
+  option: PartOffer
+  caveat: string | undefined
+  selected: boolean
+  href: (o: Partial<Record<string, string | null>>) => string
+  slot: BuildSlot
+  expanded: boolean
+  chosenShop: string | null
 }) {
-  // Only surface caveats. A clean pass needs no explanation; anything less does.
-  // Kept terse and in the secondary label colour: neither missing connector
-  // data nor a bundled adapter is a hazard, and colouring them warning-orange
-  // on every row shouts about something that is merely worth knowing.
-  const caveat = hideCaveat
-    ? undefined
-    : option.checks.find((c) => c.status === 'unknown' || c.status === 'warn')
-  const caveatText =
-    caveat?.id === 'gpu-connector'
-      ? caveat.status === 'warn'
-        ? 'Uses the adapter supplied with the card'
-        : 'Connectors not published — check before buying'
-      : caveat?.message
+  const specs = [
+    option.socket,
+    option.ramType,
+    option.capacityGb ? `${option.capacityGb}GB` : null,
+    option.speedMhz ? `${option.speedMhz}MHz` : null,
+    option.vramGb ? `${option.vramGb}GB` : null,
+    option.tdpWatts ? `${option.tdpWatts}W` : null,
+    option.ratedWatts ? `${option.ratedWatts}W` : null,
+  ]
+    .filter(Boolean)
+    .slice(0, 3)
+
+  const offers = expanded ? await getOffersForPart(option.partId) : []
 
   return (
     <li>
-      <a
-        href={option.url}
-        target="_blank"
-        rel="noreferrer noopener"
-        className="flex items-start justify-between gap-4 px-4 py-3 transition-colors active:bg-fill"
+      <Link
+        href={href({ [slot]: encodeSlot(option.partId, option.shop ?? ''), shops: null })}
+        className="flex items-start justify-between gap-3 px-4 py-3 transition-colors active:bg-fill"
       >
         <span className="min-w-0">
           <span className="block truncate text-[1.0625rem]">
-            {option.brand} {option.model}
+            {selected && <span className="mr-1.5 text-blue">✓</span>}
+            {option.model}
           </span>
-          <span className="mt-0.5 block text-[0.8125rem] text-label-secondary">
-            {option.ratedWatts}W
-            {option.efficiencyRating && <> · {option.efficiencyRating}</>} · {option.shop}
+          <span className="block text-[0.8125rem] text-label-secondary">
+            {[option.brand, ...specs].filter(Boolean).join(' · ')}
           </span>
-          {caveatText && (
+          <span className="block text-[0.8125rem] text-label-secondary">
+            {chosenShop ?? option.shop}
+          </span>
+          {caveat && (
             <span className="mt-0.5 block text-[0.8125rem] leading-snug text-label-tertiary">
-              {caveatText}
+              {caveat}
             </span>
           )}
         </span>
-        <span className="flex shrink-0 items-center gap-2.5 pt-0.5">
-          {option.cheapestFit && <Pill tone="blue">Cheapest fit</Pill>}
-          {verified && <Pill tone="green">Verified</Pill>}
-          <span className="text-[1.0625rem] tabular-nums">{rs(option.cheapestLkr)}</span>
+        <span className="flex shrink-0 items-center gap-2 pt-0.5">
+          <span className="text-[1.0625rem] tabular-nums">{rs(option.priceLkr ?? 0)}</span>
           <Chevron />
         </span>
-      </a>
+      </Link>
+
+      {option.shopCount > 1 && (
+        <div className="px-4 pb-2.5">
+          <Link
+            href={href({ shops: expanded ? null : option.partId })}
+            className="text-[0.8125rem] text-blue"
+          >
+            {expanded ? 'Hide' : `Compare ${option.shopCount} shops`}
+          </Link>
+          {expanded && (
+            <ul className="mt-1.5 space-y-1">
+              {offers.map((o) => (
+                <li key={o.shop}>
+                  <Link
+                    href={href({ [slot]: encodeSlot(option.partId, o.shop), shops: null })}
+                    className={`flex items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-[0.8125rem] ${
+                      o.inStock ? '' : 'opacity-55'
+                    } ${chosenShop === o.shop ? 'bg-fill' : ''}`}
+                  >
+                    <span>
+                      {o.shop}
+                      {!o.inStock && (
+                        <span className="ml-1.5 text-label-tertiary">· out of stock</span>
+                      )}
+                    </span>
+                    <span className="tabular-nums">{rs(o.priceLkr)}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </li>
   )
 }
 
-function Pill({ children, tone }: { children: React.ReactNode; tone: 'blue' | 'green' }) {
-  const color = tone === 'blue' ? 'text-blue' : 'text-green'
+function WhatWeDontCheck() {
   return (
-    <span
-      className={`rounded-full bg-fill px-2 py-[0.1875rem] text-[0.6875rem] font-semibold uppercase tracking-[0.03em] ${color}`}
-    >
-      {children}
-    </span>
+    <section className="mt-8">
+      <h2 className="ios-section-header uppercase">What we don&apos;t check</h2>
+      <div className="rounded-[var(--radius)] bg-surface px-4 py-3.5 text-[0.8125rem] leading-relaxed text-label-secondary">
+        <p>
+          We check sockets, memory type and power. We don&apos;t check whether the card and
+          cooler physically fit the case, or that you have storage — those specs aren&apos;t
+          published in local listings, so we&apos;d be guessing.
+        </p>
+      </div>
+    </section>
   )
 }
 
-/** The small status dot Apple uses instead of an icon for inline state. */
 function Dot({ className = '' }: { className?: string }) {
   return <span className={`inline-block h-1.5 w-1.5 rounded-full align-middle ${className}`} />
 }
 
 function Chevron() {
   return (
-    <svg
-      viewBox="0 0 8 13"
-      className="h-3 w-2 shrink-0 text-label-tertiary"
-      fill="none"
-      aria-hidden="true"
-    >
-      <path
-        d="M1.5 1.5 6.5 6.5l-5 5"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+    <svg viewBox="0 0 8 13" className="h-3 w-2 shrink-0 text-label-tertiary" fill="none" aria-hidden="true">
+      <path d="M1.5 1.5 6.5 6.5l-5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
 }
 
-function connectorLabel(c: string) {
-  switch (c) {
-    case '8pin':
-      return '8-pin power'
-    case '2x8pin':
-      return '2× 8-pin power'
-    case '12vhpwr':
-      return '12VHPWR'
-    case '12v-2x6':
-      return '12V-2×6'
-    default:
-      return c
-  }
-}
