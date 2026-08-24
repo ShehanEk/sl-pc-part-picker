@@ -1,278 +1,164 @@
 @import "tailwindcss";
 
 /**
- * Apple design language.
+ * Glass design.
  *
- * Colours are the iOS semantic system palette rather than invented ones, so the
- * app sits correctly next to native UI and its dark mode behaves the way Apple
- * users expect: pure black ground with raised grey surfaces, not a dimmed
- * version of the light theme.
+ * Light-only by intent. The look depends on frosted white panels floating over
+ * a pale gradient, and there is no dark equivalent that keeps the same feel, so
+ * the scheme is pinned rather than inverted badly.
+ *
+ * Colours are oklch, as the design specifies: it keeps lightness perceptually
+ * even across hues, which is why the greys stay neutral next to the blue.
  */
 :root {
-  /* Grounds and surfaces */
-  --grouped-bg: #f2f2f7;              /* systemGroupedBackground */
-  --surface: #ffffff;                 /* secondarySystemGroupedBackground */
-  --surface-pressed: #d1d1d6;
-  --fill: rgba(120, 120, 128, 0.12);  /* quaternarySystemFill */
+  color-scheme: light;
+
+  --bg-from: #f2f4f9;
+  --bg-to: #f6f7fa;
+
+  /* Frosted panel */
+  --glass: rgb(255 255 255 / 88%);
+  --glass-header: rgb(252 253 255 / 90%);
+  --glass-border: rgb(30 50 100 / 9%);
+  --glass-shadow: 0 8px 24px -14px rgb(35 55 110 / 22%);
+
+  /* Quiet band inside a panel — totals, expanded rows */
+  --sunken: rgb(240 243 250 / 60%);
+  --hairline: rgb(30 50 100 / 7%);
+  --row-hover: rgb(120 150 220 / 6%);
 
   /* Text */
-  --label: #000000;
-  --label-secondary: rgba(60, 60, 67, 0.6);
-  --label-tertiary: rgba(60, 60, 67, 0.3);
+  --ink: oklch(0.22 0.02 260);
+  --ink-2: oklch(0.48 0.03 260);
+  --ink-3: oklch(0.55 0.03 260);
+  --ink-4: oklch(0.6 0.03 260);
 
-  /* Hairlines */
-  --separator: rgba(60, 60, 67, 0.29);
+  /* Accent */
+  --accent: oklch(0.55 0.17 260);
+  --accent-strong: oklch(0.48 0.18 260);
+  --accent-soft: rgb(120 160 255 / 12%);
+  --accent-soft-border: rgb(90 130 230 / 18%);
 
-  /* Accents */
-  --blue: #007aff;
-  --green: #34c759;
-  --orange: #ff9500;
-  --red: #ff3b30;
+  --ok: oklch(0.7 0.17 152);
+  --warn: oklch(0.68 0.15 70);
+  --bad: oklch(0.6 0.2 25);
 
-  --radius: 12px;
-
-  /* Wallpaper strength. Roughly 90% transparent, as asked — enough to notice
-     if you look for it, never enough to compete with a price. */
-  --doodle-opacity: 0.09;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --grouped-bg: #000000;
-    --surface: #1c1c1e;
-    --surface-pressed: #2c2c2e;
-    --fill: rgba(120, 120, 128, 0.24);
-
-    --label: #ffffff;
-    --label-secondary: rgba(235, 235, 245, 0.6);
-    --label-tertiary: rgba(235, 235, 245, 0.3);
-
-    --separator: rgba(84, 84, 88, 0.65);
-
-    --blue: #0a84ff;
-    --green: #30d158;
-    --orange: #ff9f0a;
-    --red: #ff453a;
-
-    /* White hairlines on black read fainter than black on grey, so lift it. */
-    --doodle-opacity: 0.11;
-  }
+  --radius: 20px;
+  --radius-sm: 12px;
 }
 
 @theme inline {
-  --color-grouped: var(--grouped-bg);
-  --color-surface: var(--surface);
-  --color-fill: var(--fill);
-  --color-label: var(--label);
-  --color-label-secondary: var(--label-secondary);
-  --color-label-tertiary: var(--label-tertiary);
-  --color-separator: var(--separator);
-  --color-blue: var(--blue);
-  --color-green: var(--green);
-  --color-orange: var(--orange);
-  --color-red: var(--red);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-ink-4: var(--ink-4);
+  --color-accent: var(--accent);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-bad: var(--bad);
+  --color-hairline: var(--hairline);
 }
 
 html {
   -webkit-text-size-adjust: 100%;
-  /* Tells the browser to draw native UI it owns — the <select> popup, scrollbars,
-     focus rings — in the matching scheme. Without it the dropdown renders on a
-     white sheet while its options inherit the page's white text, which is
-     invisible in dark mode. */
-  color-scheme: light dark;
 }
 
 body {
-  background: var(--grouped-bg);
-  color: var(--label);
-  /* -apple-system resolves to the real SF Pro on Apple platforms; the rest is
-     a graceful fall back elsewhere. */
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
-    "Segoe UI", system-ui, "Helvetica Neue", sans-serif;
+  min-height: 100vh;
+  color: var(--ink);
+  background: linear-gradient(170deg, var(--bg-from) 0%, var(--bg-to) 100%);
+  background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-synthesis-weight: none;
 }
 
-/**
- * iOS inset grouped list. Rows are separated by hairlines that start past the
- * content inset rather than spanning the full width — the detail that makes a
- * list read as Apple's rather than a generic table.
- */
-.ios-list {
-  background: var(--surface);
+/* The blue bloom behind the top of the page. */
+body::before {
+  content: '';
+  position: fixed;
+  top: -24vh;
+  left: 8vw;
+  width: 60vw;
+  height: 50vw;
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 45% 45%,
+    rgb(110 150 255 / 13%),
+    rgb(110 150 255 / 0%) 70%
+  );
+  filter: blur(40px);
+  pointer-events: none;
+}
+
+/** Frosted panel. Falls back to near-opaque white where blur is unsupported. */
+.glass {
+  background: rgb(255 255 255 / 96%);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius);
-  overflow: hidden;
-}
-
-.ios-list > * + * {
-  box-shadow: inset 0 0.5px 0 0 var(--separator);
-}
-
-@supports (border-top: 0.5px solid) {
-  .ios-list > * + * {
-    box-shadow: none;
-    border-top: 0.5px solid var(--separator);
-  }
-}
-
-/* Section header, uppercase and quiet, as in Settings. */
-.ios-section-header {
-  color: var(--label-secondary);
-  font-size: 0.8125rem;
-  font-weight: 400;
-  letter-spacing: 0.01em;
-  padding: 0 1rem 0.4375rem;
-}
-
-/**
- * Floating panel, in the vein of a macOS menu: translucent with the content
- * behind it blurred, a hairline edge, and a soft shadow to lift it off the
- * page. Falls back to an opaque surface where backdrop-filter is unsupported,
- * since a see-through menu with nothing blurring it is unreadable.
- */
-.popover {
-  background: var(--surface);
-  border: 0.5px solid var(--separator);
-  box-shadow:
-    0 0 0 0.5px rgb(0 0 0 / 4%),
-    0 10px 40px -8px rgb(0 0 0 / 22%),
-    0 4px 12px -4px rgb(0 0 0 / 12%);
-  animation: popover-in 160ms cubic-bezier(0.32, 0.72, 0, 1);
-  transform-origin: top center;
+  box-shadow: var(--glass-shadow);
 }
 
 @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
-  .popover {
-    background: color-mix(in srgb, var(--surface) 82%, transparent);
-    -webkit-backdrop-filter: saturate(180%) blur(20px);
-    backdrop-filter: saturate(180%) blur(20px);
+  .glass {
+    background: var(--glass);
+    -webkit-backdrop-filter: blur(18px);
+    backdrop-filter: blur(18px);
   }
 }
 
-@keyframes popover-in {
-  from {
-    opacity: 0;
-    transform: translateY(-4px) scale(0.985);
+.glass-header {
+  background: rgb(252 253 255 / 98%);
+  border-bottom: 1px solid rgb(30 50 100 / 8%);
+  box-shadow: 0 1px 2px rgb(35 55 110 / 4%);
+}
+
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .glass-header {
+    background: var(--glass-header);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
   }
+}
+
+/** Uppercase micro-label used above every field and row. */
+.eyebrow {
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: oklch(0.58 0.03 260);
+  font-weight: 600;
+}
+
+/* Numbers are monospaced throughout, so columns of prices line up. */
+.mono {
+  font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.row-tap {
+  transition: background 0.18s ease;
+}
+
+.row-tap:hover {
+  background: var(--row-hover);
+}
+
+.hairline-b {
+  border-bottom: 1px solid var(--hairline);
+}
+
+/* Display type: large, tight, and set at a comfortable measure. */
+.display {
+  font-size: clamp(2.1rem, 1.2rem + 3.2vw, 3.375rem);
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+  font-weight: 600;
+  max-width: 17ch;
+  text-wrap: pretty;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .popover {
-    animation: none;
-  }
-}
-
-/**
- * Assembly animations for the cartoon build.
- *
- * transform-box: fill-box makes percentage transform-origins resolve against
- * each part's own bounding box rather than the whole SVG, so a component scales
- * about itself instead of swinging across the case.
- */
-.pc-part {
-  transform-box: fill-box;
-  transform-origin: center;
-}
-
-/* Slots not yet chosen: a dim ghost of where the part will go. */
-.pc-part--empty {
-  opacity: 0.14;
-  filter: grayscale(1);
-}
-
-/*
- * The chosen part flies down into place from above the case, each from its own
- * height so an exploded view resolves rather than everything sliding uniformly.
- * The overshoot at the end is what makes it land rather than arrive.
- */
-.pc-part--fly {
-  animation: pc-fly 700ms cubic-bezier(0.22, 1.4, 0.36, 1) backwards;
-}
-
-@keyframes pc-fly {
-  0% {
-    opacity: 0;
-    transform: translateY(var(--fly, -30px)) scale(0.9);
-  }
-  60% {
-    opacity: 1;
-  }
-  78% {
-    transform: translateY(3px) scale(1.03);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-/* A conflicting part refuses to seat rather than sliding home. */
-.pc-part--conflict {
-  animation: pc-reject 420ms ease-in-out;
-}
-
-@keyframes pc-reject {
-  0%, 100% { transform: translateX(0); }
-  20% { transform: translateX(-3px); }
-  45% { transform: translateX(3px); }
-  70% { transform: translateX(-2px); }
-}
-
-/*
- * Fans idle slowly from the start and spin up once the machine is complete —
- * an isometric fan is an ellipse, so it reads as rotation only because the
- * highlight travels round it.
- */
-.pc-fan {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: pc-spin 6s linear infinite;
-}
-
-.pc-powered .pc-fan {
-  animation-duration: 1.6s;
-}
-
-@keyframes pc-spin {
-  to { transform: rotate(360deg); }
-}
-
-/* Edge lighting comes up when everything is in and nothing conflicts. */
-.pc-edge {
-  transition: opacity 500ms ease;
-  opacity: 0.7;
-}
-
-.pc-powered .pc-edge {
-  opacity: 1;
-}
-
-.pc-powered .pc-led {
-  animation: pc-glow 2s ease-in-out infinite;
-}
-
-@keyframes pc-glow {
-  0%, 100% { opacity: 0.55; }
-  50% { opacity: 1; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .pc-part--fly,
-  .pc-part--conflict,
-  .pc-fan,
-  .pc-powered .pc-led {
-    animation: none;
-  }
-  .pc-edge {
+  .row-tap {
     transition: none;
   }
-}
-
-/* Large Title, tracked in the way Apple tightens display type. */
-.large-title {
-  font-size: clamp(2rem, 1.4rem + 2.6vw, 3rem);
-  font-weight: 700;
-  letter-spacing: -0.022em;
-  line-height: 1.06;
 }

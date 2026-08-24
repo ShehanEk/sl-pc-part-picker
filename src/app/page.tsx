@@ -2,39 +2,60 @@ import { Configurator } from './components/Configurator'
 
 import { getCatalogStats, loadCatalogue } from '@/queries/build'
 
-/**
- * Thin shell. The catalogue is fetched once on the server and the whole
- * interaction happens in the browser, so picking a part is instant rather than
- * a navigation.
- */
+const nf = new Intl.NumberFormat('en-LK')
+
 export default async function Home() {
   const [catalogue, stats] = await Promise.all([loadCatalogue(), getCatalogStats()])
 
+  const checked = stats.lastScrape
+    ? new Date(stats.lastScrape).toLocaleString('en-LK', {
+        month: 'numeric',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      })
+    : null
+
   return (
-    <main className="mx-auto w-full max-w-[46rem] px-4 pb-24 pt-10 sm:px-6 sm:pt-16">
-      {/* Kept short on purpose: on a phone a longer intro pushed the build
-          itself below the fold. */}
-      <header className="mb-7 px-1">
-        <h1 className="large-title">Build a PC,<br />priced in Sri Lanka.</h1>
-        <p className="mt-3 text-[1.0625rem] leading-snug text-label-secondary">
-          Parts that work together, from local shops.
-          <span className="hidden sm:inline">
-            {' '}Pick one at a time — we check compatibility and show who has each cheapest.
+    <>
+      <header className="glass-header sticky top-0 z-30 flex items-center justify-between gap-6 px-5 py-3.5 sm:px-8">
+        <div className="flex items-baseline gap-3">
+          <span className="text-[17.5px] font-bold tracking-[-0.025em]">
+            PC Maker<span className="text-accent">.lk</span>
           </span>
-        </p>
+          <span className="hidden text-[12.5px] text-ink-3 sm:inline">
+            PC prices &amp; stock, Sri Lanka
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className="mono hidden items-center gap-4 px-1 py-1.5 text-[11px] text-ink-3 lg:flex">
+            <span>{nf.format(stats.parts)} parts</span>
+            <span>{nf.format(stats.listings)} listings</span>
+            <span>{stats.shops} shops</span>
+          </span>
+          {checked && (
+            <span className="mono flex items-center gap-1.5 rounded-full border border-[var(--glass-border)] bg-white/90 px-3 py-1.5 text-[11px] text-ink-3">
+              <span
+                className="h-1.5 w-1.5 rounded-full bg-ok"
+                style={{ boxShadow: '0 0 8px oklch(0.75 0.18 152)' }}
+              />
+              live {checked}
+            </span>
+          )}
+        </div>
       </header>
 
-      <Configurator catalogue={catalogue} />
+      <div className="mx-auto max-w-[1300px] px-5 pb-4 pt-10 sm:px-8 sm:pt-14">
+        <h1 className="display m-0">Build a PC, priced in Sri&nbsp;Lanka.</h1>
+        <p className="mt-4 max-w-[52ch] text-[16.5px] leading-[1.5] text-ink-2 [text-wrap:pretty]">
+          Pick one part at a time. We keep the build compatible and show which local shop has
+          each one cheapest.
+        </p>
+      </div>
 
-      <footer className="mt-14 px-1 text-[0.8125rem] leading-relaxed text-label-tertiary">
-        {stats.parts} parts · {stats.listings} listings · {stats.shops} shops
-        {stats.lastScrape && (
-          <>
-            <br />
-            Last checked {new Date(stats.lastScrape).toLocaleString('en-LK')}
-          </>
-        )}
-      </footer>
-    </main>
+      <Configurator catalogue={catalogue} />
+    </>
   )
 }

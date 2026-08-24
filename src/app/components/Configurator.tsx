@@ -1,9 +1,16 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ComponentType, type SVGProps } from 'react'
 
-import { CartoonPC } from './CartoonPC'
-
+import {
+  CaseIcon,
+  CpuIcon,
+  GpuIcon,
+  MotherboardIcon,
+  PsuIcon,
+  RamIcon,
+  StorageIcon,
+} from './PartIcons'
 import {
   BUILD_SLOTS,
   SLOT_LABEL,
@@ -19,25 +26,34 @@ import type { PartOffer } from '@/queries/build'
 /**
  * The configurator.
  *
- * The build lives in component state rather than the address bar: choosing a
- * part is then instant, with no navigation between clicks, which matters when
- * the whole interaction is a sequence of small choices. The whole catalogue is
- * shipped once and every list is filtered locally — the compatibility rules are
- * pure functions, so they run just as well here as on the server.
+ * The build lives in component state, so choosing a part is immediate and the
+ * whole catalogue is filtered in the browser. The compatibility rules are pure
+ * functions and run here unchanged.
  */
 
 const rs = (n: number) => `Rs ${n.toLocaleString('en-LK')}`
 
-/**
- * Written out in full rather than derived: these class names have to appear
- * literally in the source for Tailwind to generate them.
- */
-const TONE: Record<CheckStatus, { text: string; dot: string }> = {
-  pass: { text: 'text-green', dot: 'bg-green' },
-  fail: { text: 'text-red', dot: 'bg-red' },
-  warn: { text: 'text-orange', dot: 'bg-orange' },
-  unknown: { text: 'text-orange', dot: 'bg-orange' },
+/** One tile colour per category, so a row is recognisable before it is read. */
+type IconComponent = ComponentType<SVGProps<SVGSVGElement>>
+
+const SLOT_STYLE: Record<BuildSlot, { Icon: IconComponent; tint: string; ink: string }> = {
+  cpu: { Icon: CpuIcon, tint: 'rgb(120 150 255 / 14%)', ink: 'oklch(0.5 0.17 262)' },
+  motherboard: { Icon: MotherboardIcon, tint: 'rgb(90 200 160 / 16%)', ink: 'oklch(0.48 0.13 165)' },
+  ram: { Icon: RamIcon, tint: 'rgb(175 130 255 / 15%)', ink: 'oklch(0.52 0.17 300)' },
+  gpu: { Icon: GpuIcon, tint: 'rgb(255 130 160 / 15%)', ink: 'oklch(0.55 0.17 15)' },
+  storage: { Icon: StorageIcon, tint: 'rgb(120 200 230 / 17%)', ink: 'oklch(0.5 0.11 225)' },
+  psu: { Icon: PsuIcon, tint: 'rgb(255 180 100 / 18%)', ink: 'oklch(0.53 0.14 65)' },
+  case: { Icon: CaseIcon, tint: 'rgb(150 165 195 / 18%)', ink: 'oklch(0.45 0.03 260)' },
 }
+
+const TONE: Record<CheckStatus, string> = {
+  pass: 'text-ok',
+  fail: 'text-bad',
+  warn: 'text-warn',
+  unknown: 'text-warn',
+}
+
+type Sort = 'price' | 'name' | 'shops'
 
 export type Catalogue = Record<BuildSlot, PartOffer[]>
 
@@ -45,18 +61,36 @@ export function Configurator({ catalogue }: { catalogue: Catalogue }) {
   const [build, setBuild] = useState<Build>({})
   const [openedSlot, setOpenedSlot] = useState<BuildSlot | null>(null)
   const [expandedShops, setExpandedShops] = useState<string | null>(null)
+  const [query, setQuery] = useState('')
+  const [sort, setSort] = useState<Sort>('price')
 
   const report = useMemo(() => evaluateBuild(build), [build])
   const suggestion = useMemo(() => suggestNextSlot(build), [build])
-  const activeSlot = openedSlot ?? suggestion?.slot ?? null
+  const activeSlot: BuildSlot = openedSlot ?? suggestion?.slot ?? 'cpu'
 
-  const options = useMemo(
-    () => (activeSlot ? rankCandidates(build, activeSlot, catalogue[activeSlot]) : []),
+  const ranked = useMemo(
+    () => rankCandidates(build, activeSlot, catalogue[activeSlot]),
     [build, activeSlot, catalogue],
   )
 
-  const fitting = options.filter((o) => o.status !== 'fail')
-  const blocked = options.filter((o) => o.status === 'fail')
+  const fitting = ranked.filter((o) => o.status !== 'fail')
+  const blocked = ranked.length - fitting.length
+  const firstBlocked = ranked.find((r) => r.status === 'fail')?.blockedBy
+
+  const items = useMemo(() => {
+    const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean)
+    const filtered = terms.length
+      ? fitting.filter((o) => {
+          const hay = `${o.part.model} ${o.part.brand} ${o.part.shop ?? ''}`.toLowerCase()
+          return terms.every((t) => hay.includes(t))
+        })
+      : fitting
+    const sorted = [...filtered]
+    if (sort === 'price') sorted.sort((a, b) => (a.part.priceLkr ?? 0) - (b.part.priceLkr ?? 0))
+    if (sort === 'name') sorted.sort((a, b) => a.part.model.localeCompare(b.part.model))
+    if (sort === 'shops') sorted.sort((a, b) => b.part.offers.length - a.part.offers.length)
+    return sorted
+  }, [fitting, query, sort])
 
   const choose = (slot: BuildSlot, part: PartOffer, shop?: string, price?: number) => {
     setBuild((b) => ({
@@ -65,286 +99,355 @@ export function Configurator({ catalogue }: { catalogue: Catalogue }) {
     }))
     setExpandedShops(null)
     setOpenedSlot(null)
+    setQuery('')
   }
 
-  const clear = (slot: BuildSlot) => {
+  const clearSlot = (slot: BuildSlot) =>
     setBuild((b) => {
       const next = { ...b }
       delete next[slot]
       return next
     })
-    setExpandedShops(null)
-  }
 
-  // Parts implicated in a hard conflict, so the drawing can refuse to seat them.
-  const failing = report.checks.filter((c) => c.status === 'fail').map((c) => c.id)
-  const conflicted = BUILD_SLOTS.filter((s) => {
-    if (!build[s]) return false
-    if (failing.includes('cpu-socket') && (s === 'cpu' || s === 'motherboard')) return true
-    if (failing.some((f) => f.startsWith('ram-')) && (s === 'ram' || s === 'motherboard')) return true
-    if (failing.includes('psu-wattage') && s === 'psu') return true
-    if (failing.includes('gpu-connector') && (s === 'gpu' || s === 'psu')) return true
-    if (failing.includes('case-fit') && (s === 'case' || s === 'motherboard')) return true
-    return false
-  })
+  const openSlot = (slot: BuildSlot) => {
+    setOpenedSlot(slot)
+    setExpandedShops(null)
+    setQuery('')
+  }
 
   const shops = new Set(report.filled.map((s) => build[s]!.shop).filter(Boolean))
 
-  const shown = fitting.slice(0, 25)
-  const caveatOf = (o: (typeof shown)[number]) =>
-    o.checks.find((c) => c.status === 'unknown' || c.status === 'warn')?.message
-  const firstCaveat = shown.length ? caveatOf(shown[0]) : undefined
-  // When every option carries the same reservation, say it once above the list
-  // rather than down every row — on a phone that repetition cost a whole screen.
-  const sharedCaveat =
-    shown.length > 1 && firstCaveat && shown.every((o) => caveatOf(o) === firstCaveat)
-      ? firstCaveat
-      : null
-
   return (
-    <>
-      <section className="mb-8">
-        <div className="mb-2 flex justify-center px-1">
-          <CartoonPC
-            filled={report.filled}
-            conflicted={conflicted}
-            complete={report.empty.length === 0 && report.status !== 'fail'}
-          />
+    <div className="mx-auto grid max-w-[1300px] items-start gap-5 px-5 pb-24 pt-6 sm:px-8 lg:grid-cols-[clamp(268px,27vw,348px)_minmax(0,1fr)] lg:gap-[clamp(20px,2.4vw,34px)]">
+      {/* ---- Build sidebar -------------------------------------------------- */}
+      <aside className="glass overflow-hidden lg:sticky lg:top-[88px]">
+        <div className="hairline-b flex items-baseline justify-between px-5 py-4">
+          <span className="text-[14.5px] font-semibold tracking-[-0.015em]">Your build</span>
+          <span className="mono text-[11px] text-ink-3">
+            {report.filled.length}/{BUILD_SLOTS.length}
+          </span>
         </div>
 
-        <h2 className="ios-section-header uppercase">Your build</h2>
-        <ul className="ios-list">
-          {BUILD_SLOTS.map((slot) => {
-            const part = build[slot]
-            return (
-              <li key={slot}>
-                <button
-                  type="button"
-                  onClick={() => setOpenedSlot(slot === activeSlot ? null : slot)}
-                  className={`flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors active:bg-fill ${
-                    slot === activeSlot ? 'bg-fill' : ''
-                  }`}
-                >
-                  <span className="min-w-0">
-                    <span className="block text-[0.8125rem] capitalize text-label-secondary">
-                      {SLOT_LABEL[slot]}
-                    </span>
-                    <span
-                      className={`block truncate text-[1.0625rem] ${part ? '' : 'text-label-tertiary'}`}
-                    >
-                      {part ? part.model : `Choose — ${catalogue[slot].length} in stock`}
-                    </span>
-                    {part?.shop && (
-                      <span className="block text-[0.8125rem] text-label-secondary">{part.shop}</span>
-                    )}
-                  </span>
-                  <span className="flex shrink-0 items-center gap-2">
-                    {part?.priceLkr != null && (
-                      <span className="text-[1.0625rem] tabular-nums">{rs(part.priceLkr)}</span>
-                    )}
-                    <Chevron />
-                  </span>
-                </button>
-              </li>
-            )
-          })}
-        </ul>
-
-        {report.filled.length > 0 && (
-          <div className="mt-2.5 rounded-[var(--radius)] bg-surface px-4 py-3.5">
-            <div className="flex items-baseline justify-between gap-4">
-              <span className="text-[1.0625rem] font-semibold">Total so far</span>
-              <span className="text-[1.375rem] font-semibold tabular-nums">{rs(report.totalLkr)}</span>
-            </div>
-            <p className="mt-1 text-[0.8125rem] text-label-secondary">
-              {report.filled.length} of {BUILD_SLOTS.length} parts
-              {shops.size > 0 && <> · from {shops.size} {shops.size === 1 ? 'shop' : 'shops'}</>}
-            </p>
-
-            {(report.checks.length > 0 || report.pending.length > 0) && (
-              <ul className="mt-3 space-y-1.5 border-t border-separator pt-3">
-                {report.checks.map((c) => (
-                  <li key={c.id} className="flex gap-2 text-[0.8125rem] leading-snug">
-                    <Dot className={`mt-[0.4rem] shrink-0 ${TONE[c.status].dot}`} />
-                    <span className={c.status === 'pass' ? 'text-label-secondary' : TONE[c.status].text}>
-                      {c.message}
-                    </span>
-                  </li>
-                ))}
-                {report.pending.map((p) => (
-                  <li key={p.id} className="flex gap-2 text-[0.8125rem] leading-snug text-label-tertiary">
-                    <Dot className="mt-[0.4rem] shrink-0 bg-label-tertiary" />
-                    <span>{p.message}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
-      </section>
-
-      {activeSlot && (
-        <section>
-          <h2 className="ios-section-header uppercase">Choose a {SLOT_LABEL[activeSlot]}</h2>
-
-          <div className="mb-2.5 rounded-[var(--radius)] bg-surface px-4 py-3">
-            <p className="text-[0.9375rem] leading-snug">
-              {suggestion?.slot === activeSlot && !build[activeSlot]
-                ? suggestion.message
-                : `${fitting.length} of ${options.length} in stock will work.`}
-            </p>
-            {blocked.length > 0 && (
-              <p className="mt-1 text-[0.8125rem] text-label-secondary">
-                {blocked.length} hidden because they don&apos;t fit — {blocked[0].blockedBy}
-              </p>
-            )}
-            {sharedCaveat && (
-              <p className="mt-2 flex gap-2 text-[0.8125rem] leading-snug text-orange">
-                <Dot className="mt-[0.4rem] shrink-0 bg-orange" />
-                <span>{sharedCaveat}</span>
-              </p>
-            )}
-            {build[activeSlot] && (
-              <button
-                type="button"
-                onClick={() => clear(activeSlot)}
-                className="-mx-1 mt-1 px-1 py-2 text-[0.9375rem] text-blue"
+        {BUILD_SLOTS.map((slot) => {
+          const part = build[slot]
+          const style = SLOT_STYLE[slot]
+          return (
+            <button
+              key={slot}
+              type="button"
+              onClick={() => openSlot(slot)}
+              className={`hairline-b row-tap flex w-full items-center gap-3 px-5 py-3 text-left ${
+                slot === activeSlot ? 'bg-[var(--row-hover)]' : ''
+              }`}
+            >
+              <span
+                className="flex h-9 w-9 flex-none items-center justify-center rounded-[10px]"
+                style={{ background: style.tint, color: style.ink }}
               >
-                Remove {build[activeSlot]!.model}
-              </button>
-            )}
+                <style.Icon className="h-[19px] w-[19px]" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="eyebrow block">{SLOT_LABEL[slot]}</span>
+                <span className={`mt-[3px] block truncate text-[13.5px] ${part ? '' : 'text-ink-4'}`}>
+                  {part ? part.model : 'Not chosen'}
+                </span>
+              </span>
+              <span className={`mono flex-none text-[12px] ${part ? '' : 'text-ink-4'}`}>
+                {part?.priceLkr != null ? rs(part.priceLkr) : '—'}
+              </span>
+            </button>
+          )
+        })}
+
+        <div className="bg-[var(--sunken)] px-5 pb-3.5 pt-4">
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="eyebrow">Total</span>
+            <span className="mono flex-none whitespace-nowrap text-[22px] font-medium tracking-[-0.03em]">
+              {rs(report.totalLkr)}
+            </span>
+          </div>
+          <div className="mt-1.5 truncate text-[11.5px] text-ink-3">
+            {report.filled.length === 0
+              ? 'Nothing picked yet'
+              : `${report.filled.length} parts · ${shops.size} ${shops.size === 1 ? 'shop' : 'shops'}`}
           </div>
 
-          {fitting.length === 0 ? (
-            <div className="rounded-[var(--radius)] bg-surface px-4 py-5 text-[0.9375rem] text-label-secondary">
-              Nothing in stock fits the parts you&apos;ve chosen. Try changing another slot.
-            </div>
-          ) : (
-            <ul className="ios-list">
-              {shown.map((o) => {
-                const part = o.part
-                const selected = build[activeSlot]?.partId === part.partId
-                const caveat = sharedCaveat ? undefined : caveatOf(o)
-                const specs = [
-                  part.socket,
-                  part.ramType,
-                  part.capacityGb ? `${part.capacityGb}GB` : null,
-                  part.speedMhz ? `${part.speedMhz}MHz` : null,
-                  part.vramGb ? `${part.vramGb}GB` : null,
-                  part.tdpWatts ? `${part.tdpWatts}W` : null,
-                  part.ratedWatts ? `${part.ratedWatts}W` : null,
-                  part.storageInterface,
-                  part.category === 'case' ? part.formFactor : null,
-                ]
-                  .filter(Boolean)
-                  .slice(0, 3)
-
-                return (
-                  <li key={part.partId}>
-                    <button
-                      type="button"
-                      onClick={() => choose(activeSlot, part)}
-                      className="flex w-full items-start justify-between gap-3 px-4 py-3 text-left transition-colors active:bg-fill"
-                    >
-                      <span className="min-w-0">
-                        <span className="block truncate text-[1.0625rem]">
-                          {selected && <span className="mr-1.5 text-blue">✓</span>}
-                          {part.model}
-                        </span>
-                        <span className="block text-[0.8125rem] text-label-secondary">
-                          {[part.brand, ...specs].filter(Boolean).join(' · ')}
-                        </span>
-                        <span className="block text-[0.8125rem] text-label-secondary">
-                          {selected ? (build[activeSlot]!.shop ?? part.shop) : part.shop}
-                        </span>
-                        {caveat && (
-                          <span className="mt-0.5 block text-[0.8125rem] leading-snug text-label-tertiary">
-                            {caveat}
-                          </span>
-                        )}
-                      </span>
-                      <span className="flex shrink-0 items-center gap-2 pt-0.5">
-                        <span className="text-[1.0625rem] tabular-nums">{rs(part.priceLkr ?? 0)}</span>
-                        <Chevron />
-                      </span>
-                    </button>
-
-                    {part.offers.length > 1 && (
-                      <div className="px-4 pb-1.5">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setExpandedShops((e) => (e === part.partId ? null : part.partId))
-                          }
-                          className="-mx-2 px-2 py-3 text-[0.8125rem] text-blue"
-                        >
-                          {expandedShops === part.partId
-                            ? 'Hide'
-                            : `Compare ${part.offers.length} shops`}
-                        </button>
-                        {expandedShops === part.partId && (
-                          <ul className="mt-1.5 space-y-1">
-                            {part.offers.map((offer) => (
-                              <li key={offer.shop}>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    choose(activeSlot, part, offer.shop, offer.priceLkr)
-                                  }
-                                  className={`flex w-full items-center justify-between gap-3 rounded-lg px-2 py-2.5 text-left text-[0.8125rem] ${
-                                    offer.inStock ? '' : 'opacity-55'
-                                  } ${
-                                    selected && build[activeSlot]!.shop === offer.shop ? 'bg-fill' : ''
-                                  }`}
-                                >
-                                  <span>
-                                    {offer.shop}
-                                    {!offer.inStock && (
-                                      <span className="ml-1.5 text-label-tertiary">· out of stock</span>
-                                    )}
-                                  </span>
-                                  <span className="tabular-nums">{rs(offer.priceLkr)}</span>
-                                </button>
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                      </div>
-                    )}
-                  </li>
-                )
-              })}
+          {(report.checks.length > 0 || report.pending.length > 0) && (
+            <ul className="mt-3 space-y-1.5 border-t border-[var(--hairline)] pt-3">
+              {report.checks.map((c) => (
+                <li key={c.id} className="flex gap-2 text-[11.5px] leading-snug">
+                  <span
+                    aria-hidden
+                    className={`mt-[5px] h-1.5 w-1.5 flex-none rounded-full ${
+                      c.status === 'pass' ? 'bg-ok' : c.status === 'fail' ? 'bg-bad' : 'bg-warn'
+                    }`}
+                  />
+                  <span className={c.status === 'pass' ? 'text-ink-3' : TONE[c.status]}>
+                    {c.message}
+                  </span>
+                </li>
+              ))}
+              {report.pending.map((p) => (
+                <li key={p.id} className="flex gap-2 text-[11.5px] leading-snug text-ink-4">
+                  <span
+                    aria-hidden
+                    className="mt-[5px] h-1.5 w-1.5 flex-none rounded-full bg-[oklch(0.78_0.02_260)]"
+                  />
+                  <span>{p.message}</span>
+                </li>
+              ))}
             </ul>
           )}
+        </div>
 
-          {fitting.length > 25 && (
-            <p className="ios-section-header pt-2">and {fitting.length - 25} more that fit.</p>
-          )}
-        </section>
-      )}
+        <div className="bg-[var(--sunken)] px-5 pb-5">
+          <button
+            type="button"
+            onClick={() => setBuild({})}
+            disabled={report.filled.length === 0}
+            className="w-full rounded-[var(--radius-sm)] border border-[rgb(30_50_100/12%)] bg-white py-3 text-[13.5px] text-ink-2 transition hover:border-[rgb(30_50_100/28%)] disabled:opacity-45"
+          >
+            Clear build
+          </button>
+        </div>
+      </aside>
 
-      {report.filled.length > 0 && (
-        <section className="mt-8">
-          <h2 className="ios-section-header uppercase">What we don&apos;t check</h2>
-          <div className="rounded-[var(--radius)] bg-surface px-4 py-3.5 text-[0.8125rem] leading-relaxed text-label-secondary">
-            We check sockets, memory type, power, and that the board fits the case. We don&apos;t
-            check whether the graphics card or cooler physically clear it — card length and
-            cooler height aren&apos;t published in local listings, so we&apos;d be guessing.
+      {/* ---- Parts ---------------------------------------------------------- */}
+      <main className="min-w-0">
+        <div className="mb-4 flex flex-wrap gap-2.5">
+          {BUILD_SLOTS.map((slot) => {
+            const on = slot === activeSlot
+            const style = SLOT_STYLE[slot]
+            return (
+              <button
+                key={slot}
+                type="button"
+                onClick={() => openSlot(slot)}
+                className={`inline-flex flex-none items-center gap-2 whitespace-nowrap rounded-full border px-3.5 py-2 text-[13px] font-medium transition ${
+                  on
+                    ? 'border-transparent text-white shadow-[0_4px_14px_-6px_rgb(60_90_200/55%)]'
+                    : 'border-[var(--glass-border)] bg-white/80 text-ink-2 hover:-translate-y-px'
+                }`}
+                style={on ? { background: 'var(--accent)' } : undefined}
+              >
+                <style.Icon
+                  className="h-[15px] w-[15px] flex-none"
+                  style={{ color: on ? 'rgb(255 255 255 / 85%)' : style.ink }}
+                />
+                <span className="capitalize">{SLOT_LABEL[slot]}</span>
+                <span className="mono ml-1 text-[11px] opacity-55">{catalogue[slot].length}</span>
+              </button>
+            )
+          })}
+        </div>
+
+        <div className="mb-4 flex items-center gap-2.5">
+          <div className="flex h-11 flex-1 items-center gap-2.5 rounded-[var(--radius-sm)] border border-[rgb(30_50_100/11%)] bg-white px-4">
+            <span aria-hidden className="text-[14px] text-ink-4">
+              ⌕
+            </span>
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search parts, shops…"
+              aria-label="Search parts and shops"
+              className="min-w-0 flex-1 border-0 bg-transparent text-[13.5px] outline-none placeholder:text-ink-4"
+            />
           </div>
-        </section>
-      )}
-    </>
-  )
-}
+          {(['price', 'name', 'shops'] as Sort[]).map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => setSort(s)}
+              className={`hidden h-11 flex-none whitespace-nowrap rounded-[var(--radius-sm)] border px-4 text-[12.5px] capitalize transition sm:block ${
+                sort === s
+                  ? 'border-transparent bg-[var(--accent)] text-white'
+                  : 'border-[var(--glass-border)] bg-white/80 text-ink-2'
+              }`}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
 
-function Dot({ className = '' }: { className?: string }) {
-  return <span className={`inline-block h-1.5 w-1.5 rounded-full align-middle ${className}`} />
-}
+        {blocked > 0 && (
+          <div className="mb-4 flex items-center gap-3 rounded-[var(--radius-sm)] border border-[var(--accent-soft-border)] bg-[var(--accent-soft)] px-4 py-3 text-[12.5px] text-[oklch(0.42_0.12_258)]">
+            <span className="mono flex-none rounded-full bg-[var(--accent)] px-2 py-[3px] text-[10.5px] text-white">
+              FITS
+            </span>
+            <span>
+              {blocked} hidden because they don&apos;t fit — {firstBlocked}
+            </span>
+          </div>
+        )}
 
-function Chevron() {
-  return (
-    <svg viewBox="0 0 8 13" className="h-3 w-2 shrink-0 text-label-tertiary" fill="none" aria-hidden="true">
-      <path d="M1.5 1.5 6.5 6.5l-5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
+        <div className="glass overflow-hidden">
+          <div className="hairline-b px-5 py-4">
+            <div className="text-[15px] font-semibold capitalize tracking-[-0.015em]">
+              {SLOT_LABEL[activeSlot]}
+            </div>
+            <div className="mt-1 text-[12.5px] text-ink-3">
+              {build[activeSlot] ? (
+                <>
+                  {build[activeSlot]!.model} chosen ·{' '}
+                  <button
+                    type="button"
+                    onClick={() => clearSlot(activeSlot)}
+                    className="text-accent underline-offset-2 hover:underline"
+                  >
+                    remove
+                  </button>
+                </>
+              ) : suggestion?.slot === activeSlot ? (
+                suggestion.message
+              ) : (
+                `${items.length} in stock will work`
+              )}
+            </div>
+          </div>
+
+          {items.length === 0 ? (
+            <div className="px-5 py-8 text-[13.5px] text-ink-3">
+              {query
+                ? `Nothing matches “${query}”.`
+                : "Nothing in stock fits the parts you've chosen. Try changing another slot."}
+            </div>
+          ) : (
+            items.slice(0, 40).map((o) => {
+              const part = o.part
+              const style = SLOT_STYLE[activeSlot]
+              const selected = build[activeSlot]?.partId === part.partId
+              const open = expandedShops === part.partId
+              const caveat = o.checks.find(
+                (c) => c.status === 'unknown' || c.status === 'warn',
+              )?.message
+              const specs = [
+                part.socket,
+                part.ramType,
+                part.capacityGb ? `${part.capacityGb}GB` : null,
+                part.speedMhz ? `${part.speedMhz}MHz` : null,
+                part.vramGb ? `${part.vramGb}GB` : null,
+                part.tdpWatts ? `${part.tdpWatts}W` : null,
+                part.ratedWatts ? `${part.ratedWatts}W` : null,
+                part.storageInterface,
+                activeSlot === 'case' ? part.formFactor : null,
+              ]
+                .filter(Boolean)
+                .slice(0, 3)
+                .join(' · ')
+
+              return (
+                <div key={part.partId} className="hairline-b relative">
+                  <button
+                    type="button"
+                    onClick={() => choose(activeSlot, part)}
+                    className={`row-tap flex w-full items-center gap-4 px-5 py-3.5 text-left ${
+                      selected ? 'bg-[var(--accent-soft)]' : ''
+                    }`}
+                  >
+                    <span
+                      className="flex h-10 w-10 flex-none items-center justify-center rounded-[11px]"
+                      style={{ background: style.tint, color: style.ink }}
+                    >
+                      <style.Icon className="h-[21px] w-[21px]" />
+                    </span>
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex min-w-0 items-center gap-2.5">
+                        <span
+                          className={`truncate text-[14.5px] tracking-[-0.015em] ${
+                            selected ? 'font-semibold' : ''
+                          }`}
+                        >
+                          {part.model}
+                        </span>
+                        <span className="mono hidden flex-none rounded-full bg-[rgb(30_50_100/5%)] px-2 py-[3px] text-[10px] text-ink-2 sm:inline">
+                          {part.brand}
+                        </span>
+                      </div>
+                      <div className="mt-1 flex min-w-0 items-center gap-2.5">
+                        <span className="mono truncate text-[11.5px] text-ink-3">{specs}</span>
+                        {selected && (
+                          <span className="flex-none text-[10px] font-semibold uppercase tracking-[0.06em] text-accent">
+                            In build
+                          </span>
+                        )}
+                      </div>
+                      {caveat && (
+                        <div className="mt-1 text-[11.5px] leading-snug text-ink-4">{caveat}</div>
+                      )}
+                    </div>
+
+                    <div className="flex w-[120px] flex-none flex-col items-end gap-[3px] text-right sm:w-[168px]">
+                      <div className="mono whitespace-nowrap text-[15px] tracking-[-0.02em]">
+                        {rs(part.priceLkr ?? 0)}
+                      </div>
+                      <div className="max-w-full truncate text-[11.5px] text-ink-3">{part.shop}</div>
+                      {part.offers.length > 1 && <span aria-hidden className="block h-[22px]" />}
+                    </div>
+                  </button>
+
+                  {part.offers.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => setExpandedShops(open ? null : part.partId)}
+                      aria-expanded={open}
+                      className="absolute bottom-[15px] right-5 whitespace-nowrap py-1 text-[11.5px] text-accent underline-offset-2 hover:underline"
+                    >
+                      {open ? 'Hide shops' : `${part.offers.length} shops`}
+                    </button>
+                  )}
+
+                  {open && (
+                    <div className="bg-[var(--sunken)] px-5 pb-4 pt-1 sm:pl-[76px]">
+                      <div className="eyebrow py-2">Pick a shop</div>
+                      <div className="flex flex-col gap-1.5">
+                        {part.offers.map((offer) => {
+                          const picked =
+                            build[activeSlot]?.partId === part.partId &&
+                            build[activeSlot]?.shop === offer.shop
+                          return (
+                            <button
+                              key={offer.shop}
+                              type="button"
+                              onClick={() => choose(activeSlot, part, offer.shop, offer.priceLkr)}
+                              className={`flex items-center justify-between gap-4 rounded-[10px] border px-3.5 py-2.5 text-left text-[12.5px] transition ${
+                                picked
+                                  ? 'border-[var(--accent-soft-border)] bg-[var(--accent-soft)]'
+                                  : 'border-transparent bg-white/70 hover:border-[var(--glass-border)]'
+                              } ${offer.inStock ? '' : 'opacity-55'}`}
+                            >
+                              <span className="truncate">
+                                {offer.shop}
+                                {!offer.inStock && (
+                                  <span className="ml-2 text-ink-4">out of stock</span>
+                                )}
+                              </span>
+                              <span className="mono flex-none">{rs(offer.priceLkr)}</span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })
+          )}
+
+          {items.length > 40 && (
+            <div className="px-5 py-3 text-[12.5px] text-ink-4">
+              and {items.length - 40} more — narrow it with search.
+            </div>
+          )}
+        </div>
+
+        <p className="mt-4 px-1 text-[11.5px] leading-relaxed text-ink-4">
+          We check sockets, memory type, power, and that the board fits the case. We don&apos;t
+          check whether the graphics card or cooler physically clear it — those measurements
+          aren&apos;t published in local listings, so we&apos;d be guessing.
+        </p>
+      </main>
+    </div>
   )
 }
