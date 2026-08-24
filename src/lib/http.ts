@@ -5,12 +5,30 @@
  * delay between them. Do not parallelise requests to a single retailer.
  */
 
+/**
+ * Read an override that may arrive as an empty string.
+ *
+ * CI is why this exists rather than a plain `??`. GitHub Actions substitutes an
+ * unset `vars.X` as "" rather than leaving it undefined, and "" is not nullish,
+ * so `??` happily accepts it. That turned `Number(process.env.SCRAPER_DELAY_MS
+ * ?? 1500)` into `Number("")` — zero — which would have removed every gap
+ * between requests on the first unattended run against four real shops.
+ */
+function envOverride(name: string): string | null {
+  const raw = process.env[name]?.trim()
+  return raw ? raw : null
+}
+
 const DEFAULT_UA =
-  process.env.SCRAPER_USER_AGENT ??
-  'SLPCPartsTrackerBot/0.1 (price comparison for Sri Lanka; contact: set SCRAPER_CONTACT)'
+  envOverride('SCRAPER_USER_AGENT') ??
+  'SLPCPartsTrackerBot/0.1 (+https://github.com/ShehanEk/sl-pc-part-picker)'
 
 /** Minimum gap between two requests to the same host. */
-const MIN_DELAY_MS = Number(process.env.SCRAPER_DELAY_MS ?? 1500)
+const MIN_DELAY_MS = (() => {
+  const override = Number(envOverride('SCRAPER_DELAY_MS'))
+  // Only a positive, finite override is honoured; anything else keeps the floor.
+  return Number.isFinite(override) && override > 0 ? override : 1500
+})()
 
 const lastRequestAt = new Map<string, number>()
 

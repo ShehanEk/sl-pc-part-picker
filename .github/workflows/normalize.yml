@@ -17,6 +17,21 @@ jobs:
       cancel-in-progress: false
 
     steps:
+      - name: Require configuration
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::DATABASE_URL is not set. Add it under Settings → Secrets and variables → Actions → Secrets."
+            exit 1
+          fi
+          # The model is a fallback for titles the rules cannot parse, so its
+          # absence degrades the run rather than breaking it.
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::warning::ANTHROPIC_API_KEY is not set — titles the deterministic rules cannot parse will be left unmatched."
+          fi
+
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
@@ -30,4 +45,9 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: npm run normalize
+        run: |
+          npm run normalize | tee /tmp/normalize.log
+          echo '### Normalize' >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          grep -E 'resolved|wrote|curated catalog' /tmp/normalize.log >> "$GITHUB_STEP_SUMMARY" || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"

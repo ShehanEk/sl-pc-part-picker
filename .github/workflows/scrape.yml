@@ -30,6 +30,18 @@ jobs:
       cancel-in-progress: false
 
     steps:
+      # Fail before touching the network. Without this the run would scrape a
+      # retailer in full and only then discover it has nowhere to put the rows,
+      # having spent someone else's bandwidth for nothing.
+      - name: Require configuration
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::DATABASE_URL is not set. Add it under Settings → Secrets and variables → Actions → Secrets."
+            exit 1
+          fi
+
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
@@ -44,4 +56,10 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SCRAPER_USER_AGENT: ${{ vars.SCRAPER_USER_AGENT }}
           SCRAPER_DELAY_MS: ${{ vars.SCRAPER_DELAY_MS }}
-        run: npm run scrape -- "${{ inputs.shop }}" --categories "${{ inputs.categories }}"
+        run: |
+          npm run scrape -- "${{ inputs.shop }}" --categories "${{ inputs.categories }}" \
+            | tee /tmp/scrape.log
+          echo "### ${{ inputs.shop }}" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          tail -5 /tmp/scrape.log >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
