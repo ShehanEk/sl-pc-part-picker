@@ -15,6 +15,10 @@ async function main() {
     `PSU entries : ${r.psuEntries} curated, ${r.psusUpdated} applied, ` +
       `${r.psusUncovered} still without a connector list`,
   )
+  console.log(
+    `CPU entries : ${r.cpuEntries} curated, ${r.cpusUpdated} applied, ` +
+      `${r.cpusUncovered} still without a published draw`,
+  )
 
   if (r.aliasesFolded.length) {
     console.log(`\nfolded duplicate parts (listings omitting memory size):`)

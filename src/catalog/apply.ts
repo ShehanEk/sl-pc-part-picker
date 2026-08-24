@@ -3,6 +3,7 @@ import { and, eq, sql } from 'drizzle-orm'
 import { getDb } from '@/db'
 import { listings, parts, priceHistory } from '@/db/schema'
 
+import { CURATED_CPUS } from './cpu-specs'
 import { CURATED_GPUS, PART_ALIASES } from './gpu-specs'
 import { CURATED_PSUS, PSU_ALIASES } from './psu-specs'
 
@@ -28,6 +29,10 @@ export type ApplyResult = {
   uncovered: { partId: string; shops: number }[]
   psuEntries: number
   psusUpdated: number
+  cpuEntries: number
+  cpusUpdated: number
+  /** Processors still without a published draw, so power sizing assumes one. */
+  cpusUncovered: number
   /** PSU parts still without a connector list, so the connector rule stays unknown. */
   psusUncovered: number
 }
@@ -143,10 +148,28 @@ export async function applyCuratedSpecs(): Promise<ApplyResult> {
     psusUpdated++
   }
 
+  let cpusUpdated = 0
+  for (const curated of CURATED_CPUS) {
+    if (!present.has(curated.partId)) {
+      notStocked.push(curated.partId)
+      continue
+    }
+    await db
+      .update(parts)
+      .set({ tdpWatts: curated.tdpWatts, updatedAt: new Date() })
+      .where(eq(parts.partId, curated.partId))
+    cpusUpdated++
+  }
+
   const [psuGap] = await db
     .select({ n: sql<number>`count(*)::int` })
     .from(parts)
     .where(sql`${parts.category} = 'psu' and ${parts.connectors} is null`)
+
+  const [cpuGap] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(parts)
+    .where(sql`${parts.category} = 'cpu' and ${parts.tdpWatts} is null`)
 
   const curatedIds = new Set(CURATED_GPUS.map((p) => p.partId))
   const gpuRows = await db
@@ -170,5 +193,8 @@ export async function applyCuratedSpecs(): Promise<ApplyResult> {
     psuEntries: CURATED_PSUS.length,
     psusUpdated,
     psusUncovered: psuGap?.n ?? 0,
+    cpuEntries: CURATED_CPUS.length,
+    cpusUpdated,
+    cpusUncovered: cpuGap?.n ?? 0,
   }
 }
