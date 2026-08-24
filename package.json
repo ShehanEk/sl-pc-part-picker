@@ -14,7 +14,7 @@
     "scrape": "tsx --env-file-if-exists=.env.local scripts/scrape.ts",
     "normalize": "tsx --env-file-if-exists=.env.local scripts/normalize.ts",
     "seed:specs": "tsx --env-file-if-exists=.env.local scripts/seed-specs.ts",
-    "test": "tsx --test src/compat/rules.test.ts"
+    "test": "tsx --test src/compat/rules.test.ts src/compat/build.test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.120.0",
