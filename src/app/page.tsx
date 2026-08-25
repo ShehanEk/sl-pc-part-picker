@@ -1,51 +1,52 @@
+import type { Metadata } from 'next'
+
 import { Configurator } from './components/Configurator'
+import { SiteFooter, SiteHeader } from './components/SiteChrome'
 
-import { getCatalogStats, loadCatalogue } from '@/queries/build'
+import { BUILD_SLOTS } from '@/compat/build'
+import { CATEGORY_COPY, SITE_NAME, TRACKED_SHOPS, canonical } from '@/lib/site'
+import { loadCatalogue } from '@/queries/build'
 
-const nf = new Intl.NumberFormat('en-LK')
+export const revalidate = 1800
+
+export const metadata: Metadata = {
+  title: {
+    absolute: `${SITE_NAME} — PC part prices and PC builder for Sri Lanka`,
+  },
+  description: `Build a PC from parts Sri Lankan shops actually stock. Compare prices at ${TRACKED_SHOPS.join(
+    ', ',
+  )}, mix parts from different shops, and we check they work together.`,
+  alternates: { canonical: canonical('/') },
+  openGraph: {
+    title: `${SITE_NAME} — PC part prices and PC builder for Sri Lanka`,
+    description:
+      'Compare PC part prices across Sri Lankan shops and build a machine from parts that work together.',
+    url: canonical('/'),
+    type: 'website',
+  },
+}
 
 export default async function Home() {
-  const [catalogue, stats] = await Promise.all([loadCatalogue(), getCatalogStats()])
+  const catalogue = await loadCatalogue()
 
-  const checked = stats.lastScrape
-    ? new Date(stats.lastScrape).toLocaleString('en-LK', {
-        month: 'numeric',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false,
-      })
-    : null
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: SITE_NAME,
+    url: canonical('/'),
+    inLanguage: 'en-LK',
+    description:
+      'PC part prices from Sri Lankan retailers, with a compatibility checker for building a whole machine.',
+  }
 
   return (
     <>
-      <header className="glass-header sticky top-0 z-30 flex items-center justify-between gap-6 px-5 py-3.5 sm:px-8">
-        <div className="flex items-baseline gap-3">
-          <span className="text-[17.5px] font-bold tracking-[-0.025em]">
-            PC Maker<span className="text-accent">.lk</span>
-          </span>
-          <span className="hidden text-[12.5px] text-ink-3 sm:inline">
-            PC prices &amp; stock, Sri Lanka
-          </span>
-        </div>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }}
+      />
 
-        <div className="flex items-center gap-2">
-          <span className="mono hidden items-center gap-4 px-1 py-1.5 text-[11px] text-ink-3 lg:flex">
-            <span>{nf.format(stats.parts)} parts</span>
-            <span>{nf.format(stats.listings)} listings</span>
-            <span>{stats.shops} shops</span>
-          </span>
-          {checked && (
-            <span className="mono flex items-center gap-1.5 rounded-full border border-[var(--glass-border)] bg-white/90 px-3 py-1.5 text-[11px] text-ink-3">
-              <span
-                className="h-1.5 w-1.5 rounded-full bg-ok"
-                style={{ boxShadow: '0 0 8px oklch(0.75 0.18 152)' }}
-              />
-              live {checked}
-            </span>
-          )}
-        </div>
-      </header>
+      <SiteHeader />
 
       <div className="mx-auto max-w-[1300px] px-5 pb-4 pt-10 sm:px-8 sm:pt-14">
         <h1 className="display m-0">Build a PC, priced in Sri&nbsp;Lanka.</h1>
@@ -56,6 +57,47 @@ export default async function Home() {
       </div>
 
       <Configurator catalogue={catalogue} />
+
+      {/*
+        A crawlable summary of the catalogue. The configurator above holds the
+        same parts, but assembles them in the browser, so this is the only part
+        of the page a search engine can read and follow.
+      */}
+      <section
+        aria-labelledby="browse"
+        className="mx-auto max-w-[1300px] px-5 pb-2 sm:px-8"
+      >
+        <h2 id="browse" className="text-[15px] font-semibold tracking-[-0.015em]">
+          Browse prices by category
+        </h2>
+        <div className="mt-3 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+          {BUILD_SLOTS.map((slot) => {
+            const items = catalogue[slot]
+            const cheapest = items.length
+              ? Math.min(...items.map((p) => p.priceLkr ?? Infinity))
+              : null
+            return (
+              <a
+                key={slot}
+                href={`/${slot}`}
+                className="glass block px-4 py-3.5 transition hover:-translate-y-px"
+              >
+                <span className="block text-[13.5px] font-medium capitalize">
+                  {CATEGORY_COPY[slot].heading} prices in Sri Lanka
+                </span>
+                <span className="mono mt-1 block text-[11.5px] text-ink-3">
+                  {items.length} in stock
+                  {cheapest !== null && Number.isFinite(cheapest)
+                    ? ` · from Rs ${Math.round(cheapest).toLocaleString('en-LK')}`
+                    : ''}
+                </span>
+              </a>
+            )
+          })}
+        </div>
+      </section>
+
+      <SiteFooter />
     </>
   )
 }

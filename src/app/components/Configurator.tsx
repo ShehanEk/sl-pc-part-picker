@@ -1,6 +1,13 @@
 'use client'
 
-import { useMemo, useState, type ComponentType, type SVGProps } from 'react'
+import Link from 'next/link'
+import {
+  useMemo,
+  useState,
+  useSyncExternalStore,
+  type ComponentType,
+  type SVGProps,
+} from 'react'
 
 import {
   CaseIcon,
@@ -21,14 +28,25 @@ import {
   type BuildSlot,
 } from '@/compat/build'
 import type { CheckStatus } from '@/compat/rules'
+import {
+  getBuildSnapshot,
+  getServerBuildSnapshot,
+  setStoredBuild,
+  subscribeBuild,
+  type StoredBuild,
+} from '@/lib/build-store'
 import type { PartOffer } from '@/queries/build'
 
 /**
  * The configurator.
  *
- * The build lives in component state, so choosing a part is immediate and the
- * whole catalogue is filtered in the browser. The compatibility rules are pure
- * functions and run here unchanged.
+ * The whole catalogue is held in the browser, so choosing a part is immediate
+ * and every list is a filter over data already here. The compatibility rules
+ * are pure functions and run unchanged on this side.
+ *
+ * The choices themselves live in `build-store`, which survives navigation —
+ * each row links out to that part's own page, and losing the build on the way
+ * there would make the link something you learn not to click.
  */
 
 const rs = (n: number) => `Rs ${n.toLocaleString('en-LK')}`
@@ -57,8 +75,37 @@ type Sort = 'price' | 'name' | 'shops'
 
 export type Catalogue = Record<BuildSlot, PartOffer[]>
 
+/** Re-point a catalogue part at a specific seller, if that seller still has it. */
+function withShop(part: PartOffer, shop: string | null): PartOffer {
+  if (!shop) return part
+  const offer = part.offers.find((o) => o.shop === shop)
+  return offer ? { ...part, shop: offer.shop, priceLkr: offer.priceLkr } : part
+}
+
 export function Configurator({ catalogue }: { catalogue: Catalogue }) {
-  const [build, setBuild] = useState<Build>({})
+  const stored = useSyncExternalStore(
+    subscribeBuild,
+    getBuildSnapshot,
+    getServerBuildSnapshot,
+  )
+
+  /**
+   * The build is derived from the stored choices rather than held alongside
+   * them, so there is one source of truth and no chance of the two drifting.
+   * A part that has since sold out everywhere is gone from the catalogue and
+   * drops out here quietly, which beats restoring a build we cannot price.
+   */
+  const build = useMemo<Build>(() => {
+    const next: Build = {}
+    for (const slot of BUILD_SLOTS) {
+      const choice = stored[slot]
+      if (!choice) continue
+      const part = catalogue[slot].find((p) => p.partId === choice.partId)
+      if (part) next[slot] = withShop(part, choice.shop)
+    }
+    return next
+  }, [stored, catalogue])
+
   const [openedSlot, setOpenedSlot] = useState<BuildSlot | null>(null)
   const [expandedShops, setExpandedShops] = useState<string | null>(null)
   const [query, setQuery] = useState('')
@@ -92,22 +139,20 @@ export function Configurator({ catalogue }: { catalogue: Catalogue }) {
     return sorted
   }, [fitting, query, sort])
 
-  const choose = (slot: BuildSlot, part: PartOffer, shop?: string, price?: number) => {
-    setBuild((b) => ({
-      ...b,
-      [slot]: shop ? { ...part, shop, priceLkr: price ?? part.priceLkr } : part,
-    }))
+  const choose = (slot: BuildSlot, part: PartOffer, shop?: string) => {
+    // A shop is only pinned when the buyer picked one. Left null, the slot keeps
+    // following whichever shop is cheapest as prices move.
+    setStoredBuild({ ...stored, [slot]: { partId: part.partId, shop: shop ?? null } })
     setExpandedShops(null)
     setOpenedSlot(null)
     setQuery('')
   }
 
-  const clearSlot = (slot: BuildSlot) =>
-    setBuild((b) => {
-      const next = { ...b }
-      delete next[slot]
-      return next
-    })
+  const clearSlot = (slot: BuildSlot) => {
+    const next: StoredBuild = { ...stored }
+    delete next[slot]
+    setStoredBuild(next)
+  }
 
   const openSlot = (slot: BuildSlot) => {
     setOpenedSlot(slot)
@@ -203,7 +248,7 @@ export function Configurator({ catalogue }: { catalogue: Catalogue }) {
         <div className="bg-[var(--sunken)] px-5 pb-5">
           <button
             type="button"
-            onClick={() => setBuild({})}
+            onClick={() => setStoredBuild({})}
             disabled={report.filled.length === 0}
             className="w-full rounded-[var(--radius-sm)] border border-[rgb(30_50_100/12%)] bg-white py-3 text-[13.5px] text-ink-2 transition hover:border-[rgb(30_50_100/28%)] disabled:opacity-45"
           >
@@ -383,20 +428,35 @@ export function Configurator({ catalogue }: { catalogue: Catalogue }) {
                         {rs(part.priceLkr ?? 0)}
                       </div>
                       <div className="max-w-full truncate text-[11.5px] text-ink-3">{part.shop}</div>
-                      {part.offers.length > 1 && <span aria-hidden className="block h-[22px]" />}
+                      {/* Reserves the band the links below sit in. */}
+                      <span aria-hidden className="block h-[22px]" />
                     </div>
                   </button>
 
-                  {part.offers.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => setExpandedShops(open ? null : part.partId)}
-                      aria-expanded={open}
-                      className="absolute bottom-[15px] right-5 whitespace-nowrap py-1 text-[11.5px] text-accent underline-offset-2 hover:underline"
+                  {/*
+                    Both sit outside the row button rather than inside it: a
+                    button may not contain another control, and the whole row is
+                    one. Positioned over the band the spacer reserves.
+                  */}
+                  <div className="absolute bottom-[13px] right-5 flex items-center gap-3 text-[11.5px]">
+                    {part.offers.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => setExpandedShops(open ? null : part.partId)}
+                        aria-expanded={open}
+                        className="whitespace-nowrap py-1 text-accent underline-offset-2 hover:underline"
+                      >
+                        {open ? 'Hide shops' : `${part.offers.length} shops`}
+                      </button>
+                    )}
+                    <Link
+                      href={`/${activeSlot}/${part.partId}`}
+                      aria-label={`All prices and specifications for ${part.model}`}
+                      className="whitespace-nowrap py-1 text-ink-3 underline-offset-2 hover:text-accent hover:underline"
                     >
-                      {open ? 'Hide shops' : `${part.offers.length} shops`}
-                    </button>
-                  )}
+                      Details
+                    </Link>
+                  </div>
 
                   {open && (
                     <div className="bg-[var(--sunken)] px-5 pb-4 pt-1 sm:pl-[76px]">
@@ -410,7 +470,7 @@ export function Configurator({ catalogue }: { catalogue: Catalogue }) {
                             <button
                               key={offer.shop}
                               type="button"
-                              onClick={() => choose(activeSlot, part, offer.shop, offer.priceLkr)}
+                              onClick={() => choose(activeSlot, part, offer.shop)}
                               className={`flex items-center justify-between gap-4 rounded-[10px] border px-3.5 py-2.5 text-left text-[12.5px] transition ${
                                 picked
                                   ? 'border-[var(--accent-soft-border)] bg-[var(--accent-soft)]'
