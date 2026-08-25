@@ -1,36 +1,94 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PC Maker.lk — SL PC Parts Tracker
 
-## Getting Started
+Pick a PC part, see which Sri Lankan shop stocks it and at what price, and build
+a whole machine out of parts that actually work together — mixing shops freely.
 
-First, run the development server:
+The premise is narrowness. PCPartPicker knows every part in the world and none
+of the prices here; this knows only what four Colombo retailers have on the
+shelf, which is the only catalogue a buyer in Sri Lanka can act on.
+
+**Live:** deployed on Vercel · **Repo:** [ShehanEk/sl-pc-part-picker](https://github.com/ShehanEk/sl-pc-part-picker)
+
+## Documentation
+
+| Doc | What's in it |
+|---|---|
+| [Architecture](docs/architecture.md) | How the pieces fit, module map, rendering and caching, known gaps |
+| [Decisions](docs/decisions.md) | Every significant choice, why it was made, what it costs |
+| [Data pipeline](docs/pipeline.md) | The four stages, schedules, failure modes, how to run and reprocess |
+| [What we capture](docs/data.md) | Retailers, fields, spec coverage, and what is deliberately not captured |
+| [Retailer inspection](docs/retailers.md) | Per-site scraping mechanics, selectors, robots.txt, gotchas |
+
+## Quick start
+
+```bash
+npm install
+```
+
+Copy `.env.example` to `.env.local` and fill in the three values (see
+[Configuration](#configuration)). Then:
+
+```bash
+npm run db:migrate
+```
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The app is at `http://localhost:3000` (`npm run dev -- -p 3100` if 3000 is taken;
+`.claude/launch.json` uses 3100).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+With an empty database the page renders but every category is empty. To fill it:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run scrape -- all
+```
 
-## Learn More
+```bash
+npm run normalize
+```
 
-To learn more about Next.js, take a look at the following resources:
+A full scrape of all four shops takes upwards of an hour, dominated by
+nanotek.lk (three requests per product, serialised, with a 1.5s floor per host —
+that gap is deliberate). For a quick smoke test:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm run scrape -- gamestreet.lk --categories gpu --max-products 5 --dry-run
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Commands
 
-## Deploy on Vercel
+| Command | What it does |
+|---|---|
+| `npm run dev` | Next.js dev server |
+| `npm run build` | Production build |
+| `npm test` | Compatibility-rule tests (46, `node:test` via tsx) |
+| `npm run lint` | ESLint |
+| `npm run scrape -- <shop\|all>` | Stage 1–2: scrape a retailer into `raw_listings` |
+| `npm run normalize` | Stage 3–4: resolve raw rows to parts, write `listings` + `price_history` |
+| `npm run seed:specs` | Push the curated spec catalogs onto `parts` |
+| `npm run db:generate` / `db:migrate` / `db:studio` | Drizzle schema tooling |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Useful scrape flags: `--categories gpu,psu`, `--max-products N`, `--max-pages N`,
+`--dry-run`. Useful normalize flags: `--limit N`, `--redo`, `--no-ai`, `--dry-run`.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Configuration
+
+| Variable | Required | Used by |
+|---|---|---|
+| `DATABASE_URL` | yes | App and pipeline. Neon **pooled** connection. |
+| `DATABASE_URL_UNPOOLED` | migrations only | `drizzle-kit`. Same host without `-pooler`. |
+| `ANTHROPIC_API_KEY` | no | Normalizer's fallback title matcher. Without it, titles the rules can't parse are left unmatched rather than the run failing. |
+| `SCRAPER_USER_AGENT` | no | Overrides the default bot UA. |
+| `SCRAPER_DELAY_MS` | no | Minimum gap between requests to one host. Floor is 1500ms; a smaller or unparseable value is ignored. |
+
+Secrets live in `.env.local` (gitignored), in GitHub Actions secrets for the
+nightly jobs, and in Vercel project settings for the deployed app. They are
+never committed.
+
+## Stack
+
+Next.js 16 (App Router) · React 19 · Tailwind v4 · Drizzle ORM · Neon serverless
+Postgres · cheerio · Anthropic SDK (ingest-time matching only) · GitHub Actions ·
+Vercel.
