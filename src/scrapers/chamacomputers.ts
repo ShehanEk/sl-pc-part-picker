@@ -5,7 +5,7 @@ import type { Category, ScrapeOptions, ScrapedRow, Scraper } from './types'
 /**
  * chamacomputers.lk — Next.js storefront backed by Sanity.
  *
- * The best-structured of the four: product objects are embedded verbatim in the
+ * The best-structured of the HTML sources: product objects are embedded in the
  * React Server Component flight payload, so no HTML parsing is needed. They are
  * escaped inside `self.__next_f.push([1, "..."])` string chunks, so the escaping
  * is undone before the objects are pulled out.

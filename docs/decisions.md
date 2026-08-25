@@ -38,12 +38,12 @@ transaction.
 
 ### GitHub Actions, one workflow per retailer
 
-**Decision.** A reusable `scrape.yml` called by four thin caller workflows, each
-on its own staggered cron (19:00, 19:30, 20:00, 20:30 UTC), with `normalize.yml`
-at 21:30 UTC.
+**Decision.** A reusable `scrape.yml` called by five thin caller workflows, each
+on its own staggered cron (19:00, 19:30, 20:00, 20:30, 21:00 UTC), with
+`normalize.yml` at 21:30 UTC.
 
 **Why.** One retailer changing shape should fail only its own run. Staggering
-means the four shops are never hit simultaneously by us.
+means the shops are never hit simultaneously by us.
 
 **Bug that shaped it.** The reusable workflow's input was originally
 `timeout-minutes`. GitHub expressions parse the hyphen as subtraction, so the
@@ -175,13 +175,22 @@ one part.
 Numeric tokens are preserved for cases specifically, because "Thermaltake The
 Tower 600" was being reduced to "Thermaltake The".
 
-### One listing per `(part_id, shop)`, cheapest kept
+### One listing per `(part_id, shop)`: in stock first, then cheapest
 
 **Decision.** When a shop lists the same canonical part several times (different
-board partners, say), the cheapest wins.
+board partners, say), a buyable row beats a cheaper unbuyable one; among equals,
+the cheapest wins.
 
-**Why.** The product answers "what does this cost at this shop", and the honest
-answer is the lowest price they will sell it at.
+**Why.** It was cheapest-only at first, which reads as obviously right until a
+shop carries the same part twice, once in stock and once not. pcbuilders.lk had
+an RTX 5070 at 297,000 on backorder and another in stock at 330,000; the lower
+number advertised them as the cheapest shop for a card you could not have bought
+from them.
+
+The same rule the catalogue query already applied when choosing between shops
+now applies within one. Fixing it raised in-stock listings across the board —
+nanotek 132 to 143, chamacomputers 131 to 147 — so this was a latent bug in
+every shop that a backorder-heavy retailer merely made visible.
 
 ---
 
@@ -230,6 +239,31 @@ Saying so is the honest alternative to a silence that reads as approval.
 The one physical check the data does support — whether the board fits the case —
 is implemented, using a single "largest board accepted" value plus an ordering
 (ITX < mATX < ATX) rather than a list of supported sizes.
+
+---
+
+### Used and open-box stock is excluded
+
+**Decision.** pcbuilders.lk keeps a parallel `all-used-items` category tree —
+used graphics cards, processors, boards, memory, supplies. None of it is
+scraped, and open-box items listed among new stock are filtered on the title.
+
+**Why.** A used card at half price would win every comparison it appeared in,
+against new stock, with nothing on the row to say why. The site has no concept
+of condition, and inventing a price advantage that rests on one is worse than
+the missing coverage.
+
+**Consequence.** If condition ever becomes a first-class field, this is the
+decision to revisit — the data is there and deliberately left on the shelf.
+
+### Backorder is not stock
+
+**Decision.** For pcbuilders.lk, `in_stock` is `is_in_stock && !is_on_backorder`.
+
+**Why.** WooCommerce reports `is_in_stock: true` for backordered items. 206 of
+its 319 products are "Available on backorder", so taking the flag at face value
+would have made it the shop that stocks everything and let it win every
+cheapest-in-stock comparison with parts that have to be ordered in.
 
 ---
 

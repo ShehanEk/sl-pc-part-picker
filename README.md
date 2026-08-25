@@ -49,7 +49,7 @@ npm run scrape -- all
 npm run normalize
 ```
 
-A full scrape of all four shops takes upwards of an hour, dominated by
+A full scrape of all five shops takes upwards of an hour, dominated by
 nanotek.lk (three requests per product, serialised, with a 1.5s floor per host —
 that gap is deliberate). For a quick smoke test:
 

@@ -413,13 +413,27 @@ export async function runNormalize(
       .where(eq(parts.partId, partId))
   }
 
-  // One listing per (part, shop): keep the cheapest when a shop lists the same
-  // canonical part several times (different board partners, say).
+  // One listing per (part, shop) when a shop lists the same canonical part
+  // several times (different board partners, say).
+  //
+  // In stock wins before cheapest. Cheapest alone reads as obviously right
+  // until a shop carries the same part twice, once buyable and once not:
+  // pcbuilders.lk had an RTX 5070 at 297,000 on backorder and one in stock at
+  // 330,000, and taking the lower number advertised them as the cheapest shop
+  // for a card you could not have bought from them. The price on a row has to
+  // be one you can pay — the same rule the catalogue query already applies
+  // when choosing between shops.
   const bestPerPartShop = new Map<string, (typeof resolved)[number]>()
   for (const r of resolved) {
     const key = `${r.partId} ${r.shop}`
     const existing = bestPerPartShop.get(key)
-    if (!existing || r.priceLkr < existing.priceLkr) bestPerPartShop.set(key, r)
+    if (!existing) {
+      bestPerPartShop.set(key, r)
+      continue
+    }
+    const better =
+      Number(r.inStock) - Number(existing.inStock) || existing.priceLkr - r.priceLkr
+    if (better > 0) bestPerPartShop.set(key, r)
   }
 
   const listingValues = [...bestPerPartShop.values()].map((r) => ({

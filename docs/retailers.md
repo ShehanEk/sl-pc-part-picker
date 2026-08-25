@@ -4,7 +4,7 @@ Hand-inspection of each retailer before writing scraper code, per the project
 spec. Re-check this page whenever a scraper starts failing — the usual cause is
 one of these sites changing shape.
 
-Last inspected: 2026-08-23.
+Last inspected: 2026-08-23. pcbuilders.lk added 2026-08-25.
 
 ## Summary
 
@@ -14,8 +14,9 @@ Last inspected: 2026-08-23.
 | chamacomputers.lk | Next.js + Sanity | **Yes**, as JSON in the RSC payload | ~0 (12 products per page request) | Allows all but `/api`, `/privacy`, `/cart`, `/survey` |
 | nanotek.lk | Tyno storefront | No — loaded by XHR | 3 | Only disallows `/admin` |
 | redlinetech.lk | Tyno storefront | No — loaded by XHR | 3 | **Disallows every query-string URL** |
+| pcbuilders.lk | WordPress + WooCommerce | **Yes**, as JSON from the Store API | ~0 (100 products per request) | Allows all but `/cart/`, `/checkout/`, `/my-account/`, add-to-cart |
 
-None of the four needs a headless browser. All are reachable with plain `fetch`.
+None needs a headless browser. All are reachable with plain `fetch`.
 
 ## gamestreet.lk
 
@@ -107,3 +108,65 @@ Consequences:
 
 If fuller coverage from redlinetech matters, the way to get it is to ask them for
 permission or a feed — not to ignore the file.
+
+## pcbuilders.lk
+
+The only one of the five with a real API. WordPress + WooCommerce, and the
+**WooCommerce Store API is public**, so there is no HTML parsing at all:
+
+    GET /wp-json/wc/store/v1/products?category=<termId>&per_page=100&page=N
+
+robots.txt disallows only `/cart/`, `/checkout/`, `/my-account/` and
+`*add-to-cart=*`. The Store API is the storefront's own read endpoint and is not
+disallowed.
+
+Each product carries `name`, `permalink`, `prices`, `is_in_stock`,
+`is_on_backorder`, `stock_availability.text`, `images`, `categories`, and an
+`attributes` table — every product had one, giving MANUFACTURER, MODEL and
+RAM - SIZE as structured fields. `short_description` is consistently the
+warranty ("3 YEARS WARRANTY"), which no other retailer publishes in a field of
+its own.
+
+### Category ids, and the used-parts tree
+
+Seven term ids cover everything, and **filtering by a parent includes its
+children** (verified: `processors`=41 against intel 19 + amd 20), so the
+Intel/AMD, desktop-RAM, NVMe and hard-disk sub-categories need no separate call.
+
+| Canonical | Term id | Shop's category |
+|---|---|---|
+| gpu | 95 | GRAPHIC CARDS |
+| cpu | 58 | PROCESSORS |
+| motherboard | 69 | MOTHERBOARDS |
+| ram | 78 | MEMORY |
+| storage | 81 | STORAGE |
+| psu | 76 | POWER SUPPLY & UPS |
+| case | 143 | COMPUTER CASE |
+
+All seven sit under `components`. The shop keeps a **parallel `all-used-items`
+tree** — used graphics cards, processors, boards, memory and supplies — which is
+deliberately excluded. A used card at half price would win every comparison it
+appeared in, against new stock, with nothing on the row to say why. The two
+trees do not overlap, so scoping to `components` excludes used stock by
+construction. A handful of **open-box** items are listed among new ones and are
+filtered on the title for the same reason.
+
+### Gotchas found the hard way
+
+- **Prices are integer minor units as a string.** `"168050000"` with
+  `currency_minor_unit: 2` is 1,680,500.00 LKR. Reading the field as a number
+  would have made every price a hundred times too large.
+- **`is_in_stock` is true for backordered items.** 206 of 319 products are
+  "Available on backorder" while flagged in stock. Taking the flag at face value
+  would have made this the shop that stocks everything, and let it win every
+  cheapest-in-stock comparison with parts that have to be ordered in. Stock is
+  `is_in_stock && !is_on_backorder`.
+- **Names come back HTML-encoded, and JSON does not decode them.** The other
+  scrapers get this free from cheerio. Here `&#8211;` survived into the title
+  and then into the part id: two colours of "Corsair 3200D RS ARGB Mid-Tower
+  Case &#8211; White" both minted `corsair-3200d-rs-8211-atx`.
+- **Slugs go stale.** One product named "MSI Geforce RTX 5090 Ventus OC 3X 32GB"
+  has the permalink `/msi-rtx-5070-ti-16gb-8/` — renamed, slug kept. Never
+  derive identity from the slug; the title is the input.
+- The API reports totals in `X-WP-Total` / `X-WP-TotalPages` headers, which the
+  fetch helper does not surface, so pagination stops on a short page instead.

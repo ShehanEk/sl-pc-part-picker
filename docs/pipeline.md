@@ -47,7 +47,8 @@ type ScrapedRow = {
 }
 ```
 
-All four sites are reachable with plain `fetch` — no headless browser. Per-site
+Four of the five sites are parsed from HTML, all reachable with plain `fetch` —
+no headless browser. pcbuilders.lk is read from a JSON API instead. Per-site
 mechanics, selectors and gotchas are in [retailers.md](retailers.md).
 
 **Politeness.** Every request goes through `src/lib/http.ts`, which serialises
@@ -175,10 +176,11 @@ All times UTC; Sri Lanka is UTC+5:30.
 | `scrape-redlinetech.yml` | `30 19 * * *` | 01:00 | 45 min |
 | `scrape-gamestreet.yml` | `0 20 * * *` | 01:30 | 20 min |
 | `scrape-chamacomputers.yml` | `30 20 * * *` | 02:00 | 30 min |
+| `scrape-pcbuilders.yml` | `0 21 * * *` | 02:30 | 20 min |
 | `normalize.yml` | `30 21 * * *` | 03:00 | 30 min |
 
 Each caller passes its shop key into the reusable `scrape.yml`. Runs are
-staggered so the four shops are never hit at once, and each has a `concurrency`
+staggered so the shops are never hit at once, and each has a `concurrency`
 group so two runs for the same shop never overlap.
 
 All five are `workflow_dispatch`-able for a manual run.
@@ -189,10 +191,11 @@ retailer in full and only then discover it has nowhere to put the rows, having
 spent someone else's bandwidth for nothing. A missing `ANTHROPIC_API_KEY` is a
 warning, not an error: it degrades the run rather than breaking it.
 
-> **Known gap.** Every caller currently passes
+> **Known gap.** The four original callers pass
 > `categories: gpu,psu,cpu,motherboard,ram`. `storage` and `case` are **not** in
-> the nightly runs, so those two categories are only as fresh as the last manual
-> run.
+> their nightly runs, so for those shops the two categories are only as fresh as
+> the last manual run. `scrape-pcbuilders.yml` passes all seven — a category
+> costs it one API request rather than one request per product.
 
 ---
 

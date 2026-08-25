@@ -7,7 +7,7 @@ import type { Category, ScrapeOptions, ScrapedRow, Scraper } from './types'
 /**
  * gamestreet.lk — plain PHP storefront.
  *
- * The cheapest of the four to scrape: category listings are server-rendered with
+ * The cheapest of the HTML sources to scrape: category listings are server-rendered with
  * title, brand and price together, and there is no pagination — one request per
  * category returns the whole listing.
  *

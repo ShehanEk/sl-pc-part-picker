@@ -4,16 +4,17 @@ Retailers, categories, fields, and — as importantly — what is deliberately n
 captured. Per-site scraping mechanics live in [retailers.md](retailers.md).
 
 All figures below are from the live database as of the last full run
-(2026-08-24).
+(2026-08-25).
 
 ## Retailers
 
-Four Sri Lankan retailers. All are scraped with plain `fetch`; none needs a
+Five Sri Lankan retailers. All are scraped with plain `fetch`; none needs a
 headless browser.
 
 | Shop | Platform | Categories mapped | Listings | In stock | Notes |
 |---|---|---|---|---|---|
 | [chamacomputers.lk](https://chamacomputers.lk) | Next.js + Sanity | 7 | 835 | 131 | Best-structured source — product objects are embedded as JSON in the RSC payload |
+| [pcbuilders.lk](https://pcbuilders.lk) | WordPress + WooCommerce | 7 | 274 | 94 | Only source with a real API; used-parts and open-box stock excluded |
 | [nanotek.lk](https://www.nanotek.lk) | Tyno storefront | 7 | 256 | 132 | Prices per payment method; cash price taken as headline |
 | [gamestreet.lk](https://www.gamestreet.lk) | Plain PHP | 7 | 212 | 212 * | Cheapest to scrape — one request per category, no pagination |
 | [redlinetech.lk](https://www.redlinetech.lk) | Tyno storefront | 7 | 44 | 43 | **Coverage capped by robots.txt** — first 12 products per category only |
@@ -40,14 +41,14 @@ mapping can be traced.
 
 | Category | Parts | What it means here |
 |---|---|---|
-| `motherboard` | 294 | |
-| `case` | 231 | `form_factor` means the **largest board it accepts** |
-| `psu` | 148 | |
-| `storage` | 121 | Split by interface: `m2-nvme`, `m2-sata`, `sata` |
-| `ram` | 108 | Desktop DIMMs only — SO-DIMM and laptop memory are rejected |
-| `cpu` | 89 | |
+| `motherboard` | 303 | |
+| `case` | 271 | `form_factor` means the **largest board it accepts** |
+| `psu` | 153 | |
+| `storage` | 138 | Split by interface: `m2-nvme`, `m2-sata`, `sata` |
+| `ram` | 110 | Desktop DIMMs only — SO-DIMM and laptop memory are rejected |
+| `cpu` | 90 | |
 | `gpu` | 55 | |
-| **Total** | **1,046** | across **1,347** listings and **2,456** raw rows |
+| **Total** | **1,120** | across **1,621** listings and **2,775** raw rows |
 
 Retailer categories are not trusted. A motherboard sits in one shop's GPU
 listing and a UPS in another's power-supply listing, so an extractor that does
@@ -70,6 +71,8 @@ Landed verbatim in `raw_listings`, then resolved into `listings`:
 | Brand | Page | Cross-checked against the title |
 | Image URL | Page | `raw_payload.imageUrl` (not currently displayed) |
 | Manufacturer spec table | Tyno product pages, when present | `raw_payload.specs` — the source of `recommended_psu_watts`, `power_connector`, `length_mm` |
+| Product attribute table | pcbuilders.lk, every product | `raw_payload.specs` — MANUFACTURER, MODEL, RAM - SIZE as structured fields. Landed but not yet read by the normalizer. |
+| Backorder flag | pcbuilders.lk | `raw_payload.preOrder`; excluded from `in_stock` — see [retailers.md](retailers.md#gotchas-found-the-hard-way) |
 
 ## Captured per part
 
@@ -101,7 +104,7 @@ Three sources, in strict order of authority:
    citing its source. Applied last so they win outright.
 2. **The chipset table** — 33 chipsets mapping to socket and memory generation,
    plus derivations from Ryzen / Core / Core Ultra model numbers. This one file
-   gives 100% socket coverage on all 89 processors and all 294 boards.
+   gives 100% socket coverage on all 90 processors and all 303 boards.
 3. **Scraped spec tables** — where a retailer publishes one.
 
 Nothing is inferred. A value that cannot be sourced stays null, and the rule
@@ -111,12 +114,12 @@ that needed it answers `unknown`.
 
 | Category | Parts | socket | ram_type | tdp | rec. PSU | connector | form factor |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| motherboard | 294 | 294 | 270 | — | — | — | 294 |
-| case | 231 | — | — | — | — | — | 132 |
-| psu | 148 | — | — | — | — | — | — |
-| storage | 121 | — | — | — | — | — | — |
-| ram | 108 | — | 108 | — | — | — | — |
-| cpu | 89 | 89 | 58 | 86 | — | — | — |
+| motherboard | 303 | 303 | 278 | — | — | — | 303 |
+| case | 271 | — | — | — | — | — | 156 |
+| psu | 153 | — | — | — | — | — | — |
+| storage | 138 | — | — | — | — | — | — |
+| ram | 110 | — | 110 | — | — | — | — |
+| cpu | 90 | 90 | 59 | 86 | — | — | — |
 | gpu | 55 | — | — | 49 | 4 | 11 | — |
 
 Reading this table honestly:
@@ -127,10 +130,10 @@ Reading this table honestly:
   connector list at all. The connector check therefore answers `unknown` far
   more often than it answers anything else. That is the intended behaviour, but
   it makes the check quiet.
-- **Case form factor is 132 of 231.** The rest of the cases don't state which
+- **Case form factor is 156 of 271.** The rest of the cases don't state which
   board sizes they take, so the board-fits-case check declines rather than
   guesses.
-- **CPU `ram_type` is 58 of 89** because Intel 600/700-series platforms ship in
+- **CPU `ram_type` is 59 of 90** because Intel 600/700-series platforms ship in
   DDR4 and DDR5 variants and the processor doesn't decide it — the board does.
   Null is correct there, not missing.
 
@@ -139,14 +142,14 @@ Reading this table honestly:
 Append-only, one row per `(part, shop, day)`. Re-running on the same day
 refreshes that day's price rather than adding a duplicate.
 
-Currently **1,618 points across 2 days** (2026-08-23 → 2026-08-24). Trends need
+Currently **1,892 points across 3 days** (2026-08-23 → 2026-08-25). Trends need
 weeks of nightly runs before they mean anything.
 
 ## Deliberately not captured
 
 | Not captured | Why |
 |---|---|
-| **Warranty period** | Every shop states it differently — some in the title, some in a spec table, some not at all. Capturing it inconsistently would mean showing "1 year" for a part whose neighbour simply didn't say. No `warranty_months` column exists. |
+| **Warranty period** | Every shop states it differently — some in the title, some in a spec table, some not at all. Capturing it inconsistently would mean showing "1 year" for a part whose neighbour simply didn't say. No `warranty_months` column exists. pcbuilders.lk is the exception and states it on every product, in both the title and `short_description`; that text is kept in `raw_payload.specs` against the day a column exists, but nothing reads it. |
 | **Case internal clearance** (max GPU length, max cooler height) | Not published in local listings. Without it, card and cooler clearance cannot be checked, which is why it is named in `UNCHECKED_BY_DESIGN` on the page. |
 | **Cooler socket support and height** | Same reason. Coolers are not a tracked category. |
 | **Motherboard M.2 slot count and type** | Would be needed to check a drive actually has somewhere to go. Not in listings. |

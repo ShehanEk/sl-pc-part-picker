@@ -24,15 +24,16 @@ rather than a dead motherboard.
 
 ```mermaid
 flowchart TB
-  subgraph shops["Four retailer sites"]
+  subgraph shops["Five retailer sites"]
     S1["gamestreet.lk"]
     S2["chamacomputers.lk"]
     S3["nanotek.lk"]
     S4["redlinetech.lk"]
+    S5["pcbuilders.lk"]
   end
 
   subgraph ci["GitHub Actions — nightly, staggered"]
-    SC["scrape job x4"]
+    SC["scrape job x5"]
     NO["normalize job"]
   end
 
@@ -70,7 +71,7 @@ without touching what a visitor sees.
 
 | Path | Responsibility |
 |---|---|
-| `src/scrapers/` | One module per retailer. Emits `ScrapedRow` and nothing more — no part matching, no spec parsing. `tyno.ts` is a shared fetch flow for the two Tyno storefronts; their parsers stay separate. |
+| `src/scrapers/` | One module per retailer. `pcbuilders.ts` reads a JSON API; the rest parse HTML. Emits `ScrapedRow` and nothing more — no part matching, no spec parsing. `tyno.ts` is a shared fetch flow for the two Tyno storefronts; their parsers stay separate. |
 | `src/lib/http.ts` | The only HTTP client. Serialises requests per host, 1.5s floor, bounded retries. |
 | `src/pipeline/scrape.ts` | Runs a scraper, sanity-checks the result, lands rows in `raw_listings`. |
 | `src/normalize/extract.ts` | Deterministic title → part identity for all seven categories. Returns `null` freely. |

@@ -1,0 +1,20 @@
+name: scrape pcbuilders.lk
+
+# 0 21 * * * UTC = 02:30 Sri Lanka time, after the other four and still ahead of
+# the 21:30 normalize run. Staggered against the rest so the shops are never hit
+# at once.
+on:
+  schedule:
+    - cron: '0 21 * * *'
+  workflow_dispatch:
+
+jobs:
+  scrape:
+    uses: ./.github/workflows/scrape.yml
+    with:
+      shop: pcbuilders.lk
+      # All seven, unlike the older callers: this shop is a JSON API, so a
+      # category costs one request rather than one per product.
+      categories: gpu,psu,cpu,motherboard,ram,storage,case
+      timeout_minutes: 20
+    secrets: inherit
