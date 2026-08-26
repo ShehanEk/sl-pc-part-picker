@@ -3,6 +3,7 @@ import { gamestreet } from './gamestreet'
 import { nanotek } from './nanotek'
 import { pcbuilders } from './pcbuilders'
 import { redlinetech } from './redlinetech'
+import { winsoft } from './winsoft'
 
 import type { Scraper } from './types'
 
@@ -12,6 +13,7 @@ export const scrapers: Record<string, Scraper> = {
   'gamestreet.lk': gamestreet,
   'chamacomputers.lk': chamacomputers,
   'pcbuilders.lk': pcbuilders,
+  'winsoft.lk': winsoft,
 }
 
 export const shopKeys = Object.keys(scrapers)

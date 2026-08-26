@@ -38,8 +38,8 @@ transaction.
 
 ### GitHub Actions, one workflow per retailer
 
-**Decision.** A reusable `scrape.yml` called by five thin caller workflows, each
-on its own staggered cron (19:00, 19:30, 20:00, 20:30, 21:00 UTC), with
+**Decision.** A reusable `scrape.yml` called by six thin caller workflows, each
+on its own staggered cron (18:30, 19:00, 19:30, 20:00, 20:30, 21:00 UTC), with
 `normalize.yml` at 21:30 UTC.
 
 **Why.** One retailer changing shape should fail only its own run. Staggering
@@ -242,6 +242,22 @@ is implemented, using a single "largest board accepted" value plus an ordering
 
 ---
 
+### Parts a shop will not sell separately are excluded
+
+**Decision.** winsoft.lk marks some parts "(SYSTEM ONLY)" or "(Not Sold
+Separately)". Those rows are dropped.
+
+**Why.** The price is real but unbuyable on its own, so listing it would
+undercut every shop that will actually sell you the part. Same family as the
+used-stock and backorder decisions below: a number you cannot act on is worse
+than a gap.
+
+**Bug it caused.** Matching only the first phrasing let a "Crucial 32GB DDR5
+5600MHz Desktop RAM (Not Sold Separately)" through. The other three carrying
+that label were laptop memory, which the extractor rejects anyway — so one
+missed phrasing cost exactly one bad row, and it took reading the *rejected*
+titles to notice it at all.
+
 ### Used and open-box stock is excluded
 
 **Decision.** pcbuilders.lk keeps a parallel `all-used-items` category tree —
@@ -274,6 +290,14 @@ cheapest-in-stock comparison with parts that have to be ordered in.
 **Decision.** redlinetech.lk's robots.txt disallows every query-string URL, so
 pagination is off limits and only the first 12 products per category are
 fetched. That is why it has 44 listings against chamacomputers' 835.
+
+winsoft.lk is the same bind and worse — it disallows query strings *and* path
+pagination, so there is no second route through a listing at all. Rather than
+settle for 12 per category, discovery there is the union of the category pages
+and the (months-stale) sitemap, neither of which contains the other. That
+recovers a good deal without touching a disallowed URL: graphics cards went
+from 12 to 19, and the shop as a whole from 87 to 111 products. Still partial,
+and documented as partial.
 
 **Why.** The cheap workaround exists and was not taken. If fuller coverage
 matters, the route is to ask the shop for permission or a feed.

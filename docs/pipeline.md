@@ -47,9 +47,10 @@ type ScrapedRow = {
 }
 ```
 
-Four of the five sites are parsed from HTML, all reachable with plain `fetch` —
-no headless browser. pcbuilders.lk is read from a JSON API instead. Per-site
-mechanics, selectors and gotchas are in [retailers.md](retailers.md).
+All six sites are reachable with plain `fetch` — no headless browser. Four are
+parsed from HTML; pcbuilders.lk is read from a JSON API and winsoft.lk from
+JSON-LD on each product page. Per-site mechanics, selectors and gotchas are in
+[retailers.md](retailers.md).
 
 **Politeness.** Every request goes through `src/lib/http.ts`, which serialises
 requests per host with a minimum 1.5s gap, sets a bot user-agent naming the
@@ -134,7 +135,8 @@ In order:
    > A bug here: because `vramGb` was always non-null, a partial patch clobbered
    > good `Recommended PSU` values that an earlier row had contributed.
 3. **`listings`** — one row per `(part_id, shop)`, upserted. Where a shop lists
-   the same canonical part several times, the cheapest wins.
+   the same canonical part several times, a row you can buy beats a cheaper one
+   you cannot; among equals, the cheapest wins.
 4. **`price_history`** — one row per `(part_id, shop, day)`, upserted, so
    re-running on the same day refreshes that day's price rather than adding a
    duplicate. That is what keeps a trend line one point per day.
@@ -172,6 +174,7 @@ All times UTC; Sri Lanka is UTC+5:30.
 
 | Workflow | Cron | Local time | Timeout |
 |---|---|---|---|
+| `scrape-winsoft.yml` | `30 18 * * *` | 00:00 | 30 min |
 | `scrape-nanotek.yml` | `0 19 * * *` | 00:30 | 90 min |
 | `scrape-redlinetech.yml` | `30 19 * * *` | 01:00 | 45 min |
 | `scrape-gamestreet.yml` | `0 20 * * *` | 01:30 | 20 min |
@@ -183,7 +186,7 @@ Each caller passes its shop key into the reusable `scrape.yml`. Runs are
 staggered so the shops are never hit at once, and each has a `concurrency`
 group so two runs for the same shop never overlap.
 
-All five are `workflow_dispatch`-able for a manual run.
+All seven are `workflow_dispatch`-able for a manual run.
 
 **Secrets** come from repository secrets (`DATABASE_URL`, `ANTHROPIC_API_KEY`)
 and are checked *before* the network is touched — otherwise a run would scrape a
@@ -191,11 +194,13 @@ retailer in full and only then discover it has nowhere to put the rows, having
 spent someone else's bandwidth for nothing. A missing `ANTHROPIC_API_KEY` is a
 warning, not an error: it degrades the run rather than breaking it.
 
-> **Known gap.** The four original callers pass
+> **Known gap.** The four oldest callers pass
 > `categories: gpu,psu,cpu,motherboard,ram`. `storage` and `case` are **not** in
 > their nightly runs, so for those shops the two categories are only as fresh as
 > the last manual run. `scrape-pcbuilders.yml` passes all seven — a category
-> costs it one API request rather than one request per product.
+> costs it one API request rather than one request per product, and
+> `scrape-winsoft.yml` passes all seven because narrowing them would not shorten
+> its run either way.
 
 ---
 

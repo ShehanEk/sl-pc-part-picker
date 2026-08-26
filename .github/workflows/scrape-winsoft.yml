@@ -1,0 +1,22 @@
+name: scrape winsoft.lk
+
+# 30 18 * * * UTC = 00:00 Sri Lanka time, first of the night and well ahead of
+# the 21:30 normalize run. Staggered against the rest so the shops are never hit
+# at once.
+on:
+  schedule:
+    - cron: '30 18 * * *'
+  workflow_dispatch:
+
+jobs:
+  scrape:
+    uses: ./.github/workflows/scrape.yml
+    with:
+      shop: winsoft.lk
+      # All seven. Narrowing them would not shorten the run: discovery comes
+      # from the sitemap, which does not say what a product is, so every page
+      # gets read either way.
+      categories: gpu,psu,cpu,motherboard,ram,storage,case
+      # ~330 product pages at the 1.5s floor, about nine minutes.
+      timeout_minutes: 30
+    secrets: inherit

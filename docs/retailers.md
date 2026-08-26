@@ -4,7 +4,7 @@ Hand-inspection of each retailer before writing scraper code, per the project
 spec. Re-check this page whenever a scraper starts failing — the usual cause is
 one of these sites changing shape.
 
-Last inspected: 2026-08-23. pcbuilders.lk added 2026-08-25.
+Last inspected: 2026-08-23. pcbuilders.lk added 2026-08-25, winsoft.lk 2026-08-26.
 
 ## Summary
 
@@ -15,6 +15,8 @@ Last inspected: 2026-08-23. pcbuilders.lk added 2026-08-25.
 | nanotek.lk | Tyno storefront | No — loaded by XHR | 3 | Only disallows `/admin` |
 | redlinetech.lk | Tyno storefront | No — loaded by XHR | 3 | **Disallows every query-string URL** |
 | pcbuilders.lk | WordPress + WooCommerce | **Yes**, as JSON from the Store API | ~0 (100 products per request) | Allows all but `/cart/`, `/checkout/`, `/my-account/`, add-to-cart |
+| winsoft.lk | Laravel | **Yes**, as JSON-LD on the product page | 1 | **Disallows every query string AND path pagination** |
+| winsoft.lk | Laravel | **Yes**, as JSON-LD on the product page | 1 | **Disallows every query string AND path pagination** |
 
 None needs a headless browser. All are reachable with plain `fetch`.
 
@@ -170,3 +172,133 @@ filtered on the title for the same reason.
   derive identity from the slug; the title is the input.
 - The API reports totals in `X-WP-Total` / `X-WP-TotalPages` headers, which the
   fetch helper does not surface, so pagination stops on a short page instead.
+
+## winsoft.lk
+
+The most restricted robots.txt of the six, and the only shop where **complete
+coverage is not compliantly reachable**.
+
+```
+Disallow: /*?*
+Disallow: /*&*
+Disallow: /*?page=
+Disallow: */page/*
+Disallow: /search
+```
+
+Every query-string URL is off limits *and* so is path pagination, so a category
+listing is capped at its first 12 products with no second route through it.
+
+### Discovery is the union of two partial sources
+
+Neither source is complete, and neither contains the other:
+
+| Source | Gives | Problem |
+|---|---|---|
+| `/category/<slug>` | current products, 12 per category | pagination disallowed |
+| `sitemap.xml` | a wider set, 291 product URLs | **stale** |
+
+The sitemap is stale in a measurable way: every `lastmod` in it is the same
+value (`2026-07-20T17:27:57`), it was evidently generated once and never
+regenerated, and three of its URLs already 404. Of the 12 graphics cards on the
+live category page, **only 5 appear in it** — the other 7 are newer than the
+snapshot.
+
+So the scraper takes the union: seven category pages plus the sitemap, then
+reads each product page. That lifted graphics cards from 12 to 19 and the shop
+as a whole from 87 to 111 products. Coverage is still partial by construction.
+The way to more is to ask the shop for a feed, not to fetch `?page=2`.
+
+### The product page is JSON-LD
+
+Each `/product/<slug>` carries one `application/ld+json` `Product` block with
+`name`, `sku`, `category`, `offers.price` and an `additionalProperty` spec table
+(Brand, GPU Chipset, GPU VRAM, Motherboard Chipset, Socket Type). Nothing is
+scraped out of markup.
+
+Category comes from the JSON-LD `category`, which is sometimes a path
+("Storage > SSD"); the first segment is mapped. **External Storage** is
+deliberately left unmapped — it is where the shop files enclosures, portable
+drives and, actually observed, a DVD rewriter.
+
+### Gotchas found the hard way
+
+- **`offers.availability` is hardcoded to `OutOfStock`.** Every product page
+  says it, including ones the page itself renders as "In Stock" with a working
+  Add to Cart. Believing it would have marked the entire shop out of stock,
+  which drops it out of the configurator altogether. The `additionalProperty`
+  row named `Availability` is the field that actually varies — but its casing
+  does not ("In Stock", "in stock", "In stock"), so compare case-insensitively.
+- **The Add to Cart button is not a stock signal.** It renders even on the one
+  product whose spec table says Out of Stock.
+- **Some parts are not sold on their own**, marked two different ways:
+  "(SYSTEM ONLY)" and "(Not Sold Separately)". Both are bundled-with-a-build
+  prices. Matching only the first let a "Crucial 32GB DDR5 5600MHz Desktop RAM
+  (Not Sold Separately)" through at a price nobody could pay for it alone.
+- **Most of the catalogue is not PC parts.** 200 of the ~330 pages read are
+  laptops, mice, monitors and printers, discarded on their category.
+
+## winsoft.lk
+
+The most restricted robots.txt of the six, and the only shop where **complete
+coverage is not compliantly reachable**.
+
+```
+Disallow: /*?*
+Disallow: /*&*
+Disallow: /*?page=
+Disallow: */page/*
+Disallow: /search
+```
+
+Every query-string URL is off limits *and* so is path pagination, so a category
+listing is capped at its first 12 products with no second route through it.
+
+### Discovery is the union of two partial sources
+
+Neither source is complete, and neither contains the other:
+
+| Source | Gives | Problem |
+|---|---|---|
+| `/category/<slug>` | current products, 12 per category | pagination disallowed |
+| `sitemap.xml` | a wider set, 291 product URLs | **stale** |
+
+The sitemap is stale in a measurable way: every `lastmod` in it is the same
+value (`2026-07-20T17:27:57`), it was evidently generated once and never
+regenerated, and three of its URLs already 404. Of the 12 graphics cards on the
+live category page, **only 5 appear in it** — the other 7 are newer than the
+snapshot.
+
+So the scraper takes the union: seven category pages plus the sitemap, then
+reads each product page. That lifted graphics cards from 12 to 19 and the shop
+as a whole from 87 to 111 products. Coverage is still partial by construction.
+The way to more is to ask the shop for a feed, not to fetch `?page=2`.
+
+### The product page is JSON-LD
+
+Each `/product/<slug>` carries one `application/ld+json` `Product` block with
+`name`, `sku`, `category`, `offers.price` and an `additionalProperty` spec table
+(Brand, GPU Chipset, GPU VRAM, Motherboard Chipset, Socket Type). Nothing is
+scraped out of markup.
+
+Category comes from the JSON-LD `category`, which is sometimes a path
+("Storage > SSD"); the first segment is mapped. **External Storage** is
+deliberately left unmapped — it is where the shop files enclosures, portable
+drives and, actually observed, a DVD rewriter.
+
+### Gotchas found the hard way
+
+- **`offers.availability` is hardcoded to `OutOfStock`.** Every product page
+  says it, including ones the page itself renders as "In Stock" with a working
+  Add to Cart. Believing it would have marked the entire shop out of stock,
+  which drops it out of the configurator altogether. The `additionalProperty`
+  row named `Availability` is the field that actually varies — but its casing
+  does not ("In Stock", "in stock", "In stock"), so compare case-insensitively.
+- **The Add to Cart button is not a stock signal.** It renders even on the one
+  product whose spec table says Out of Stock.
+- **Some parts are not sold on their own**, marked two different ways:
+  "(SYSTEM ONLY)" and "(Not Sold Separately)". Both are bundled-with-a-build
+  prices. Matching only the first let a "Crucial 32GB DDR5 5600MHz Desktop RAM
+  (Not Sold Separately)" through at a price nobody could pay for it alone.
+- **Most of the catalogue is not PC parts.** 200 of the ~330 pages read are
+  laptops, mice, monitors and printers, discarded on their category.
