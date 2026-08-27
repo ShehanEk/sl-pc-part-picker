@@ -1,6 +1,7 @@
 import { and, eq, inArray, isNull, sql } from 'drizzle-orm'
 
 import { applyCuratedSpecs } from '@/catalog/apply'
+import { applyOverrides } from '@/catalog/overrides'
 import { canonicalPartId, CURATED_BY_ID, isImpossibleGpu } from '@/catalog/gpu-specs'
 import { getDb } from '@/db'
 import { listings, parts, priceHistory, rawListings } from '@/db/schema'
@@ -506,6 +507,23 @@ export async function runNormalize(
       (curated.aliasesFolded.length ? `, ${curated.aliasesFolded.length} duplicate parts folded` : '') +
       (curated.uncovered.length ? `, ${curated.uncovered.length} GPU parts still uncovered` : ''),
   )
+
+  // Hand-entered values go on after the curated catalog, which is what makes
+  // them stick. Reverse these two and every admin edit would survive exactly
+  // until the next nightly run and then vanish without a trace.
+  const overrides = await applyOverrides()
+  if (overrides.overrides > 0) {
+    log(
+      `overrides: ${overrides.partsUpdated}/${overrides.overrides} applied` +
+        (overrides.orphaned.length ? `, ${overrides.orphaned.length} orphaned` : ''),
+    )
+    // Logged individually: an override that masks a better value the pipeline
+    // has since learned is the main hazard of the mechanism, and this run log
+    // is the only place it would otherwise be invisible.
+    for (const d of overrides.disagreements) {
+      log(`  override: ${d.partId}.${d.field} ${d.was} -> ${d.now}`)
+    }
+  }
 
   return result
 }

@@ -149,6 +149,75 @@ chamacomputers.lk had seven listings at exactly 1.00 LKR, which would have won
 every cheapest-price comparison they appeared in. The cheapest genuine part in
 the corpus is a 4,500 LKR supply, so the floor has clearance.
 
+### Manual overrides sit above the curated catalog
+
+**Decision.** `part_overrides` holds hand-entered spec values, and
+`applyOverrides()` runs immediately **after** `applyCuratedSpecs()` at the end
+of every normalize run. The ladder is now
+**manual > curated > scraped > null**.
+
+**Why the ordering is the whole design.** Reverse those two calls and an edit
+survives exactly until the next nightly run, then vanishes with nothing to say
+it ever existed. `tdp_watts`, `vram_gb` and `connectors` are rewritten
+unconditionally by the curated catalog, and the GPU spec patch rewrites four
+more columns whenever a retailer publishes a spec table.
+
+**Applied with COALESCE, so a null means "no opinion", never "force null".**
+The requirement is filling gaps; a mechanism that could blank a value the
+pipeline knows is a mechanism that can silently disable a safety check.
+
+**No foreign key to `parts`.** `foldAliases()` hard-deletes alias part rows,
+and an FK with the cascade the rest of the schema uses would take the human's
+work with it. Instead the override is repointed onto the canonical part inside
+`foldAliases()`, next to the existing listings and price-history repointing.
+
+**Cost.** An override can permanently mask a better value the pipeline later
+learns. Mitigated, not solved: every run logs each field where the override
+disagrees with what it replaced, and the edit page shows both values.
+
+### The admin area is one password
+
+**Decision.** `ADMIN_PASSWORD` plus an HMAC-signed httpOnly cookie.
+`requireAdmin()` in the dashboard layout, `assertAdmin()` at the top of every
+Server Action, and `proxy.ts` as a pre-filter.
+
+**Why both checks.** A Server Action compiles to a POST endpoint on the page
+that declares it and is reachable by anyone who can send the request. The Next
+docs are explicit that rendering a form only on an authenticated page "is not a
+security boundary". The layout check stops people seeing the dashboard; only
+the check inside the action stops them using it. `proxy.ts` merely keeps
+anonymous traffic off the database — it verifies presence, not the signature.
+
+**Rejected.** Vercel Deployment Protection is all-or-nothing per deployment and
+would have password-protected the public site. Basic auth in the proxy has no
+sign-out and makes the proxy the boundary, which the docs warn against.
+
+**No rate limiting.** A serverless deployment resets in-memory counters on every
+cold start, so a counter is theatre. A 32-character random password is the
+control.
+
+### An edit may fill an identity-bearing field, never change one
+
+**Decision.** Fields folded into `part_id` by the extractors — GPU memory size,
+memory type and board size, PSU wattage and efficiency tier — can be filled when
+null but are locked once set.
+
+**Why.** The `part_id` is the public URL. Changing one of these would leave
+`/motherboard/asus-prime-b760m-a-ddr4` asserting DDR5. Filling a null is safe
+because a null contributed no token to the id in the first place. In practice
+this costs nothing: every high-value gap is a null-fill, and every field that
+needs genuine correction is not in any id.
+
+### Lowering a safety value requires confirmation
+
+**Decision.** Reducing `tdpWatts`, `recommendedPsuWatts` or `ratedWatts`, or
+weakening a power connector, is refused until an explicit confirm box is ticked.
+
+**Why.** It is the one edit that can invert the project's stated safety
+property — that a rule may be too strict but must never be too lax. Everything
+else in the pipeline enforces that automatically (`mergePatch` resolves toward
+the more demanding value); a human is the only actor that can go the other way.
+
 ---
 
 ## Part identity

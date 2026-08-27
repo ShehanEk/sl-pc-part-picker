@@ -1,0 +1,22 @@
+CREATE TABLE "part_overrides" (
+	"part_id" text PRIMARY KEY NOT NULL,
+	"tdp_watts" integer,
+	"vram_gb" integer,
+	"power_connector" "power_connector",
+	"recommended_psu_watts" integer,
+	"socket" text,
+	"ram_type" "ram_type",
+	"ram_slots" integer,
+	"max_ram_gb" integer,
+	"max_supported_speed_mhz" integer,
+	"form_factor" "form_factor",
+	"speed_mhz" integer,
+	"modules" integer,
+	"capacity_gb" integer,
+	"storage_interface" "storage_interface",
+	"rated_watts" integer,
+	"connectors" "power_connector"[],
+	"efficiency_rating" text,
+	"note" text NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);

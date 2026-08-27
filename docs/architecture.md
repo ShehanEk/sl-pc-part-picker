@@ -83,7 +83,12 @@ without touching what a visitor sees.
 | `src/compat/rules.ts` | Pairwise checks. Pure. `pass` / `fail` / `warn` / `unknown`. |
 | `src/compat/build.ts` | Build-level evaluation, candidate ranking, next-slot suggestion. Pure. |
 | `src/queries/build.ts` | Loads the whole catalogue for the configurator, cached 30 min. |
-| `src/app/` | The single-page configurator. |
+| `src/app/` | The public configurator, category pages and part pages. |
+| `src/app/admin/` | Authenticated operations area — sync health, catalogue summary, and the spec-gap editor. The only place the app writes. |
+| `src/lib/admin-auth.ts` | One password, HMAC-signed cookie. `requireAdmin()` for pages, `assertAdmin()` for actions. |
+| `src/proxy.ts` | Keeps anonymous traffic off `/admin`. An optimisation, not the boundary. |
+| `src/catalog/gaps.ts` | Which spec fields a rule needs, and which nulls are correct rather than missing. |
+| `src/catalog/overrides.ts` | Applies hand-entered values on top of everything the pipeline produced. |
 
 `src/queries/parts.ts` is no longer imported by anything — it served the earlier
 part-detail UI and is dead code pending removal.
@@ -132,9 +137,9 @@ These are real and listed so they don't have to be rediscovered.
   passes `gpu,psu,cpu,motherboard,ram`; `storage` and `case` are missing, so
   those two are only as fresh as the last manual run. The data in the database
   for them came from local runs.
-- **Nothing invalidates the `'catalog'` cache tag when the pipeline writes.** A
-  price can be up to 30 minutes stale after a normalize run. A route handler
-  calling `revalidateTag('catalog')` would close it.
+- **gamestreet.lk, chamacomputers.lk and pcbuilders.lk have not landed a row
+  since their last scheduled run** (as of 2026-08-27). The admin dashboard
+  surfaces this; the Actions log says why.
 - **gamestreet.lk answers the GitHub runner with 403** while working fine
   locally. Not worked around: spoofing a browser user-agent would be evading an
   access control. The options are to ask the shop, retest later, or drop to

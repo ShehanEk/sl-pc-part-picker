@@ -169,6 +169,69 @@ export const priceHistory = pgTable(
   ],
 )
 
+/**
+ * Hand-entered spec values, applied on top of everything the pipeline produces.
+ *
+ * This is the top of the provenance ladder: manual > curated > scraped > null.
+ * `applyOverrides()` runs immediately after `applyCuratedSpecs()` at the end of
+ * every normalize run, so a value entered here survives a pipeline that would
+ * otherwise overwrite it — `parts.tdp_watts`, `vram_gb` and `connectors` are
+ * rewritten unconditionally by the curated catalog, and the GPU spec patch
+ * rewrites four more columns on every run.
+ *
+ * Every column is nullable and applied with COALESCE, so a row overrides only
+ * the fields it actually sets. A null here means "no opinion", not "force null".
+ *
+ * **Deliberately no foreign key to `parts`.** `foldAliases()` hard-deletes alias
+ * part rows, and an FK with the cascade the rest of the schema uses would take
+ * the human's work with it. An orphaned override is harmless — it simply never
+ * matches — and it comes back if that part id ever reappears.
+ */
+export const partOverrides = pgTable('part_overrides', {
+  partId: text('part_id').primaryKey(),
+
+  // gpu + cpu
+  tdpWatts: integer('tdp_watts'),
+
+  // gpu
+  vramGb: integer('vram_gb'),
+  powerConnector: powerConnectorEnum('power_connector'),
+  recommendedPsuWatts: integer('recommended_psu_watts'),
+
+  // cpu + motherboard
+  socket: text('socket'),
+
+  // cpu + motherboard + ram
+  ramType: ramTypeEnum('ram_type'),
+
+  // motherboard
+  ramSlots: integer('ram_slots'),
+  maxRamGb: integer('max_ram_gb'),
+  maxSupportedSpeedMhz: integer('max_supported_speed_mhz'),
+
+  // motherboard + case
+  formFactor: formFactorEnum('form_factor'),
+
+  // ram
+  speedMhz: integer('speed_mhz'),
+  modules: integer('modules'),
+
+  // ram + storage
+  capacityGb: integer('capacity_gb'),
+
+  // storage
+  storageInterface: storageInterfaceEnum('storage_interface'),
+
+  // psu
+  ratedWatts: integer('rated_watts'),
+  connectors: powerConnectorEnum('connectors').array(),
+  efficiencyRating: text('efficiency_rating'),
+
+  /** Where the value came from. Required — the project does not accept uncited specs. */
+  note: text('note').notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
 export type Part = typeof parts.$inferSelect
 export type NewPart = typeof parts.$inferInsert
 export type RawListing = typeof rawListings.$inferSelect
@@ -176,3 +239,6 @@ export type NewRawListing = typeof rawListings.$inferInsert
 export type Listing = typeof listings.$inferSelect
 export type NewListing = typeof listings.$inferInsert
 export type PriceHistoryRow = typeof priceHistory.$inferSelect
+
+export type PartOverride = typeof partOverrides.$inferSelect
+export type NewPartOverride = typeof partOverrides.$inferInsert

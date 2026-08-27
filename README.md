@@ -17,6 +17,7 @@ shelf, which is the only catalogue a buyer in Sri Lanka can act on.
 | [Decisions](docs/decisions.md) | Every significant choice, why it was made, what it costs |
 | [Data pipeline](docs/pipeline.md) | The four stages, schedules, failure modes, how to run and reprocess |
 | [What we capture](docs/data.md) | Retailers, fields, spec coverage, and what is deliberately not captured |
+| [Admin](#admin) | Sync health, catalogue summary, and filling missing specs by hand |
 | [Retailer inspection](docs/retailers.md) | Per-site scraping mechanics, selectors, robots.txt, gotchas |
 
 ## Quick start
@@ -80,6 +81,9 @@ Useful scrape flags: `--categories gpu,psu`, `--max-products N`, `--max-pages N`
 | `DATABASE_URL` | yes | App and pipeline. Neon **pooled** connection. |
 | `DATABASE_URL_UNPOOLED` | migrations only | `drizzle-kit`. Same host without `-pooler`. |
 | `ANTHROPIC_API_KEY` | no | Normalizer's fallback title matcher. Without it, titles the rules can't parse are left unmatched rather than the run failing. |
+| `ADMIN_PASSWORD` | admin only | Signs you in at `/admin`. 32+ random characters — there is no rate limiting. |
+| `ADMIN_SESSION_SECRET` | admin only | Signs the admin session cookie. Changing it signs everyone out. |
+| `REVALIDATE_SECRET` | no | Lets the nightly job clear the site's read cache when it finishes. |
 | `SCRAPER_USER_AGENT` | no | Overrides the default bot UA. |
 | `SCRAPER_DELAY_MS` | no | Minimum gap between requests to one host. Floor is 1500ms; a smaller or unparseable value is ignored. |
 
@@ -92,3 +96,23 @@ never committed.
 Next.js 16 (App Router) · React 19 · Tailwind v4 · Drizzle ORM · Neon serverless
 Postgres · cheerio · Anthropic SDK (ingest-time matching only) · GitHub Actions ·
 Vercel.
+
+## Admin
+
+`/admin`, behind one password. Three things:
+
+- **Sync health** — when each shop last *landed* a row, against the run it was
+  scheduled for. It cannot tell a failed run from a run that found nothing new
+  (the scraper throws before writing, so nothing records the difference), which
+  is stated on the page. Red means go and read the Actions log.
+- **Catalogue summary** — parts, listings, stock and price range per category,
+  computed live rather than from the cache.
+- **Missing data** — spec fields a compatibility rule actually needs, ranked by
+  how many shops stock the part. Values that are correctly absent are excluded:
+  a processor on LGA1700 has no memory generation of its own. Each part has an
+  edit form showing what the pipeline produced, what the shops published in
+  their own spec tables, and where your value would disagree.
+
+Edits are stored in `part_overrides` and applied **after** the curated catalog
+on every run, so they survive the pipeline. See
+[decisions.md](docs/decisions.md) for why that ordering is the whole design.

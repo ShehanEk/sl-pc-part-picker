@@ -87,12 +87,47 @@ export const CATEGORY_COPY: Record<
   },
 }
 
-/** The shops we track, named in copy so the page says who the prices come from. */
+/**
+ * The shops we track, named in copy so the page says who the prices come from.
+ *
+ * Keep this in step with `src/scrapers/index.ts` — it is rendered in the public
+ * footer and in the homepage meta description, so a shop missing here is a shop
+ * the site tells people it does not cover.
+ */
 export const TRACKED_SHOPS = [
   'nanotek.lk',
   'redlinetech.lk',
   'gamestreet.lk',
   'chamacomputers.lk',
+  'pcbuilders.lk',
+  'winsoft.lk',
 ] as const
+
+/**
+ * When each shop is expected to have run, from the caller workflows in
+ * `.github/workflows/`. The admin dashboard compares a shop's last landed row
+ * against this to tell "quiet because nothing changed" from "quiet because it
+ * has stopped working".
+ *
+ * Hours are UTC, matching the cron expressions; Sri Lanka is UTC+5:30.
+ */
+export const SHOP_SCHEDULE: Record<string, { cronUtc: string; localLabel: string }> = {
+  'winsoft.lk': { cronUtc: '30 18 * * *', localLabel: '00:00' },
+  'nanotek.lk': { cronUtc: '0 19 * * *', localLabel: '00:30' },
+  'redlinetech.lk': { cronUtc: '30 19 * * *', localLabel: '01:00' },
+  'gamestreet.lk': { cronUtc: '0 20 * * *', localLabel: '01:30' },
+  'chamacomputers.lk': { cronUtc: '30 20 * * *', localLabel: '02:00' },
+  'pcbuilders.lk': { cronUtc: '0 21 * * *', localLabel: '02:30' },
+}
+
+/** Hours since a shop's expected daily run, given "HH" from its cron. */
+export function hoursSinceExpectedRun(cronUtc: string, now = new Date()): number {
+  const [minute, hour] = cronUtc.split(' ').map(Number)
+  const expected = new Date(now)
+  expected.setUTCHours(hour, minute, 0, 0)
+  // Today's slot has not come round yet, so measure from yesterday's.
+  if (expected > now) expected.setUTCDate(expected.getUTCDate() - 1)
+  return (now.getTime() - expected.getTime()) / 3_600_000
+}
 
 export const rupees = (n: number) => `Rs ${Math.round(n).toLocaleString('en-LK')}`

@@ -100,8 +100,11 @@ which apply is decided by `category`.
 
 ### Where the values come from
 
-Three sources, in strict order of authority:
+Four sources, in strict order of authority:
 
+0. **Manual overrides** (`part_overrides`), entered through `/admin` and applied
+   after everything else on every run. Each row carries a required source note.
+   Filling a null only — the mechanism cannot blank a value the pipeline knows.
 1. **Curated catalogs** in the repo — 54 GPUs, 86 CPUs, 5 PSUs, each entry
    citing its source. Applied last so they win outright.
 2. **The chipset table** — 33 chipsets mapping to socket and memory generation,
@@ -111,6 +114,12 @@ Three sources, in strict order of authority:
 
 Nothing is inferred. A value that cannot be sourced stays null, and the rule
 that needed it answers `unknown`.
+
+Three columns had **no writer at all** until the override table existed:
+`ram_slots`, `max_ram_gb` and `max_supported_speed_mhz`. That meant the
+`ram-fits` and `ram-speed` checks could never return anything but `unknown`,
+whatever parts you picked. Filling them by hand is currently the only way to
+switch those two checks on.
 
 ### Actual spec coverage
 

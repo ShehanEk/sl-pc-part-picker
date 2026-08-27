@@ -1,7 +1,7 @@
 import { and, eq, sql } from 'drizzle-orm'
 
 import { getDb } from '@/db'
-import { listings, parts, priceHistory } from '@/db/schema'
+import { listings, partOverrides, parts, priceHistory } from '@/db/schema'
 
 import { CURATED_CPUS } from './cpu-specs'
 import { CURATED_GPUS, PART_ALIASES } from './gpu-specs'
@@ -97,12 +97,49 @@ async function foldAliases(): Promise<string[]> {
         )
     }
 
+    // Carry any hand-entered override across before the alias row goes.
+    //
+    // `part_overrides` has no foreign key precisely so the delete below cannot
+    // cascade into it, but that only stops the work being destroyed — without
+    // this it would be stranded on an id nothing resolves to any more. Fields
+    // the canonical part already has an opinion on win, matching how listings
+    // and history are folded above.
+    const aliasOverride = (
+      await db.select().from(partOverrides).where(eq(partOverrides.partId, alias))
+    )[0]
+    if (aliasOverride) {
+      const canonicalOverride = (
+        await db.select().from(partOverrides).where(eq(partOverrides.partId, canonical))
+      )[0]
+
+      if (!canonicalOverride) {
+        await db
+          .update(partOverrides)
+          .set({ partId: canonical })
+          .where(eq(partOverrides.partId, alias))
+      } else {
+        const merged = { ...aliasOverride, ...stripNulls(canonicalOverride) }
+        await db
+          .update(partOverrides)
+          .set({ ...merged, partId: canonical, updatedAt: new Date() })
+          .where(eq(partOverrides.partId, canonical))
+        await db.delete(partOverrides).where(eq(partOverrides.partId, alias))
+      }
+    }
+
     // Anything left over is a duplicate of a row the canonical part already has.
     await db.delete(parts).where(eq(parts.partId, alias)) // cascades to both tables
     folded.push(`${alias} -> ${canonical}`)
   }
 
   return folded
+}
+
+/** Drop null fields so a spread keeps the other side's value. */
+function stripNulls<T extends object>(row: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(row).filter(([, v]) => v !== null && v !== undefined),
+  ) as Partial<T>
 }
 
 export async function applyCuratedSpecs(): Promise<ApplyResult> {

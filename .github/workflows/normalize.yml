@@ -51,3 +51,22 @@ jobs:
           echo '```' >> "$GITHUB_STEP_SUMMARY"
           grep -E 'resolved|wrote|curated catalog' /tmp/normalize.log >> "$GITHUB_STEP_SUMMARY" || true
           echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      # The read caches all share one tag with a 30-minute revalidate, and
+      # nothing else ever clears it — without this the night's prices sit behind
+      # a stale cache until it happens to expire.
+      - name: Clear the site's catalog cache
+        if: ${{ vars.SITE_URL != '' }}
+        env:
+          SITE_URL: ${{ vars.SITE_URL }}
+          REVALIDATE_SECRET: ${{ secrets.REVALIDATE_SECRET }}
+        run: |
+          if [ -z "$REVALIDATE_SECRET" ]; then
+            echo "::warning::REVALIDATE_SECRET is not set — the site will serve cached prices for up to 30 more minutes."
+            exit 0
+          fi
+          code=$(curl -s -o /tmp/revalidate.out -w '%{http_code}' -X POST -H "Authorization: Bearer $REVALIDATE_SECRET" "$SITE_URL/api/revalidate")
+          echo "revalidate -> HTTP $code"
+          cat /tmp/revalidate.out || true
+          # A failure here costs freshness, not data; the next run tries again.
+          [ "$code" = "200" ] || echo "::warning::Cache revalidation failed."

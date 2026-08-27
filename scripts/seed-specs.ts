@@ -1,4 +1,5 @@
 import { applyCuratedSpecs } from '@/catalog/apply'
+import { applyOverrides } from '@/catalog/overrides'
 
 /**
  * Apply the curated spec catalog and report coverage.
@@ -9,6 +10,19 @@ import { applyCuratedSpecs } from '@/catalog/apply'
  */
 async function main() {
   const r = await applyCuratedSpecs()
+
+  // Same order as the normalize run: curated first, hand-entered on top, so
+  // this command stays a faithful "apply everything the catalog knows".
+  const o = await applyOverrides()
+  if (o.overrides > 0) {
+    console.log(
+      `Overrides   : ${o.partsUpdated}/${o.overrides} applied` +
+        (o.orphaned.length ? `, ${o.orphaned.length} orphaned` : ''),
+    )
+    for (const d of o.disagreements) {
+      console.log(`   ${d.partId}.${d.field}: ${d.was} -> ${d.now}`)
+    }
+  }
 
   console.log(`GPU entries : ${r.curatedEntries} curated, ${r.partsUpdated} applied`)
   console.log(
