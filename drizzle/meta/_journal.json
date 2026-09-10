@@ -22,6 +22,13 @@
       "when": 1787807422940,
       "tag": "0002_polite_darkstar",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1789068802048,
+      "tag": "0003_adorable_iron_monger",
+      "breakpoints": true
     }
   ]
 }

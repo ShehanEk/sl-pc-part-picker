@@ -1,0 +1,313 @@
+import {
+  app,
+  BrowserWindow,
+  Menu,
+  Notification,
+  Tray,
+  ipcMain,
+  nativeImage,
+  shell,
+} from 'electron'
+import { join, resolve } from 'node:path'
+
+import { loadQueries, hasCredentials, type AdminQueries } from './monitor'
+import { RunnerHost, runnerPathFor, type JobSpec } from './runner-host'
+import { Scheduler } from './scheduler'
+import * as secrets from './secrets'
+
+/**
+ * PC Maker.lk desktop.
+ *
+ * Runs the scrape pipeline from this machine rather than from GitHub's runners,
+ * which is the whole reason it exists: gamestreet.lk answers CI with 403 and
+ * answers a residential connection normally, and spoofing a browser user-agent
+ * was rejected as evading an access control.
+ */
+
+const DIST = __dirname
+const REPO_ROOT = resolve(DIST, '..', '..')
+
+// Set before anything asks for userData. Without it Electron falls back to the
+// generic "Electron" directory, which every unpackaged Electron app on the
+// machine shares — not somewhere to keep a database password.
+app.setName('PC Maker Sync')
+
+let win: BrowserWindow | null = null
+let tray: Tray | null = null
+let runner: RunnerHost
+let scheduler: Scheduler
+let paused = false
+let runtimeReport: { fetch: boolean; abort: boolean; getSetCookie: boolean } | null = null
+
+/** Two instances would each get their own throttle map and their own queue. */
+if (!app.requestSingleInstanceLock()) {
+  app.quit()
+}
+
+function queries(): AdminQueries {
+  return loadQueries(DIST)
+}
+
+function send(channel: string, payload: unknown) {
+  win?.webContents.send(channel, payload)
+}
+
+function notify(title: string, body: string) {
+  if (Notification.isSupported()) new Notification({ title, body }).show()
+}
+
+/**
+ * Runs one job with its `pipeline_runs` lease.
+ *
+ * The lease is the only thing standing between this app and a retailer being
+ * scraped twice at once by two different actors — GitHub's concurrency groups
+ * cannot see a desktop run. A refusal here is a normal outcome, not an error.
+ */
+async function execute(spec: JobSpec, trigger: 'schedule' | 'manual'): Promise<void> {
+  const q = queries()
+  const label = spec.kind === 'scrape' ? spec.shop : 'normalize'
+
+  let handle
+  try {
+    handle = await q.startRun({
+      kind: spec.kind,
+      shop: spec.kind === 'scrape' ? spec.shop : undefined,
+      actor: 'desktop',
+      dryRun: spec.dryRun,
+    })
+  } catch (err) {
+    if (err instanceof q.RunInProgressError) {
+      send('log', `${label}: skipped — ${err.message}`)
+      return
+    }
+    throw err
+  }
+
+  send('job', { state: 'running', label, trigger })
+  updateTray()
+
+  const outcome = await runner.run(spec)
+
+  await q.finishRun(handle, {
+    ok: outcome.ok,
+    result: outcome.ok ? (outcome.result as never) : undefined,
+    error: outcome.ok ? undefined : outcome.error,
+    logTail: outcome.logTail,
+  })
+
+  send('job', { state: 'done', label, ok: outcome.ok })
+  if (!outcome.ok) notify(`${label} failed`, outcome.error.split('\n')[0])
+  updateTray()
+  await pushStatus()
+}
+
+async function pushStatus() {
+  if (!hasCredentials()) {
+    send('status', { configured: false })
+    return
+  }
+  try {
+    const q = queries()
+    const [sync, summary, runs] = await Promise.all([
+      q.getShopSync(),
+      q.getCatalogSummary(),
+      q.recentRuns(25),
+    ])
+    send('status', { configured: true, sync, summary, runs, runtime: runtimeReport })
+  } catch (err) {
+    send('status', {
+      configured: true,
+      error: err instanceof Error ? err.message : String(err),
+    })
+  }
+}
+
+function updateTray() {
+  if (!tray) return
+  const busy = runner?.busy
+  tray.setToolTip(
+    busy
+      ? `PC Maker.lk — running ${busy.kind === 'scrape' ? busy.shop : 'normalize'}`
+      : paused
+        ? 'PC Maker.lk — paused'
+        : 'PC Maker.lk — idle',
+  )
+  tray.setContextMenu(
+    Menu.buildFromTemplate([
+      { label: busy ? `Running ${busy.kind === 'scrape' ? busy.shop : 'normalize'}…` : 'Idle', enabled: false },
+      { type: 'separator' },
+      { label: 'Open dashboard', click: () => showWindow() },
+      {
+        label: 'Check for due syncs now',
+        enabled: !busy,
+        click: () => void scheduler.tick(),
+      },
+      {
+        label: paused ? 'Resume scheduled syncs' : 'Pause scheduled syncs',
+        click: () => {
+          paused = !paused
+          updateTray()
+        },
+      },
+      { label: 'Stop the running job', enabled: Boolean(busy), click: () => runner.cancel() },
+      { type: 'separator' },
+      { label: 'Quit', click: () => { runner.dispose(); app.exit(0) } },
+    ]),
+  )
+}
+
+function showWindow() {
+  if (win) {
+    win.show()
+    win.focus()
+    return
+  }
+
+  win = new BrowserWindow({
+    width: 1100,
+    height: 780,
+    title: 'PC Maker.lk sync',
+    backgroundColor: '#f2f4f9',
+    webPreferences: {
+      preload: join(DIST, 'preload.cjs'),
+      // Non-negotiable: log lines and table rows contain URLs scraped from
+      // third-party sites. That is untrusted content rendered in this window.
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+    },
+  })
+
+  win.setMenuBarVisibility(false)
+  void win.loadFile(join(DIST, '..', 'renderer', 'index.html'))
+
+  // Nothing in this window may navigate anywhere, and nothing may open a new
+  // one. External links go through the vetted opener below.
+  win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+  win.webContents.on('will-navigate', (event) => event.preventDefault())
+
+  win.on('closed', () => {
+    win = null
+  })
+  win.once('ready-to-show', () => void pushStatus())
+}
+
+app.whenReady().then(() => {
+  runner = new RunnerHost(runnerPathFor(DIST), {
+    onLog: (line) => send('log', line),
+    onRuntime: (runtime) => {
+      runtimeReport = runtime
+      console.log(
+        `runner runtime: fetch=${runtime.fetch} abort=${runtime.abort} getSetCookie=${runtime.getSetCookie}`,
+      )
+      // Chromium's fetch strips Set-Cookie as a forbidden response header. The
+      // Tyno scrapers read it for their session, and would fail quietly — an
+      // empty price rather than an error — so this is checked, not assumed.
+      if (!runtime.getSetCookie) {
+        notify(
+          'Runtime problem',
+          'The runner has no getSetCookie. nanotek.lk and redlinetech.lk would return no prices.',
+        )
+      }
+    },
+  })
+
+  scheduler = new Scheduler({
+    runner,
+    queries: queries(),
+    execute,
+    notify,
+    isPaused: () => paused,
+  })
+
+  // Start the runner immediately rather than on the first job. It reports the
+  // runtime it actually got, and a missing getSetCookie would otherwise stay
+  // invisible until a scheduled scrape failed quietly at 3am.
+  void runner.run({ kind: 'normalize', dryRun: true, limit: 0 }).catch(() => {})
+
+  tray = new Tray(nativeImage.createEmpty())
+  updateTray()
+  tray.on('click', () => showWindow())
+
+  registerIpc()
+  showWindow()
+  if (hasCredentials()) scheduler.start()
+})
+
+app.on('second-instance', () => showWindow())
+app.on('window-all-closed', () => {
+  // Deliberately does not quit: this is a tray app, and closing the window is
+  // how you get it out of the way, not how you stop it syncing.
+})
+app.on('before-quit', () => runner?.dispose())
+
+function registerIpc() {
+  ipcMain.handle('status', () => pushStatus())
+
+  ipcMain.handle('settings', () => ({
+    ...secrets.describe(),
+    paused,
+    repoRoot: REPO_ROOT,
+    runtime: runtimeReport,
+  }))
+
+  ipcMain.handle('setSecret', (_e, key: unknown, value: unknown) => {
+    if (!secrets.isSecretKey(key)) return { ok: false, error: 'Unknown setting.' }
+    if (typeof value !== 'string') return { ok: false, error: 'Expected a string.' }
+    return secrets.set(key, value)
+  })
+
+  ipcMain.handle('importEnv', () => secrets.importFromEnvLocal(REPO_ROOT))
+
+  ipcMain.handle('runNow', async (_e, shop: unknown) => {
+    if (typeof shop !== 'string') return { ok: false, error: 'Expected a shop.' }
+    // Only shops the bundled scrapers know. A compromised renderer must not be
+    // able to point this app at an arbitrary host.
+    if (!queries().shopKeys.includes(shop)) return { ok: false, error: 'Unknown shop.' }
+    if (runner.busy) return { ok: false, error: 'Something is already running.' }
+    void execute({ kind: 'scrape', shop }, 'manual')
+    return { ok: true }
+  })
+
+  ipcMain.handle('normalizeNow', async () => {
+    if (runner.busy) return { ok: false, error: 'Something is already running.' }
+    void execute({ kind: 'normalize' }, 'manual')
+    return { ok: true }
+  })
+
+  ipcMain.handle('checkNow', async () => {
+    void scheduler.tick()
+    return { ok: true }
+  })
+
+  ipcMain.handle('cancel', () => {
+    runner.cancel()
+    updateTray()
+    return { ok: true }
+  })
+
+  ipcMain.handle('setPaused', (_e, value: unknown) => {
+    paused = Boolean(value)
+    updateTray()
+    return { ok: true, paused }
+  })
+
+  ipcMain.handle('openExternal', (_e, url: unknown) => {
+    if (typeof url !== 'string') return { ok: false }
+    // Shop URLs in the UI came from scraped pages. Only open ones whose origin
+    // is a retailer we actually track, or the project's own repo.
+    let parsed: URL
+    try {
+      parsed = new URL(url)
+    } catch {
+      return { ok: false }
+    }
+    const allowed =
+      parsed.protocol === 'https:' &&
+      (queries().TRACKED_SHOPS.some((s) => parsed.hostname.endsWith(s)) ||
+        parsed.hostname === 'github.com')
+    if (!allowed) return { ok: false }
+    void shell.openExternal(url)
+    return { ok: true }
+  })
+}

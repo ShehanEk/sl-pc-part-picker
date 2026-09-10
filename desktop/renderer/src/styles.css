@@ -1,0 +1,57 @@
+/* Borrows the web app's glass palette so the two read as one product. */
+:root {
+  color-scheme: light;
+  --ink: #23283a; --ink-2: #5a6072; --ink-3: #7b8194; --ink-4: #9aa0b0;
+  --accent: #4f6ef7; --ok: #22a06b; --warn: #c67c1e; --bad: #d0453b;
+  --line: rgb(30 50 100 / 9%); --glass: #fff; --bg: #f2f4f9;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 13px/1.5 "Segoe UI", system-ui, sans-serif;
+}
+.bar {
+  position: sticky; top: 0; z-index: 2;
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 16px; padding: 10px 18px;
+  background: rgb(252 253 255 / 96%); border-bottom: 1px solid var(--line);
+}
+.brand { font-weight: 700; letter-spacing: -0.02em; font-size: 15px; }
+.accent { color: var(--accent); }
+.tag {
+  margin-left: 4px; padding: 2px 7px; border-radius: 99px;
+  background: rgb(30 50 100 / 7%); color: var(--ink-2);
+  font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em;
+}
+.actions { display: flex; gap: 8px; }
+button {
+  border: 1px solid var(--line); background: #fff; color: var(--ink-2);
+  border-radius: 8px; padding: 6px 12px; font: inherit; font-size: 12px; cursor: pointer;
+}
+button:hover:not(:disabled) { border-color: rgb(30 50 100 / 28%); }
+button:disabled { opacity: 0.45; cursor: default; }
+main { display: grid; gap: 16px; padding: 18px; max-width: 1040px; margin: 0 auto; }
+.panel {
+  background: var(--glass); border: 1px solid var(--line);
+  border-radius: 14px; padding: 16px 18px;
+  box-shadow: 0 8px 24px -18px rgb(35 55 110 / 30%);
+}
+h2 { margin: 0 0 4px; font-size: 14px; letter-spacing: -0.015em; }
+.hint { margin: 0 0 12px; color: var(--ink-3); font-size: 12px; }
+table { width: 100%; border-collapse: collapse; }
+th {
+  text-align: left; font-weight: 500; color: var(--ink-3);
+  font-size: 11px; padding: 6px 8px; border-bottom: 1px solid var(--line);
+}
+td { padding: 8px; border-bottom: 1px solid var(--line); font-size: 12.5px; }
+tr:last-child td { border-bottom: 0; }
+th.n, td.n { text-align: right; font-variant-numeric: tabular-nums; }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 99px; background: var(--ink-4); }
+.dot.ok { background: var(--ok); } .dot.warn { background: var(--warn); } .dot.bad { background: var(--bad); }
+td.ok { color: var(--ok); } td.warn { color: var(--warn); } td.bad { color: var(--bad); }
+pre {
+  margin: 0; max-height: 260px; overflow: auto;
+  background: rgb(240 243 250 / 70%); border-radius: 10px; padding: 12px;
+  font: 11.5px/1.6 "Cascadia Mono", Consolas, monospace; color: var(--ink-2);
+  white-space: pre-wrap; word-break: break-word;
+}

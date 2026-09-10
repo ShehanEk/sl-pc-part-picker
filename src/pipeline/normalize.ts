@@ -426,7 +426,7 @@ export async function runNormalize(
   // when choosing between shops.
   const bestPerPartShop = new Map<string, (typeof resolved)[number]>()
   for (const r of resolved) {
-    const key = `${r.partId} ${r.shop}`
+    const key = `${r.partId}\u0000${r.shop}`
     const existing = bestPerPartShop.get(key)
     if (!existing) {
       bestPerPartShop.set(key, r)

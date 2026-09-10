@@ -12,6 +12,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // The desktop app's build output — a 3MB generated bundle of the pipeline.
+    // Its source is linted; the bundle is not source.
+    "desktop/dist/**",
+    "desktop/renderer/dist/**",
+    "desktop/node_modules/**",
   ]),
 ]);
 

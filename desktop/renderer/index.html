@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <!--
+      No remote anything. The renderer displays product titles and URLs scraped
+      from third-party sites; this is what stops any of it loading or executing.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:;"
+    />
+    <title>PC Maker.lk sync</title>
+    <link rel="stylesheet" href="dist/renderer.css" />
+  </head>
+  <body>
+    <header class="bar">
+      <span class="brand">PC Maker<span class="accent">.lk</span> <span class="tag">sync</span></span>
+      <span class="actions">
+        <button id="check">Check for due syncs</button>
+        <button id="normalize">Normalize</button>
+        <button id="pause">Pause</button>
+        <button id="cancel" disabled>Stop</button>
+      </span>
+    </header>
+
+    <main>
+      <section class="panel">
+        <h2>Shops</h2>
+        <p class="hint" id="summary">Loading…</p>
+        <table id="shops">
+          <thead>
+            <tr><th>Shop</th><th>Last row</th><th class="n">Pending</th><th class="n">Listings</th><th class="n">In stock</th><th></th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </section>
+
+      <section class="panel">
+        <h2>Recent runs</h2>
+        <p class="hint">
+          Written before the work starts, so a run that died still leaves a trace.
+        </p>
+        <table id="runs">
+          <thead>
+            <tr><th>When</th><th>What</th><th>Who</th><th>Result</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </section>
+
+      <section class="panel">
+        <h2>Log</h2>
+        <pre id="log" aria-live="polite"></pre>
+      </section>
+
+      <section class="panel" id="settings-panel">
+        <h2>Connection</h2>
+        <p class="hint" id="settings">…</p>
+        <button id="import">Import from .env.local</button>
+      </section>
+    </main>
+
+    <script src="dist/renderer.js"></script>
+  </body>
+</html>
