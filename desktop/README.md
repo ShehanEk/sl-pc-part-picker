@@ -23,10 +23,19 @@ npm install
 npm start
 ```
 
-First launch: **Import from .env.local** in the Connection panel copies your
-credentials into OS-encrypted storage, then restart. Nothing is read from the
-repo after that — the app depends only on its own data directory, so it keeps
-working if the repo moves.
+On first launch, with nothing stored yet, it copies `DATABASE_URL` and
+`ANTHROPIC_API_KEY` out of the repo's `.env.local` into OS-encrypted storage —
+once. After that the file is never read again, so the app keeps working if the
+repo moves and does not quietly change behaviour when that file does. The
+Connection panel has an **Import from .env.local** button to repeat it
+deliberately, and the startup log says which database it ended up pointed at.
+
+Credentials live in `%APPDATA%/PC Maker Sync/secrets.json`, encrypted with the
+OS keychain via Electron's `safeStorage` — the file contains no readable
+connection string. If the platform reports no encryption available, the app
+refuses to store them rather than writing a database password in plaintext.
+The renderer never receives them: it is told the host and database name so you
+can confirm you are pointed at the right place, and nothing more.
 
 ## How it decides what to sync
 

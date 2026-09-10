@@ -192,7 +192,37 @@ function showWindow() {
   win.once('ready-to-show', () => void pushStatus())
 }
 
+/**
+ * On a first launch with nothing stored, take the repo's .env.local once.
+ *
+ * This is a one-time copy into encrypted storage, not an ambient load: after
+ * this the app never looks at the file again, so it keeps working if the repo
+ * moves and it does not quietly change behaviour when that file does. Doing it
+ * on first run just saves the operator a button press they would always make.
+ */
+function seedCredentials() {
+  if (hasCredentials()) return
+  const result = secrets.importFromEnvLocal(REPO_ROOT)
+  if (result.ok && result.imported.length > 0) {
+    console.log(`imported ${result.imported.join(', ')} from .env.local`)
+  } else if (!result.ok) {
+    console.log(`no credentials yet: ${result.error}`)
+  }
+}
+
 app.whenReady().then(() => {
+  seedCredentials()
+
+  // Says which database this app is pointed at, without printing the password.
+  // Also the first thing that actually decrypts the store, so a broken keychain
+  // shows up here rather than as a confusing empty dashboard.
+  const where = secrets.describe()
+  console.log(
+    where.hasDatabaseUrl
+      ? `database: ${where.database ?? '?'} at ${where.host ?? '?'}`
+      : 'database: not configured',
+  )
+
   runner = new RunnerHost(runnerPathFor(DIST), {
     onLog: (line) => send('log', line),
     onRuntime: (runtime) => {

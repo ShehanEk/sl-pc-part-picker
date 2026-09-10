@@ -115,7 +115,29 @@ export async function politeGet(
     }
   }
 
-  throw new Error(`GET ${url} failed after ${retries + 1} attempts: ${lastError}`)
+  throw new Error(
+    `GET ${url} failed after ${retries + 1} attempts: ${describeError(lastError)}`,
+  )
+}
+
+/**
+ * Unwrap what actually went wrong.
+ *
+ * `fetch` rejects with a bare `TypeError: fetch failed` and hides the real
+ * reason — DNS, TLS, connection refused, a timeout — on `cause`. That message
+ * alone sent an investigation down the wrong path once already: three shops
+ * failing with "fetch failed" looks like the sites are down, when the cause
+ * said otherwise. Walk the chain and say the useful thing.
+ */
+function describeError(err: unknown): string {
+  const parts: string[] = []
+  for (let e: unknown = err, depth = 0; e && depth < 4; depth++) {
+    const candidate = e as { name?: string; code?: string; message?: string; cause?: unknown }
+    const label = candidate.code ?? candidate.message ?? candidate.name
+    if (label && !parts.includes(label)) parts.push(label)
+    e = candidate.cause
+  }
+  return parts.join(' <- ') || String(err)
 }
 
 /** Parse "Rs.94,000.00" / "282,000" / "320,000 LKR" into a number. */

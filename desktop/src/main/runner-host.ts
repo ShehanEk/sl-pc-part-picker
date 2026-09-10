@@ -55,8 +55,23 @@ export class RunnerHost {
     // the runner's imports evaluate. `src/lib/http.ts` captures the delay floor
     // and user-agent at module load, and `getDb()` caches its client on first
     // use — handing configuration over afterwards would be too late.
+    //
+    // It must *extend* the parent environment, not replace it. `env` here is
+    // the whole environment, and a utility process given only three variables
+    // cannot resolve DNS on Windows: every request fails with EAI_FAIL behind
+    // a bare "TypeError: fetch failed". Plain Node does not behave this way,
+    // which is why it survived the Phase 0 probe and only broke in the app.
+    const inherited: Record<string, string> = {}
+    for (const [key, value] of Object.entries(process.env)) {
+      if (value !== undefined) inherited[key] = value
+    }
+    // The two settings this app owns are cleared first, so a value in the
+    // launching shell can never weaken the throttle or the user-agent.
+    delete inherited.SCRAPER_DELAY_MS
+    delete inherited.SCRAPER_USER_AGENT
+
     const child = utilityProcess.fork(this.runnerPath, [], {
-      env: { ...runnerEnv(), NODE_ENV: 'production' },
+      env: { ...inherited, ...runnerEnv(), NODE_ENV: 'production' },
       stdio: 'ignore',
       serviceName: 'pcmaker-runner',
     })
