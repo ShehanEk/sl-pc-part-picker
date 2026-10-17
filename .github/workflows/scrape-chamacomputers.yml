@@ -1,9 +1,9 @@
 name: scrape chamacomputers.lk
 
-# Manual only. chamacomputers.lk returned nothing to GitHub's runners every
-# night while serving a residential connection normally, so the desktop app
+# Manual only. chamacomputers.lk answers GitHub's runners with 403 on every
+# category and serves a residential connection normally, so the desktop app
 # scrapes it nightly at 02:00 Sri Lanka time (SHOP_SCHEDULE in src/lib/site.ts).
-# Kept for a manual run, to check whether that has changed.
+# Kept for a manual run, to check whether the block has lifted.
 on:
   workflow_dispatch:
 
