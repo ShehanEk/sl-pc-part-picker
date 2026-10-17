@@ -4,6 +4,9 @@ import { BUILD_SLOTS } from '@/compat/build'
 import { CATEGORY_COPY, SITE_NAME, TRACKED_SHOPS } from '@/lib/site'
 import { getCatalogStats } from '@/queries/build'
 
+import { CaseIcon } from './PartIcons'
+import { SearchBox } from './SearchBox'
+
 /**
  * Header and footer shared by every page.
  *
@@ -13,15 +16,14 @@ import { getCatalogStats } from '@/queries/build'
  * indexed however good the sitemap is.
  */
 
-const nf = new Intl.NumberFormat('en-LK')
-
-export async function SiteHeader() {
+export async function SiteHeader({ search = true }: { search?: boolean }) {
   const stats = await getCatalogStats()
 
   const checked = stats.lastScrape
-    ? new Date(stats.lastScrape).toLocaleString('en-LK', {
-        month: 'numeric',
+    ? new Date(stats.lastScrape).toLocaleString('en-GB', {
+        timeZone: 'Asia/Colombo',
         day: 'numeric',
+        month: 'short',
         hour: '2-digit',
         minute: '2-digit',
         hour12: false,
@@ -29,31 +31,39 @@ export async function SiteHeader() {
     : null
 
   return (
-    <header className="glass-header sticky top-0 z-30 flex items-center justify-between gap-6 px-5 py-3.5 sm:px-8">
+    <header className="glass-header sticky top-0 z-30 flex flex-wrap items-center justify-between gap-x-6 gap-y-3 px-5 py-3 sm:px-8">
       <div className="flex items-baseline gap-3">
         <Link href="/" className="text-[17.5px] font-bold tracking-[-0.025em]">
           PC Maker<span className="text-accent">.lk</span>
         </Link>
-        <span className="hidden text-[12.5px] text-ink-3 sm:inline">
-          PC prices &amp; stock, Sri Lanka
-        </span>
+        <span className="hidden text-[12.5px] text-ink-3 md:inline">PC part prices, Sri Lanka</span>
       </div>
 
+      {search && (
+        <div className="order-last w-full sm:order-none sm:w-auto sm:max-w-[520px] sm:flex-1">
+          <SearchBox />
+        </div>
+      )}
+
       <div className="flex items-center gap-2">
-        <span className="mono hidden items-center gap-4 px-1 py-1.5 text-[11px] text-ink-3 lg:flex">
-          <span>{nf.format(stats.parts)} parts</span>
-          <span>{nf.format(stats.listings)} listings</span>
-          <span>{stats.shops} shops</span>
-        </span>
         {checked && (
-          <span className="mono flex items-center gap-1.5 rounded-full border border-[var(--glass-border)] bg-white/90 px-3 py-1.5 text-[11px] text-ink-3">
+          <span className="mono hidden items-center gap-1.5 rounded-full border border-[var(--glass-border)] bg-white/90 px-3 py-1.5 text-[11px] text-ink-3 lg:flex">
             <span
               className="h-1.5 w-1.5 rounded-full bg-ok"
               style={{ boxShadow: '0 0 8px oklch(0.75 0.18 152)' }}
             />
-            live {checked}
+            Checked {checked}
           </span>
         )}
+        {/* Secondary on purpose: the site is for finding a price, and the
+            builder is for the people who want a whole machine. */}
+        <Link
+          href="/build"
+          className="inline-flex min-h-10 items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--accent-soft-border)] bg-white/80 px-3.5 text-[13.5px] font-semibold text-[var(--accent-strong)] transition hover:bg-[var(--accent-soft)]"
+        >
+          <CaseIcon className="h-4 w-4" />
+          PC builder
+        </Link>
       </div>
     </header>
   )
@@ -78,10 +88,10 @@ export function SiteFooter() {
             ))}
             <li>
               <Link
-                href="/"
+                href="/build"
                 className="text-[13.5px] text-ink-2 underline-offset-2 hover:text-accent hover:underline"
               >
-                Build a PC
+                PC builder
               </Link>
             </li>
           </ul>

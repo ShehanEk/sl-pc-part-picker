@@ -419,6 +419,24 @@ positive finite value is honoured.
 
 ## Product and interface
 
+### Price comparison is the main job; the builder is secondary
+
+**2026-10-18. Decision.** The home page leads with search and the seven
+categories, and every page is built around one question: which shop has this
+part cheapest? The PC builder moved from `/` to `/build`, reached from an
+outlined button in the header, a band on the home page and "Add to my build" on
+part pages.
+
+**Why.** Most visitors want one part at the best price, not a whole machine. The
+builder made them pick a build slot before they could see a price.
+
+**Consequences.** Category filters run in the browser so the category pages stay
+prerendered, and out-of-stock parts stay in their HTML: a category page is the
+only crawl path to its part pages. Search is a scan of the directory the pages
+already load, not an index; ~1,300 parts does not justify one. `/search` is
+`noindex`. One colour per category (`CATEGORY_STYLE`) is shared by every page
+and the builder, replacing the builder's own palette.
+
 ### The build lives in the browser, not the URL
 
 **Decision.** Build state is React state. No search params.

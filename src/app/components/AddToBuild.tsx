@@ -26,9 +26,9 @@ export function AddToBuild({
 }) {
   return (
     <Link
-      href="/"
+      href="/build"
       onClick={() => queueAdd(slot, partId, shop)}
-      className="mt-4 inline-block rounded-[var(--radius-sm)] bg-[var(--accent)] px-4 py-2.5 text-[13.5px] text-white"
+      className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[var(--radius-sm)] border border-[var(--accent-soft-border)] bg-white/90 px-4 text-[14px] font-semibold text-[var(--accent-strong)] transition hover:bg-[var(--accent-soft)]"
     >
       {children}
     </Link>

@@ -46,8 +46,8 @@ flowchart TB
 
   subgraph app["Next.js on Vercel"]
     Q["query layer + unstable_cache"]
-    PAGE["page.tsx — static, 30m revalidate"]
-    CFG["Configurator — client"]
+    PAGE["home, category and part pages — static, 30m revalidate"]
+    CFG["PC builder at /build — client"]
   end
 
   CAT["curated spec catalogs<br/>in the repo"]
@@ -82,8 +82,9 @@ without touching what a visitor sees.
 | `src/pipeline/normalize.ts` | Resolves raw rows to parts, writes `listings` and `price_history`. |
 | `src/compat/rules.ts` | Pairwise checks. Pure. `pass` / `fail` / `warn` / `unknown`. |
 | `src/compat/build.ts` | Build-level evaluation, candidate ranking, next-slot suggestion. Pure. |
-| `src/queries/build.ts` | Loads the whole catalogue for the configurator, cached 30 min. |
-| `src/app/` | The public configurator, category pages and part pages. |
+| `src/queries/build.ts` | Loads the whole catalogue for the PC builder, cached 30 min. |
+| `src/lib/search.ts` | Part search over the cached directory, by word. No index. |
+| `src/app/` | The public site: home (`/`), category pages, part pages, search (`/search`) and the PC builder (`/build`). |
 | `src/app/admin/` | Authenticated operations area — sync health, catalogue summary, and the spec-gap editor. The only place the app writes. |
 | `src/lib/admin-auth.ts` | One password, HMAC-signed cookie. `requireAdmin()` for pages, `assertAdmin()` for actions. |
 | `src/proxy.ts` | Keeps anonymous traffic off `/admin`. An optimisation, not the boundary. |
@@ -115,9 +116,11 @@ real collision. See [decisions](decisions.md#part-identity).
 
 ## Rendering and caching
 
-The page is **statically prerendered with a 30-minute revalidate**. The entire
+The builder page (`/build`) is **statically prerendered with a 30-minute revalidate**. The entire
 catalogue (1,046 parts with their offers) is serialised into the payload and
-handed to the client, and the configurator filters it in the browser.
+handed to the client, and the builder filters it in the browser. The home,
+category and part pages are prerendered the same way; only `/search` renders
+per request.
 
 That is unusual and it is the right trade here. The catalogue is ~1,000 parts,
 not a million; it changes once a night; and every interaction — picking a part,

@@ -162,3 +162,84 @@ body::before {
     transition: none;
   }
 }
+
+/*
+ * Price comparison table. Cell padding and borders live here rather than in
+ * utility classes so the narrow layout can replace them: below 720px of its
+ * own width it stops being a table and becomes one card per shop, with each
+ * value labelled from its data-label. Container query, not media query, so it
+ * responds to the column it sits in.
+ */
+.price-table-wrap {
+  overflow-x: auto;
+  container-type: inline-size;
+}
+
+.price-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.price-table th,
+.price-table td {
+  padding: 13px 12px;
+  border-top: 1px solid var(--hairline);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.price-table thead th {
+  border-top: 0;
+  padding-block: 11px;
+}
+
+.price-table th:first-child,
+.price-table td:first-child {
+  padding-inline-start: 20px;
+}
+
+.price-table th:last-child,
+.price-table td:last-child {
+  padding-inline-end: 20px;
+}
+
+@container (width < 720px) {
+  .price-table,
+  .price-table tbody,
+  .price-table tr,
+  .price-table th,
+  .price-table td {
+    display: block;
+  }
+
+  .price-table thead {
+    display: none;
+  }
+
+  .price-table tbody tr {
+    padding: 14px 18px;
+    border-top: 1px solid var(--hairline);
+  }
+
+  .price-table tbody th,
+  .price-table tbody td {
+    padding: 3px 0;
+    border: 0;
+    text-align: left;
+  }
+
+  .price-table tbody td:last-child {
+    padding-top: 10px;
+  }
+
+  .price-table td[data-label]::before {
+    content: attr(data-label) ': ';
+    /* The alternative text after the slash is what a screen reader announces,
+       without the colon. Browsers that do not support it keep the line above. */
+    content: attr(data-label) ': ' / attr(data-label);
+    font-family: var(--font-sans), system-ui, sans-serif;
+    font-size: 12px;
+    color: var(--ink-3);
+  }
+}

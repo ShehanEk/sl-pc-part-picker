@@ -1,23 +1,9 @@
 'use client'
 
 import Link from 'next/link'
-import {
-  useMemo,
-  useState,
-  useSyncExternalStore,
-  type ComponentType,
-  type SVGProps,
-} from 'react'
+import { useMemo, useState, useSyncExternalStore } from 'react'
 
-import {
-  CaseIcon,
-  CpuIcon,
-  GpuIcon,
-  MotherboardIcon,
-  PsuIcon,
-  RamIcon,
-  StorageIcon,
-} from './PartIcons'
+import { CATEGORY_STYLE } from './PartIcons'
 import {
   BUILD_SLOTS,
   SLOT_LABEL,
@@ -51,18 +37,8 @@ import type { PartOffer } from '@/queries/build'
 
 const rs = (n: number) => `Rs ${n.toLocaleString('en-LK')}`
 
-/** One tile colour per category, so a row is recognisable before it is read. */
-type IconComponent = ComponentType<SVGProps<SVGSVGElement>>
-
-const SLOT_STYLE: Record<BuildSlot, { Icon: IconComponent; tint: string; ink: string }> = {
-  cpu: { Icon: CpuIcon, tint: 'rgb(120 150 255 / 14%)', ink: 'oklch(0.5 0.17 262)' },
-  motherboard: { Icon: MotherboardIcon, tint: 'rgb(90 200 160 / 16%)', ink: 'oklch(0.48 0.13 165)' },
-  ram: { Icon: RamIcon, tint: 'rgb(175 130 255 / 15%)', ink: 'oklch(0.52 0.17 300)' },
-  gpu: { Icon: GpuIcon, tint: 'rgb(255 130 160 / 15%)', ink: 'oklch(0.55 0.17 15)' },
-  storage: { Icon: StorageIcon, tint: 'rgb(120 200 230 / 17%)', ink: 'oklch(0.5 0.11 225)' },
-  psu: { Icon: PsuIcon, tint: 'rgb(255 180 100 / 18%)', ink: 'oklch(0.53 0.14 65)' },
-  case: { Icon: CaseIcon, tint: 'rgb(150 165 195 / 18%)', ink: 'oklch(0.45 0.03 260)' },
-}
+/** Shared with every other page, so a category keeps one colour site-wide. */
+const SLOT_STYLE = CATEGORY_STYLE
 
 const TONE: Record<CheckStatus, string> = {
   pass: 'text-ok',

@@ -5,8 +5,8 @@ import { canonical } from '@/lib/site'
 import { listIndexableParts, loadDirectory } from '@/queries/seo'
 
 /**
- * Every indexable URL: the configurator, seven category pages, and one page per
- * part.
+ * Every indexable URL: the home page, the PC builder, seven category pages,
+ * and one page per part.
  *
  * `lastModified` is the day that part's price was last confirmed rather than the
  * build time. A sitemap that claims a thousand pages changed the moment we
@@ -25,6 +25,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: new Date(),
       changeFrequency: 'daily',
       priority: 1,
+    },
+    {
+      url: canonical('/build'),
+      lastModified: new Date(),
+      changeFrequency: 'daily',
+      priority: 0.7,
     },
     ...BUILD_SLOTS.map((slot) => ({
       url: canonical(`/${slot}`),

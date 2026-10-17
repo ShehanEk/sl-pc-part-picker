@@ -2,18 +2,20 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
+import { CategoryList, type ListRow } from '@/app/components/CategoryList'
+import { CATEGORY_STYLE } from '@/app/components/PartIcons'
 import { SiteFooter, SiteHeader } from '@/app/components/SiteChrome'
 import { BUILD_SLOTS, type BuildSlot } from '@/compat/build'
-import { CATEGORY_COPY, SITE_NAME, canonical, rupees } from '@/lib/site'
+import { CATEGORY_COPY, SITE_NAME, TRACKED_SHOPS, canonical, rupees, sentenceCase } from '@/lib/site'
 import { specSummary } from '@/lib/specs'
-import { loadDirectory } from '@/queries/seo'
+import { loadDirectory, type SeoPart } from '@/queries/seo'
 
 /**
  * One browse page per category — /gpu, /cpu, /psu and so on.
  *
  * These exist to be found. "graphics card price in sri lanka" is a query a
- * person actually types and that a page can plausibly answer; the configurator
- * on / cannot rank for it, because its content is assembled in the browser and
+ * person actually types and that a page can plausibly answer; the builder
+ * cannot rank for it, because its content is assembled in the browser and
  * there is nothing in the HTML about graphics cards until someone clicks.
  */
 
@@ -61,6 +63,25 @@ export async function generateMetadata({
   }
 }
 
+/** The one spec worth filtering on, per category. */
+const FACET: Record<BuildSlot, { label: string; value: (p: SeoPart) => string | null }> = {
+  gpu: { label: 'Video memory', value: (p) => (p.vramGb ? `${p.vramGb} GB` : null) },
+  cpu: { label: 'Socket', value: (p) => p.socket ?? null },
+  motherboard: { label: 'Socket', value: (p) => p.socket ?? null },
+  ram: { label: 'Capacity', value: (p) => (p.capacityGb ? `${p.capacityGb} GB` : null) },
+  storage: {
+    label: 'Capacity',
+    value: (p) =>
+      p.capacityGb
+        ? p.capacityGb >= 1000
+          ? `${p.capacityGb / 1000} TB`
+          : `${p.capacityGb} GB`
+        : null,
+  },
+  psu: { label: 'Wattage', value: (p) => (p.ratedWatts ? `${p.ratedWatts} W` : null) },
+  case: { label: 'Form factor', value: (p) => p.formFactor ?? null },
+}
+
 export default async function CategoryPage({
   params,
 }: {
@@ -70,11 +91,24 @@ export default async function CategoryPage({
   if (!slot) notFound()
 
   const copy = CATEGORY_COPY[slot]
+  const { Icon, tint, ink } = CATEGORY_STYLE[slot]
   const items = (await loadDirectory())[slot]
   const inStock = items.filter((p) => p.inStockShops > 0)
-  const cheapest = inStock.length ? Math.min(...inStock.map((p) => p.bestLkr!)) : null
-  const dearest = inStock.length ? Math.max(...inStock.map((p) => p.bestLkr!)) : null
-  const shops = new Set(items.flatMap((p) => p.offers.map((o) => o.shop))).size
+  const listed = new Set(items.flatMap((p) => p.offers.map((o) => o.shop)))
+  const shops = TRACKED_SHOPS.filter((s) => listed.has(s))
+
+  const rows: ListRow[] = items.map((p) => ({
+    partId: p.partId,
+    model: p.model,
+    brand: p.brand,
+    specs: specSummary(p),
+    facet: FACET[slot].value(p),
+    offers: p.offers.map((o) => ({
+      shop: o.shop,
+      priceLkr: o.priceLkr,
+      buyable: o.inStock && !o.stale,
+    })),
+  }))
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -114,90 +148,88 @@ export default async function CategoryPage({
 
       <SiteHeader />
 
-      <div className="mx-auto max-w-[1300px] px-5 pb-4 pt-10 sm:px-8 sm:pt-12">
-        <nav aria-label="Breadcrumb" className="mb-4 text-[12.5px] text-ink-3">
-          <Link href="/" className="underline-offset-2 hover:underline">
+      <main className="mx-auto max-w-[1240px] px-5 pb-6 sm:px-8">
+        <nav aria-label="Breadcrumb" className="pt-7 text-[13px] text-ink-3">
+          <Link href="/" className="text-ink-2 underline-offset-2 hover:underline">
             Home
           </Link>
-          <span className="mx-2 text-ink-4">/</span>
-          <span className="text-ink-2">{sentenceCase(copy.plural)}</span>
+          <span aria-hidden className="mx-2">
+            /
+          </span>
+          <span aria-current="page">{sentenceCase(copy.plural)}</span>
         </nav>
 
-        <h1 className="display m-0">{copy.heading} prices in Sri&nbsp;Lanka</h1>
-        <p className="mt-4 max-w-[62ch] text-[16px] leading-[1.55] text-ink-2 [text-wrap:pretty]">
-          {copy.blurb}
-        </p>
-
-        {cheapest !== null && dearest !== null && (
-          <p className="mono mt-3 text-[12.5px] text-ink-3">
-            {inStock.length} in stock across {shops} shops · {rupees(cheapest)} –{' '}
-            {rupees(dearest)}
+        <div className="flex flex-col gap-3 pb-6 pt-3.5">
+          <div className="flex items-center gap-4">
+            <span
+              className="grid h-[52px] w-[52px] flex-none place-items-center rounded-[14px]"
+              style={{ background: tint, color: ink }}
+            >
+              <Icon className="h-[30px] w-[30px]" />
+            </span>
+            <h1 className="m-0 text-[clamp(30px,3.6vw,42px)] font-semibold leading-[1.05] tracking-[-0.035em]">
+              {copy.heading} prices in Sri&nbsp;Lanka
+            </h1>
+          </div>
+          <p className="m-0 max-w-[68ch] text-[15.5px] leading-[1.55] text-ink-2 [text-wrap:pretty]">
+            {inStock.length} in stock across {shops.length} shops. {copy.blurb}
           </p>
-        )}
-      </div>
-
-      <div className="mx-auto max-w-[1300px] px-5 pb-6 sm:px-8">
-        <div className="glass overflow-hidden">
-          {items.length === 0 ? (
-            <p className="px-5 py-8 text-[13.5px] text-ink-3">
-              Nothing listed in this category yet.
-            </p>
-          ) : (
-            items.map((p) => {
-              const specs = specSummary(p)
-              return (
-                <Link
-                  key={p.partId}
-                  href={`/${slot}/${p.partId}`}
-                  className="hairline-b row-tap flex items-center gap-4 px-5 py-3.5"
-                >
-                  <span className="min-w-0 flex-1">
-                    <span className="flex min-w-0 items-center gap-2.5">
-                      <span className="truncate text-[14.5px] tracking-[-0.015em]">
-                        {p.model}
-                      </span>
-                      <span className="mono hidden flex-none rounded-full bg-[rgb(30_50_100/5%)] px-2 py-[3px] text-[10px] text-ink-2 sm:inline">
-                        {p.brand}
-                      </span>
-                    </span>
-                    {specs && (
-                      <span className="mono mt-1 block truncate text-[11.5px] text-ink-3">
-                        {specs}
-                      </span>
-                    )}
-                  </span>
-
-                  <span className="w-[130px] flex-none text-right sm:w-[190px]">
-                    <span className="mono block whitespace-nowrap text-[15px] tracking-[-0.02em]">
-                      {p.bestLkr !== null ? rupees(p.bestLkr) : rupees(p.lowLkr)}
-                    </span>
-                    <span className="block truncate text-[11.5px] text-ink-3">
-                      {p.inStockShops > 0
-                        ? `${p.inStockShops} ${p.inStockShops === 1 ? 'shop' : 'shops'}`
-                        : 'out of stock'}
-                    </span>
-                  </span>
-                </Link>
-              )
-            })
-          )}
         </div>
+
+        <nav
+          aria-label="Categories"
+          className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-6 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0"
+        >
+          {BUILD_SLOTS.map((s) => {
+            const style = CATEGORY_STYLE[s]
+            const current = s === slot
+            return (
+              <Link
+                key={s}
+                href={`/${s}`}
+                aria-current={current ? 'page' : undefined}
+                className={`inline-flex flex-none items-center gap-2 rounded-full border py-2 pl-3 pr-4 text-[13.5px] transition ${
+                  current
+                    ? 'font-semibold text-white'
+                    : 'border-[var(--glass-border)] bg-white/90 font-medium text-ink-2 hover:text-ink'
+                }`}
+                style={current ? { background: style.strong, borderColor: style.strong } : undefined}
+              >
+                <style.Icon
+                  className="h-[18px] w-[18px]"
+                  style={{ color: current ? '#ffffff' : style.ink }}
+                />
+                {sentenceCase(CATEGORY_COPY[s].plural)}
+              </Link>
+            )
+          })}
+        </nav>
+
+        {items.length === 0 ? (
+          <p className="glass px-5 py-8 text-[13.5px] text-ink-3">
+            Nothing listed in this category yet.
+          </p>
+        ) : (
+          <CategoryList
+            slot={slot}
+            rows={rows}
+            facetLabel={FACET[slot].label}
+            shops={shops}
+            noun={copy.plural}
+          />
+        )}
 
         <p className="mt-4 px-1 text-[13px] leading-relaxed text-ink-3">
           Picking a {copy.singular} for a whole machine?{' '}
-          <Link href="/" className="text-accent underline-offset-2 hover:underline">
-            Build it in the configurator
+          <Link href="/build" className="text-accent underline-offset-2 hover:underline">
+            Use the PC builder
           </Link>{' '}
-          and we will only show you parts that fit what you have already chosen.
+          and it will only show you parts that fit what you have already chosen.
         </p>
-      </div>
+      </main>
 
       <SiteFooter />
     </>
   )
 }
 
-function sentenceCase(s: string): string {
-  // "RAM" and "SSDs and hard drives" are already cased deliberately.
-  return /^[A-Z]/.test(s) ? s : s[0].toUpperCase() + s.slice(1)
-}

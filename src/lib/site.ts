@@ -136,3 +136,8 @@ export function hoursSinceExpectedRun(cronUtc: string, now = new Date()): number
 }
 
 export const rupees = (n: number) => `Rs ${Math.round(n).toLocaleString('en-LK')}`
+
+/** "graphics cards" → "Graphics cards". "RAM" and "SSDs…" are already cased. */
+export function sentenceCase(s: string): string {
+  return /^[A-Z]/.test(s) ? s : s[0].toUpperCase() + s.slice(1)
+}

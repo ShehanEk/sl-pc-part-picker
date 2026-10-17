@@ -1,4 +1,6 @@
-import type { SVGProps } from 'react'
+import type { ComponentType, SVGProps } from 'react'
+
+import type { BuildSlot } from '@/compat/build'
 
 /**
  * Line-art icons for the seven part categories.
@@ -110,4 +112,25 @@ export function CaseIcon(props: IconProps) {
       <path d="M8.6 20.4v1.4M15.4 20.4v1.4" />
     </Icon>
   )
+}
+
+/**
+ * One colour per category, used everywhere a category appears: the home page
+ * tiles, the category pills, part pages and the builder. Hues are spaced round
+ * the wheel at matched lightness, so no category reads as louder than another.
+ *
+ * `strong` is the darker shade for white text on a filled pill, or for small
+ * coloured text, where `ink` would fall short of 4.5:1.
+ */
+export const CATEGORY_STYLE: Record<
+  BuildSlot,
+  { Icon: ComponentType<IconProps>; tint: string; ink: string; strong: string }
+> = {
+  gpu: { Icon: GpuIcon, tint: 'oklch(0.95 0.035 160)', ink: 'oklch(0.53 0.12 160)', strong: 'oklch(0.47 0.11 160)' },
+  cpu: { Icon: CpuIcon, tint: 'oklch(0.95 0.03 265)', ink: 'oklch(0.52 0.17 265)', strong: 'oklch(0.47 0.17 265)' },
+  motherboard: { Icon: MotherboardIcon, tint: 'oklch(0.95 0.03 215)', ink: 'oklch(0.52 0.1 215)', strong: 'oklch(0.46 0.09 215)' },
+  ram: { Icon: RamIcon, tint: 'oklch(0.95 0.035 315)', ink: 'oklch(0.52 0.17 315)', strong: 'oklch(0.47 0.16 315)' },
+  storage: { Icon: StorageIcon, tint: 'oklch(0.95 0.045 70)', ink: 'oklch(0.6 0.14 70)', strong: 'oklch(0.5 0.12 70)' },
+  psu: { Icon: PsuIcon, tint: 'oklch(0.95 0.035 25)', ink: 'oklch(0.55 0.18 25)', strong: 'oklch(0.48 0.17 25)' },
+  case: { Icon: CaseIcon, tint: 'oklch(0.95 0.045 115)', ink: 'oklch(0.55 0.12 115)', strong: 'oklch(0.46 0.1 115)' },
 }
