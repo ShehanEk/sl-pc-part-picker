@@ -83,6 +83,7 @@ export default async function AdminOverview() {
                       </td>
                       <td className="mono px-3 py-3 text-[12px] text-ink-3">
                         {schedule.localLabel}
+                        {!schedule.ci && ' · desktop'}
                       </td>
                       <td
                         className={`mono px-3 py-3 text-right text-[12px] ${

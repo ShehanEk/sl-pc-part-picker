@@ -110,14 +110,19 @@ export const TRACKED_SHOPS = [
  * has stopped working".
  *
  * Hours are UTC, matching the cron expressions; Sri Lanka is UTC+5:30.
+ *
+ * `ci: false` marks a shop GitHub's runners cannot reach — each answered them
+ * with 403 every night while serving the desktop app normally. Their workflows
+ * keep `workflow_dispatch` but no schedule, and the desktop app runs them at
+ * this slot instead.
  */
-export const SHOP_SCHEDULE: Record<string, { cronUtc: string; localLabel: string }> = {
-  'winsoft.lk': { cronUtc: '30 18 * * *', localLabel: '00:00' },
-  'nanotek.lk': { cronUtc: '0 19 * * *', localLabel: '00:30' },
-  'redlinetech.lk': { cronUtc: '30 19 * * *', localLabel: '01:00' },
-  'gamestreet.lk': { cronUtc: '0 20 * * *', localLabel: '01:30' },
-  'chamacomputers.lk': { cronUtc: '30 20 * * *', localLabel: '02:00' },
-  'pcbuilders.lk': { cronUtc: '0 21 * * *', localLabel: '02:30' },
+export const SHOP_SCHEDULE: Record<string, { cronUtc: string; localLabel: string; ci: boolean }> = {
+  'winsoft.lk': { cronUtc: '30 18 * * *', localLabel: '00:00', ci: true },
+  'nanotek.lk': { cronUtc: '0 19 * * *', localLabel: '00:30', ci: true },
+  'redlinetech.lk': { cronUtc: '30 19 * * *', localLabel: '01:00', ci: true },
+  'gamestreet.lk': { cronUtc: '0 20 * * *', localLabel: '01:30', ci: false },
+  'chamacomputers.lk': { cronUtc: '30 20 * * *', localLabel: '02:00', ci: false },
+  'pcbuilders.lk': { cronUtc: '0 21 * * *', localLabel: '02:30', ci: false },
 }
 
 /** Hours since a shop's expected daily run, given "HH" from its cron. */

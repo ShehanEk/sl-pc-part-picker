@@ -20,11 +20,11 @@ headless browser.
 | [winsoft.lk](https://www.winsoft.lk) | Laravel | 7 | 92 | 87 | **Coverage capped by robots.txt**; bundle-only parts excluded |
 | [redlinetech.lk](https://www.redlinetech.lk) | Tyno storefront | 7 | 44 | 43 | **Coverage capped by robots.txt** — first 12 products per category only |
 
-\* **gamestreet's stock figure is a default, not an observation.** Its category
-listings carry no stock indicator, so the scraper emits `null` and the normalizer
-treats anything that is not explicitly `false` as in stock. Every gamestreet
-listing therefore reads as available. Fixing it means a request per product page,
-which is the one thing its listing-only scrape currently avoids.
+\* **gamestreet's stock comes from its product pages** (since 2026-10-18).
+Its category listings carry no stock indicator, so each product costs one more
+request. Before that the scraper emitted `null`, the normalizer read anything
+not explicitly `false` as in stock, and every gamestreet listing showed as
+available. A product page that fails to load still leaves stock `null`.
 
 **Why redlinetech is small.** Its robots.txt disallows every query-string URL, so
 category pagination is off limits. That is a deliberate compliance choice, not a

@@ -14,7 +14,14 @@
 export { getShopSync, getCatalogSummary } from '@/queries/admin'
 export type { ShopSync, CategorySummary } from '@/queries/admin'
 
-export { finishRun, reapStaleRuns, recentRuns, startRun, RunInProgressError } from '@/pipeline/runs'
+export {
+  finishRun,
+  latestScrapeRuns,
+  reapStaleRuns,
+  recentRuns,
+  startRun,
+  RunInProgressError,
+} from '@/pipeline/runs'
 export type { RunHandle } from '@/pipeline/runs'
 
 export { SHOP_SCHEDULE, TRACKED_SHOPS } from '@/lib/site'

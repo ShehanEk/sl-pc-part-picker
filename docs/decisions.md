@@ -45,6 +45,20 @@ on its own staggered cron (18:30, 19:00, 19:30, 20:00, 20:30, 21:00 UTC), with
 **Why.** One retailer changing shape should fail only its own run. Staggering
 means the shops are never hit simultaneously by us.
 
+**2026-10-18 — three shops moved to the desktop app.** gamestreet,
+chamacomputers and pcbuilders answer GitHub's runners with 403 (or nothing)
+every night and a residential connection normally. Their workflows lost their
+schedules and keep `workflow_dispatch`; `SHOP_SCHEDULE` marks them `ci: false`
+and the desktop app runs them at the same slots. The alternative, letting them
+fail red every night, would have trained everyone to ignore a red run.
+
+**2026-10-18 — the desktop app defers to CI's run records, not the clock.** It
+used to wait two hours past a CI shop's slot and then scrape it. GitHub starts
+scheduled runs 2h12m–3h02m late, so the app scraped every CI shop first and CI
+skipped it on the lease. Now: CI failed tonight → the app takes over at once;
+CI running → leave it; CI not started → wait four hours; and never within 12
+hours of the shop's last data.
+
 **Bug that shaped it.** The reusable workflow's input was originally
 `timeout-minutes`. GitHub expressions parse the hyphen as subtraction, so the
 interpolation was invalid and **no caller workflow ever registered its

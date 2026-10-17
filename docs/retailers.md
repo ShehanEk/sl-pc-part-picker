@@ -31,7 +31,10 @@ listing.
 - Cards: `.product_content` → `.product_title a` (href + title), `.product_brand`,
   `.redPrice`, and `[data-id]` for the numeric id.
 - The listing repeats each product (grid + carousel), so rows must be deduped by id.
-- No stock indicator on the listing; the product page has one.
+- No stock indicator on the listing. The product page has one in
+  `dl.ProInfo` (`<dt>» Stock Availability</dt> … <dd>In stock</dd>`), so each
+  product costs one more request. The raw text is kept as `stockText`.
+- Answers GitHub's runners with 403, so it is scraped by the desktop app only.
 - robots.txt contains only Cloudflare's content-signal boilerplate — explanatory
   comments with no `User-agent`/`Disallow` lines and no signals declared.
 

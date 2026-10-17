@@ -7,9 +7,10 @@ import type { Category, ScrapeOptions, ScrapedRow, Scraper } from './types'
 /**
  * gamestreet.lk — plain PHP storefront.
  *
- * The cheapest of the HTML sources to scrape: category listings are server-rendered with
- * title, brand and price together, and there is no pagination — one request per
- * category returns the whole listing.
+ * Category listings are server-rendered with title, brand and price together,
+ * and there is no pagination — one request per category returns the whole
+ * listing. Stock is only on the product page, so each product costs one more
+ * request.
  *
  * Category ids are base64 in the query string (`?cat=Mg==&scat=Ng==` → 2/6).
  * Its robots.txt carries only Cloudflare's content-signal boilerplate with no
@@ -29,6 +30,26 @@ const CATEGORY_IDS: Partial<Record<Category, { cat: number; scat: number; label:
 }
 
 const b64 = (n: number) => Buffer.from(String(n), 'utf8').toString('base64')
+
+/**
+ * Stock, from the product page's `dl.ProInfo` table ("» Stock Availability").
+ *
+ * The listing carries no stock at all, and the normalizer reads unknown as in
+ * stock — which had every gamestreet part advertised as available. The raw text
+ * is returned alongside, so wording not seen yet shows up in the payload rather
+ * than being guessed at.
+ */
+export function parseStock(html: string): { inStock: boolean | null; stockText: string | null } {
+  const $ = cheerio.load(html)
+  const dt = $('dl.ProInfo dt')
+    .filter((_, el) => /stock\s+availability/i.test($(el).text()))
+    .first()
+  const stockText = dt.length ? dt.nextAll('dd').first().text().trim() || null : null
+  return {
+    inStock: stockText ? /^in\s*stock$/i.test(stockText) : null,
+    stockText,
+  }
+}
 
 export const gamestreet: Scraper = {
   shop: 'gamestreet.lk',
@@ -86,15 +107,32 @@ export const gamestreet: Scraper = {
             brand: card.find('.product_brand').first().text().trim() || null,
             priceLkr: parseLkr(priceText),
             listPriceLkr: null,
-            // The listing has no stock indicator; the product page does.
+            // Filled from the product page below.
             inStock: null,
           },
         })
       })
 
       const kept = opts.maxProducts ? found.slice(0, opts.maxProducts) : found
+
+      // One product page per row, for stock. A failed page keeps the row with
+      // its listing price and stock unknown — no worse than before this existed.
+      let unknown = 0
+      for (const row of kept) {
+        try {
+          const page = await politeGet(row.sourceUrl)
+          if (page.status === 200) Object.assign(row.payload, parseStock(page.body))
+        } catch (err) {
+          log(`  ! ${row.sourceUrl}: ${err instanceof Error ? err.message : err}`)
+        }
+        if (row.payload.inStock == null) unknown++
+      }
+
       rows.push(...kept)
-      log(`  ${category} (${meta.label}): ${kept.length} products`)
+      log(
+        `  ${category} (${meta.label}): ${kept.length} products` +
+          (unknown ? `, stock unknown for ${unknown}` : ''),
+      )
     }
 
     return rows

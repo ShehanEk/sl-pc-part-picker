@@ -182,14 +182,20 @@ All times UTC; Sri Lanka is UTC+5:30.
 | `scrape-winsoft.yml` | `30 18 * * *` | 00:00 | 30 min |
 | `scrape-nanotek.yml` | `0 19 * * *` | 00:30 | 90 min |
 | `scrape-redlinetech.yml` | `30 19 * * *` | 01:00 | 45 min |
-| `scrape-gamestreet.yml` | `0 20 * * *` | 01:30 | 20 min |
-| `scrape-chamacomputers.yml` | `30 20 * * *` | 02:00 | 30 min |
-| `scrape-pcbuilders.yml` | `0 21 * * *` | 02:30 | 20 min |
+| `scrape-gamestreet.yml` | manual only | desktop app, 01:30 | 20 min |
+| `scrape-chamacomputers.yml` | manual only | desktop app, 02:00 | 30 min |
+| `scrape-pcbuilders.yml` | manual only | desktop app, 02:30 | 20 min |
 | `normalize.yml` | `30 21 * * *` | 03:00 | 30 min |
 
 Each caller passes its shop key into the reusable `scrape.yml`. Runs are
 staggered so the shops are never hit at once, and each has a `concurrency`
-group so two runs for the same shop never overlap.
+group so two runs for the same shop never overlap. Every caller scrapes all
+seven categories.
+
+gamestreet, chamacomputers and pcbuilders block GitHub's runners, so they have
+no schedule here: the desktop app runs them at the slot in `SHOP_SCHEDULE`
+(`ci: false`). Their workflows stay, for a manual run to check whether a block
+has lifted.
 
 All seven are `workflow_dispatch`-able for a manual run.
 
@@ -199,13 +205,10 @@ retailer in full and only then discover it has nowhere to put the rows, having
 spent someone else's bandwidth for nothing. A missing `ANTHROPIC_API_KEY` is a
 warning, not an error: it degrades the run rather than breaking it.
 
-> **Known gap.** The four oldest callers pass
-> `categories: gpu,psu,cpu,motherboard,ram`. `storage` and `case` are **not** in
-> their nightly runs, so for those shops the two categories are only as fresh as
-> the last manual run. `scrape-pcbuilders.yml` passes all seven — a category
-> costs it one API request rather than one request per product, and
-> `scrape-winsoft.yml` passes all seven because narrowing them would not shorten
-> its run either way.
+> **Fixed 2026-10-18.** The four oldest callers used to pass only five
+> categories, so nanotek and redlinetech had no `storage` or `case` rows for at
+> least 30 days. All callers, and the reusable workflow's default, now pass all
+> seven.
 
 ---
 

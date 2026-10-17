@@ -1,11 +1,10 @@
 name: scrape pcbuilders.lk
 
-# 0 21 * * * UTC = 02:30 Sri Lanka time, after the other four and still ahead of
-# the 21:30 normalize run. Staggered against the rest so the shops are never hit
-# at once.
+# Manual only. pcbuilders.lk answers GitHub's runners with 403 on every page and
+# serves a residential connection normally, so the desktop app scrapes it
+# nightly at 02:30 Sri Lanka time (SHOP_SCHEDULE in src/lib/site.ts). Kept for a
+# manual run, to check whether the block has lifted.
 on:
-  schedule:
-    - cron: '0 21 * * *'
   workflow_dispatch:
 
 jobs:
@@ -13,8 +12,6 @@ jobs:
     uses: ./.github/workflows/scrape.yml
     with:
       shop: pcbuilders.lk
-      # All seven, unlike the older callers: this shop is a JSON API, so a
-      # category costs one request rather than one per product.
       categories: gpu,psu,cpu,motherboard,ram,storage,case
       timeout_minutes: 20
     secrets: inherit

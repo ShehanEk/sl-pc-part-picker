@@ -174,6 +174,28 @@ export async function reapStaleRuns(olderThanHours = 3): Promise<number> {
 }
 
 /** Recent runs, newest first — for the desktop history pane and the web admin. */
+/**
+ * Each shop's most recent real (not dry-run) scrape attempt by one actor.
+ * The desktop scheduler uses it to ask "has CI tried this shop tonight, and how
+ * did that go?" instead of guessing from how late it is.
+ */
+export async function latestScrapeRuns(
+  actor: Actor,
+): Promise<Map<string, { status: string; startedAt: Date }>> {
+  const res = await getDb().execute(sql`
+    select distinct on (shop) shop, status, started_at
+    from pipeline_runs
+    where kind = 'scrape' and actor = ${actor} and dry_run = false and shop is not null
+    order by shop, started_at desc
+  `)
+  return new Map(
+    (res.rows as { shop: string; status: string; started_at: string }[]).map((r) => [
+      r.shop,
+      { status: r.status, startedAt: new Date(r.started_at) },
+    ]),
+  )
+}
+
 export async function recentRuns(limit = 50) {
   const rows = await getDb()
     .select()

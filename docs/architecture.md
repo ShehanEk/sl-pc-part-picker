@@ -33,7 +33,7 @@ flowchart TB
   end
 
   subgraph ci["GitHub Actions — nightly, staggered"]
-    SC["scrape job x5"]
+    SC["scrape job x3"]
     NO["normalize job"]
   end
 
@@ -133,13 +133,10 @@ tag `'catalog'`.
 
 These are real and listed so they don't have to be rediscovered.
 
-- **The nightly workflows scrape five categories, not seven.** Every caller
-  passes `gpu,psu,cpu,motherboard,ram`; `storage` and `case` are missing, so
-  those two are only as fresh as the last manual run. The data in the database
-  for them came from local runs.
-- **gamestreet.lk, chamacomputers.lk and pcbuilders.lk have not landed a row
-  since their last scheduled run** (as of 2026-08-27). The admin dashboard
-  surfaces this; the Actions log says why.
+- **gamestreet.lk, chamacomputers.lk and pcbuilders.lk depend on the desktop
+  app.** They block GitHub's runners, so their workflows are manual-only and the
+  app scrapes them nightly. If the app is not running, those three go stale;
+  the admin dashboard marks them "desktop" and shows how far behind they are.
 - **gamestreet.lk answers the GitHub runner with 403** while working fine
   locally. Not worked around: spoofing a browser user-agent would be evading an
   access control. The options are to ask the shop, retest later, or drop to

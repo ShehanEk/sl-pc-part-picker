@@ -16,26 +16,41 @@ import type { AdminQueries } from './monitor'
  *
  * The consequences are all the ones you want:
  *
- * - A shop CI scraped last night is fresh, so the desktop leaves it alone. The
- *   "CI covers these, I cover those" split falls out of the data instead of
- *   being a list someone maintains — and it corrects itself the day gamestreet
- *   starts working from CI again, or the day winsoft stops.
+ * - A shop CI served since its slot is fresh, so the desktop leaves it alone.
+ *   Shops CI cannot reach at all are marked `ci: false` in SHOP_SCHEDULE and
+ *   are simply ours at their slot. For the rest, CI's own `pipeline_runs` row
+ *   decides: a CI shop whose run failed tonight is picked up straight away,
+ *   so a shop that starts blocking CI is covered the same night.
  * - Catch-up is free. There is no missed firing to reconstruct, only staleness
  *   that is still there when the machine wakes up.
  * - A tick that drifts, or is skipped for eight hours of sleep, is harmless.
  */
 
 /**
- * How late CI is allowed to be before the desktop steps in.
+ * How long after a CI shop's slot the desktop waits for CI to *start*.
  *
- * A fixed staleness threshold does not work here, and testing against live data
- * is what showed it: a healthy shop's age sweeps from 0h to 24h across the day,
- * so *any* threshold below 24 is crossed for the last few hours before the next
- * CI run — and the desktop would scrape a retailer that CI was about to scrape
- * anyway. Comparing against the shop's own last scheduled slot has no such
- * window: if a row landed after the slot, CI has it.
+ * Only consulted when CI has not tried the shop since its slot. Once it has,
+ * CI's own `pipeline_runs` row answers the question: running → leave it, failed
+ * → take over now. Guessing from the clock alone is what this replaced: the
+ * wait was 2 hours, GitHub starts scheduled runs 2h12m–3h02m late (measured
+ * over a week), so the desktop scraped every CI shop just before CI did, and
+ * CI then skipped it on the lease. Every retailer got hit twice a night.
+ *
+ * A fixed staleness threshold does not work either: a healthy shop's age sweeps
+ * from 0h to 24h across the day, so any threshold under 24 is crossed shortly
+ * before the next CI run. Comparing against the shop's own slot has no such
+ * window: if a row landed after the slot, the slot was served.
  */
-const GRACE_HOURS = 2
+const CI_START_GRACE_HOURS = 4
+
+/**
+ * Never scrape a shop again within this long of its last landed row.
+ *
+ * "Nothing since the slot" alone re-scrapes a shop that was caught up just
+ * before its slot — opened at 20:50 after a missed night, scraped, then scraped
+ * again at the 21:00 slot. Seen on live data the first time the rule ran.
+ */
+const MIN_GAP_HOURS = 12
 
 /** A shop with no known schedule is only chased once it is properly stale. */
 const UNSCHEDULED_STALE_HOURS = 26
@@ -61,7 +76,8 @@ export type Candidate = { shop: string; ageHours: number; reason: string }
  */
 export function dueShops(
   sync: { shop: string; lastScrapeAgeHours: number }[],
-  schedule: Record<string, { cronUtc: string }>,
+  schedule: Record<string, { cronUtc: string; ci: boolean }>,
+  ciRuns: Map<string, { status: string; startedAt: Date }>,
   now = new Date(),
 ): Candidate[] {
   const out: Candidate[] = []
@@ -74,30 +90,45 @@ export function dueShops(
       continue
     }
 
-    const cron = schedule[row.shop]?.cronUtc
-    if (!cron) {
+    const entry = schedule[row.shop]
+    if (!entry) {
       if (age > UNSCHEDULED_STALE_HOURS) {
         out.push({ shop: row.shop, ageHours: age, reason: `${Math.round(age)}h stale` })
       }
       continue
     }
 
-    const sinceSlot = hoursSinceExpectedRun(cron, now)
-
-    // Too soon after the slot to judge: a nanotek run takes up to 90 minutes,
-    // so a slot that passed a few minutes ago tells us nothing yet. Stepping in
-    // here is how the desktop would end up scraping alongside a live CI run.
-    if (sinceSlot <= GRACE_HOURS) continue
+    const sinceSlot = hoursSinceExpectedRun(entry.cronUtc, now)
 
     // A row newer than the slot means the slot was served — by CI or by us.
-    // Only a row older than its own slot is a genuinely missed night.
-    if (age <= sinceSlot) continue
+    if (age <= sinceSlot || age < MIN_GAP_HOURS) continue
+
+    let reason: string
+    if (!entry.ci) {
+      // Ours alone: CI cannot reach this shop, so its slot is our slot.
+      reason = 'nightly (desktop-only shop)'
+    } else {
+      const slotAt = now.getTime() - sinceSlot * 3_600_000
+      const attempt = ciRuns.get(row.shop)
+      if (attempt && attempt.startedAt.getTime() >= slotAt) {
+        // CI has tried since the slot. Running: leave it. A success would have
+        // landed rows and been caught above. Failed or abandoned: ours now —
+        // there is no point waiting out a grace period for a run that is over.
+        if (attempt.status !== 'failed' && attempt.status !== 'abandoned') continue
+        reason = `CI ${attempt.status} tonight`
+      } else if (sinceSlot <= CI_START_GRACE_HOURS) {
+        // CI has not started yet, which is normal for hours after the slot.
+        continue
+      } else {
+        reason = `CI did not run within ${CI_START_GRACE_HOURS}h of its slot`
+      }
+    }
 
     const missed = Math.floor(age / 24)
     out.push({
       shop: row.shop,
       ageHours: age,
-      reason: missed >= 1 ? `missed ${missed} night${missed > 1 ? 's' : ''}` : 'missed its slot',
+      reason: missed >= 1 ? `${reason}; missed ${missed} night${missed > 1 ? 's' : ''}` : reason,
     })
   }
 
@@ -138,8 +169,11 @@ export class Scheduler {
       // Free any lease left behind by a run that died without closing its row.
       await this.deps.queries.reapStaleRuns()
 
-      const sync = await this.deps.queries.getShopSync()
-      const due = dueShops(sync, this.deps.queries.SHOP_SCHEDULE)
+      const [sync, ciRuns] = await Promise.all([
+        this.deps.queries.getShopSync(),
+        this.deps.queries.latestScrapeRuns('ci'),
+      ])
+      const due = dueShops(sync, this.deps.queries.SHOP_SCHEDULE, ciRuns)
 
       for (const candidate of due) {
         if (this.deps.isPaused()) break

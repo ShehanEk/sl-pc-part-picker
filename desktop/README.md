@@ -40,21 +40,29 @@ can confirm you are pointed at the right place, and nothing more.
 ## How it decides what to sync
 
 Not a cron. Every five minutes it asks, per shop: *has a row landed since this
-shop's own last scheduled slot?* If yes, CI served it and the app leaves it
-alone. If the slot passed more than two hours ago and nothing landed, CI missed
-it and the app takes over.
+shop's own last scheduled slot?* If yes, the slot was served and the app leaves
+it alone. If not:
+
+- **Desktop-only shops** (`ci: false` in `SHOP_SCHEDULE` — gamestreet,
+  chamacomputers, pcbuilders, which all block GitHub's runners) are the app's
+  at their slot.
+- **CI shops** go by CI's own `pipeline_runs` row. CI failed tonight → the app
+  takes over at once. CI running → leave it. CI not started → wait up to four
+  hours past the slot, because GitHub starts scheduled runs 2–3 hours late.
+
+Either way, a shop is never re-scraped within 12 hours of its last data.
 
 That has three properties a wall-clock schedule does not:
 
 - **It never doubles up on CI.** A fixed staleness threshold does: a healthy
   shop's age sweeps from 0h to 24h across the day, so any threshold under 24 is
-  crossed shortly before the next CI run — and the app would scrape a retailer
-  CI was about to scrape anyway.
+  crossed shortly before the next CI run. So did the previous two-hour wait,
+  which was shorter than GitHub's delay: the app scraped every CI shop first,
+  and CI then skipped it on the lease.
 - **Catch-up is free.** There is no missed firing to reconstruct; staleness is
   simply still there when the machine wakes up.
-- **The split maintains itself.** "CI covers these three, I cover those three"
-  falls out of the data, and corrects itself the day gamestreet works again or
-  the day winsoft breaks.
+- **A shop that starts blocking CI is covered the same night**, because the
+  failed CI run is what triggers the app.
 
 Scheduled runs are skipped on battery. Manual runs are not.
 

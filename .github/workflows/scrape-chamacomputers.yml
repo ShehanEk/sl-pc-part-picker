@@ -1,10 +1,10 @@
 name: scrape chamacomputers.lk
 
-# 30 20 * * * UTC = 02:00 Sri Lanka time. Staggered against the other retailers so the
-# scrapers never run all at once.
+# Manual only. chamacomputers.lk returned nothing to GitHub's runners every
+# night while serving a residential connection normally, so the desktop app
+# scrapes it nightly at 02:00 Sri Lanka time (SHOP_SCHEDULE in src/lib/site.ts).
+# Kept for a manual run, to check whether that has changed.
 on:
-  schedule:
-    - cron: '30 20 * * *'
   workflow_dispatch:
 
 jobs:
@@ -12,6 +12,6 @@ jobs:
     uses: ./.github/workflows/scrape.yml
     with:
       shop: chamacomputers.lk
-      categories: gpu,psu,cpu,motherboard,ram
+      categories: gpu,psu,cpu,motherboard,ram,storage,case
       timeout_minutes: 30
     secrets: inherit
