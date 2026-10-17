@@ -140,6 +140,17 @@ selector had every nanotek title come back as the cart total, `"0 LKR"`.
 
 **Principle.** Failing loudly beats landing garbage that looks fine by row count.
 
+**2026-10-18 — a category that comes back empty also fails the run**, after the
+other categories have been written. pcbuilders retired the category id its PSUs
+lived under; the old id kept answering with an empty list, so PSUs vanished for
+weeks while every run passed, because the shop as a whole still returned rows.
+
+**2026-10-18 — the workflows now use `pipefail`.** The zero-rows check above
+did its job, but the workflow piped the scrape through `tee` under `bash -e`
+without `pipefail`, so the step took tee's exit code. Three shops then failed
+every night for five weeks with every run green. A check that fails the process
+is only half the job; the job running it has to notice.
+
 ### A price floor of 1,000 LKR
 
 **Decision.** Rows priced below 1,000 LKR are not written as listings.

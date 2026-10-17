@@ -66,6 +66,11 @@ one retailer.**
 | no row has a price | The layout has probably changed. |
 | >50% implausible titles | A title selector matching the wrong node yields rows that look fine by count and are useless. |
 
+After writing, the run also fails if **any requested category came back
+empty**. Every category we map has products at every shop, so an empty one means
+a moved id, a renamed slug, or a block on that page. The other categories' rows
+are kept.
+
 ### Running it
 
 ```bash
@@ -209,6 +214,7 @@ warning, not an error: it degrades the run rather than breaking it.
 | Symptom | Likely cause | Where to look |
 |---|---|---|
 | Run fails with "returned no rows at all" | Shop is blocking us, or its structure changed | HTTP status codes in the run log; [retailers.md](retailers.md) |
+| Run fails with "no products in: …" | That category's id or slug moved, or that page is blocked | The category's HTTP status in the run log; the shop's own category list |
 | Run fails with "implausible titles" | A title selector now matches the wrong node | The example title in the error |
 | Row count fine, prices all null | Price endpoint or selector changed | `parsePrice` for that retailer |
 | A part appears twice at different prices | `part_id` is too fine — a distinguishing field is missing or spelled differently | [decisions.md](decisions.md#part-identity) |

@@ -13,7 +13,9 @@ import type { Category, ScrapeOptions, ScrapedRow, Scraper } from './types'
  * robots.txt allows everything except /api, /privacy, /cart and /survey. Product
  * data comes from the page itself, not /api, so scraping stays within it.
  */
-const BASE_URL = 'https://chamacomputers.lk'
+// The bare domain answers every request with a 308 to www, so using it cost
+// the shop two hits per page.
+const BASE_URL = 'https://www.chamacomputers.lk'
 
 const CATEGORY_PATHS: Partial<Record<Category, string>> = {
   gpu: 'graphics cards',
@@ -106,7 +108,12 @@ export const chamacomputers: Scraper = {
             : `${BASE_URL}/products/${encodeURIComponent(path)}?page=${page}`
 
         const res = await politeGet(url)
-        if (res.status !== 200) break
+        if (res.status !== 200) {
+          // Said out loud: a silent break here left CI's nightly failure with
+          // nothing in the log to say whether it was a block or a redesign.
+          log(`  ${category}: HTTP ${res.status} on page ${page}, stopping`)
+          break
+        }
 
         const products = extractProducts(res.body).filter((p) => !seen.has(p.id))
         if (products.length === 0) break // no new products → past the last page

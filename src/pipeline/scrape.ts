@@ -134,6 +134,24 @@ export async function runScraper(
       `in ${(result.durationMs / 1000).toFixed(1)}s`,
   )
 
+  // A category that comes back empty fails the run, after the others have
+  // landed. assertPlausible only catches a whole shop going dark: pcbuilders
+  // retired the category id its PSUs lived under, the old id kept answering
+  // with an empty list, and PSUs vanished for weeks with every run "ok".
+  // Every category we map has products at every shop we track, so empty
+  // means broken — a renamed slug, a moved id, or a 403 on that one page.
+  const requested = (opts.categories ?? scraper.categories).filter((c) =>
+    scraper.categories.includes(c),
+  )
+  const empty = requested.filter((c) => !rows.some((r) => r.payload.category === c))
+  if (empty.length > 0) {
+    throw new Error(
+      `[${shop}] no products in: ${empty.join(', ')}. The other categories were ` +
+        `${opts.dryRun ? 'scraped' : `saved (${inserted} rows)`}; check the log above ` +
+        `for that category's HTTP status, or whether the shop moved it.`,
+    )
+  }
+
   return result
 }
 

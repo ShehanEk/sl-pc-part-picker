@@ -40,7 +40,11 @@ const CATEGORY_IDS: Partial<Record<Category, { id: number; label: string }>> = {
   motherboard: { id: 69, label: 'MOTHERBOARDS' },
   ram: { id: 78, label: 'MEMORY' },
   storage: { id: 81, label: 'STORAGE' },
-  psu: { id: 76, label: 'POWER SUPPLY & UPS' },
+  // Was 76 ("POWER SUPPLY & UPS") until the shop split it, by 2026-10, into
+  // power-supply (408) and ups-power-supply-ups (394). 76 went on answering
+  // with an empty list rather than an error, so PSUs vanished without a
+  // failure. UPS units are not PC PSUs, so only 408 is taken.
+  psu: { id: 408, label: 'POWER SUPPLY' },
   case: { id: 143, label: 'COMPUTER CASE' },
 }
 

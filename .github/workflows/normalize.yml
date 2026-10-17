@@ -45,12 +45,17 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        # pipefail for the same reason as scrape.yml: without it a failed
+        # normalize exits with tee's status and the run goes green.
         run: |
-          npm run normalize | tee /tmp/normalize.log
+          set -o pipefail
+          status=0
+          npm run normalize 2>&1 | tee /tmp/normalize.log || status=$?
           echo '### Normalize' >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
           grep -E 'resolved|wrote|curated catalog' /tmp/normalize.log >> "$GITHUB_STEP_SUMMARY" || true
           echo '```' >> "$GITHUB_STEP_SUMMARY"
+          exit $status
 
       # The read caches all share one tag with a 30-minute revalidate, and
       # nothing else ever clears it — without this the night's prices sit behind

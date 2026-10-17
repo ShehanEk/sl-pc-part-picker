@@ -56,10 +56,18 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SCRAPER_USER_AGENT: ${{ vars.SCRAPER_USER_AGENT }}
           SCRAPER_DELAY_MS: ${{ vars.SCRAPER_DELAY_MS }}
+        # The default shell is `bash -e` without pipefail, so the exit code of a
+        # pipeline is tee's, not the scrape's. That turned every failed scrape
+        # green: gamestreet, chamacomputers and pcbuilders failed every night for
+        # five weeks while the Actions tab showed success. The status is held
+        # until the summary is written, because a failed run is when it matters.
         run: |
+          set -o pipefail
+          status=0
           npm run scrape -- "${{ inputs.shop }}" --categories "${{ inputs.categories }}" \
-            | tee /tmp/scrape.log
+            2>&1 | tee /tmp/scrape.log || status=$?
           echo "### ${{ inputs.shop }}" >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
           tail -5 /tmp/scrape.log >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
+          exit $status

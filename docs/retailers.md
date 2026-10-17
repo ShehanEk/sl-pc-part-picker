@@ -142,7 +142,7 @@ Intel/AMD, desktop-RAM, NVMe and hard-disk sub-categories need no separate call.
 | motherboard | 69 | MOTHERBOARDS |
 | ram | 78 | MEMORY |
 | storage | 81 | STORAGE |
-| psu | 76 | POWER SUPPLY & UPS |
+| psu | 408 | POWER SUPPLY (was 76, "POWER SUPPLY & UPS", until the shop split off UPS units as 394) |
 | case | 143 | COMPUTER CASE |
 
 All seven sit under `components`. The shop keeps a **parallel `all-used-items`
