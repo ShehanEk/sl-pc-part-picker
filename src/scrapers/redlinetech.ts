@@ -14,8 +14,6 @@ import { createTynoScraper, type TynoPriceInfo } from './tyno'
 function parsePrice(fragment: string): TynoPriceInfo {
   const $ = cheerio.load(fragment)
 
-  const priceLkr = parseLkr($('.ty-product-page-price-holder p').first().text())
-
   // Each <li> labels the method either as text (CASH, BANK DEPOSIT) or as the
   // alt text of a card logo, with the amount in .ty-value .price.
   const pricesByMethod: Record<string, number> = {}
@@ -28,6 +26,12 @@ function parsePrice(fragment: string): TynoPriceInfo {
     if (method && value !== null) pricesByMethod[method] = value
   })
 
+  // The headline price was dropped from this fragment around 2026-09-29, leaving
+  // only the per-method prices. Before that, in all 2,456 priced rows, the
+  // headline equalled CASH, which was always the lowest method — so the minimum
+  // is the same number, and the same rule nanotek.lk uses.
+  const values = Object.values(pricesByMethod)
+
   const stockText = $('.ty-product-page-price-message')
     .first()
     .text()
@@ -35,7 +39,7 @@ function parsePrice(fragment: string): TynoPriceInfo {
     .toLowerCase()
 
   return {
-    priceLkr,
+    priceLkr: values.length ? Math.min(...values) : null,
     listPriceLkr: null,
     pricesByMethod,
     inStock: stockText ? stockText.includes('in stock') : null,
