@@ -37,6 +37,25 @@ refuses to store them rather than writing a database password in plaintext.
 The renderer never receives them: it is told the host and database name so you
 can confirm you are pointed at the right place, and nothing more.
 
+The switches in Settings (scheduled syncs on or off, skip on battery) live in
+`settings.json` beside it, readable, because nothing in them is secret.
+
+## Start with Windows
+
+The Settings switch registers a startup entry named **PC Maker Sync** (it shows
+in Task Manager's Startup apps). It runs the same command as the desktop
+shortcut, so a login start also rebuilds first, plus `--hidden` so the app comes
+up in the tray rather than opening its window.
+
+Two Electron details it depends on, both found by testing it:
+
+- The folder path is written with forward slashes. Electron drops backslashes
+  from the command line it writes to the registry, which produced a path
+  Windows could not find.
+- The switch reads `executableWillLaunchAtLogin`, not `openAtLogin`. The latter
+  only looks for an entry under Electron's default name, so with ours it always
+  read false.
+
 ## How it decides what to sync
 
 Not a cron. Every five minutes it asks, per shop: *has a row landed since this
@@ -64,7 +83,8 @@ That has three properties a wall-clock schedule does not:
 - **A shop that starts blocking CI is covered the same night**, because the
   failed CI run is what triggers the app.
 
-Scheduled runs are skipped on battery. Manual runs are not.
+Scheduled runs are skipped on battery unless that switch is off in Settings.
+Manual runs always go ahead.
 
 ## Politeness
 
@@ -114,9 +134,13 @@ Electron loads plain CommonJS with no loader hooks and no `tsx`.
 `build.mjs`, which is what keeps packaging a later config change rather than a
 rewrite.
 
+The window uses the website's fonts, Instrument Sans and JetBrains Mono,
+bundled from `@fontsource-variable` into `renderer/dist/fonts`: its CSP allows
+nothing remote, so they cannot come from Google. The window's design lives on
+the Claude Design canvas "PC Maker Sync desktop redesign".
+
 ## Not done yet
 
 No installer, signing or auto-update — this runs on one machine on one
 connection, so there is no distribution problem to solve, and an unsigned
-Windows binary trips SmartScreen. `app.setLoginItemSettings` is the piece that
-actually matters for a nightly local scraper, and it works unpackaged.
+Windows binary trips SmartScreen.

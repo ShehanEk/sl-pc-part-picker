@@ -38,6 +38,7 @@ export class RunnerHost {
   private waiters = new Map<string, Waiter>()
   private busyWith: JobSpec | null = null
   private cooldownUntil = 0
+  private recycleAfterJob = false
 
   constructor(
     private readonly runnerPath: string,
@@ -113,6 +114,27 @@ export class RunnerHost {
         ? { ok: true, result: event.result, logTail: waiter.lines.join('\n') }
         : { ok: false, error: event.error, logTail: waiter.lines.join('\n') },
     )
+    if (this.recycleAfterJob) this.recycle()
+  }
+
+  /**
+   * Restart the runner so it picks up a new environment.
+   *
+   * The delay floor is read once, when the runner's modules load, so a changed
+   * setting means a new process. Never mid-job: if one is running, the swap
+   * waits for it to finish. Restarting drops the throttle map, so the same
+   * cooldown as a cancel is paid before the next request.
+   */
+  recycle() {
+    if (this.busyWith) {
+      this.recycleAfterJob = true
+      return
+    }
+    this.recycleAfterJob = false
+    if (!this.child) return
+    this.child.kill()
+    this.child = null
+    this.cooldownUntil = Date.now() + KILL_COOLDOWN_MS
   }
 
   /** Runs a job. Callers must serialise — the scheduler owns the queue. */

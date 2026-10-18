@@ -18,6 +18,9 @@ contextBridge.exposeInMainWorld('pcmaker', {
   checkNow: () => ipcRenderer.invoke('checkNow'),
   cancel: () => ipcRenderer.invoke('cancel'),
   setPaused: (value: boolean) => ipcRenderer.invoke('setPaused', value),
+  setDelay: (ms: number) => ipcRenderer.invoke('setDelay', ms),
+  setLoginItem: (value: boolean) => ipcRenderer.invoke('setLoginItem', value),
+  setSkipOnBattery: (value: boolean) => ipcRenderer.invoke('setSkipOnBattery', value),
   openExternal: (url: string) => ipcRenderer.invoke('openExternal', url),
 
   // Push channels. The callback only ever receives the payload — never the

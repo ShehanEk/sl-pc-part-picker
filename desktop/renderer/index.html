@@ -5,61 +5,155 @@
     <!--
       No remote anything. The renderer displays product titles and URLs scraped
       from third-party sites; this is what stops any of it loading or executing.
+      Fonts are bundled into dist/fonts, hence font-src 'self' and nothing wider.
     -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:;"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:;"
     />
-    <title>PC Maker.lk sync</title>
+    <title>PC Maker Sync</title>
     <link rel="stylesheet" href="dist/renderer.css" />
   </head>
   <body>
     <header class="bar">
-      <span class="brand">PC Maker<span class="accent">.lk</span> <span class="tag">sync</span></span>
-      <span class="actions">
-        <button id="check">Check for due syncs</button>
-        <button id="normalize">Normalize</button>
-        <button id="pause">Pause</button>
-        <button id="cancel" disabled>Stop</button>
-      </span>
+      <div class="bar-left">
+        <span class="brand" data-view="dashboard">PC Maker<span class="accent">.lk</span><span class="tag">Sync</span></span>
+        <button id="back" class="btn btn-quiet" data-view="settings" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>Dashboard
+        </button>
+        <h1 class="bar-title" data-view="settings" hidden>Settings</h1>
+      </div>
+      <div id="pill" class="pill" role="status" data-view="dashboard">Loading…</div>
+      <div class="bar-right" data-view="dashboard">
+        <button id="pause" class="btn"></button>
+        <button id="open-settings" class="icon-btn" aria-label="Settings">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" /></svg>
+        </button>
+      </div>
     </header>
 
-    <main>
-      <section class="panel">
-        <h2>Shops</h2>
-        <p class="hint" id="summary">Loading…</p>
-        <table id="shops">
-          <thead>
-            <tr><th>Shop</th><th>Last row</th><th class="n">Pending</th><th class="n">Listings</th><th class="n">In stock</th><th></th></tr>
-          </thead>
-          <tbody></tbody>
-        </table>
+    <main id="dashboard" class="dash">
+      <section id="hero" class="hero" aria-live="polite"></section>
+      <section id="note" class="note" role="note" hidden></section>
+
+      <section class="shops" aria-labelledby="shops-h">
+        <div class="section-head">
+          <h2 id="shops-h">Shops</h2>
+          <span id="shops-meta" class="muted"></span>
+        </div>
+        <div id="shops" class="shop-grid"></div>
       </section>
 
-      <section class="panel">
-        <h2>Recent runs</h2>
-        <p class="hint">
-          Written before the work starts, so a run that died still leaves a trace.
-        </p>
-        <table id="runs">
-          <thead>
-            <tr><th>When</th><th>What</th><th>Who</th><th>Result</th></tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </section>
-
-      <section class="panel">
-        <h2>Log</h2>
-        <pre id="log" aria-live="polite"></pre>
-      </section>
-
-      <section class="panel" id="settings-panel">
-        <h2>Connection</h2>
-        <p class="hint" id="settings">…</p>
-        <button id="import">Import from .env.local</button>
-      </section>
+      <div class="lower">
+        <section class="panel" aria-labelledby="runs-h">
+          <h2 id="runs-h" class="panel-h">Recent runs</h2>
+          <ul id="runs" class="rows"></ul>
+        </section>
+        <section class="panel" aria-label="Tonight and log">
+          <div class="panel-h">
+            <div class="seg" role="tablist" aria-label="Show">
+              <button id="tab-tonight" role="tab" aria-controls="tonight">Tonight</button>
+              <button id="tab-log" role="tab" aria-controls="log">Log</button>
+            </div>
+            <span id="side-meta" class="muted"></span>
+          </div>
+          <ul id="tonight" class="rows" role="tabpanel"></ul>
+          <pre id="log" class="log" role="tabpanel" aria-live="polite" hidden></pre>
+        </section>
+      </div>
     </main>
+
+    <main id="settings" class="settings" hidden>
+      <div class="col">
+        <section class="card" aria-labelledby="db-h">
+          <div class="card-head">
+            <h2 id="db-h">Database</h2>
+            <span id="db-status" class="status-chip"></span>
+          </div>
+          <dl class="facts">
+            <dt>Database</dt><dd id="db-name" class="mono"></dd>
+            <dt>Host</dt><dd id="db-host" class="mono"></dd>
+            <dt>Stored</dt><dd id="db-stored"></dd>
+          </dl>
+          <p class="muted small">The window never receives the password, only the names above. A new connection takes effect after a restart.</p>
+          <div class="btn-row">
+            <button id="import" class="btn">Import from .env.local</button>
+            <button id="replace" class="btn">Replace connection…</button>
+          </div>
+          <form id="replace-form" class="replace" hidden>
+            <label for="db-url">New connection string</label>
+            <input id="db-url" type="password" autocomplete="off" spellcheck="false" placeholder="postgresql://…" required />
+            <div class="btn-row">
+              <button type="submit" class="btn btn-primary">Save</button>
+              <button type="button" id="replace-cancel" class="btn">Cancel</button>
+            </div>
+          </form>
+          <p id="db-msg" class="msg" aria-live="polite"></p>
+        </section>
+
+        <section class="card" aria-labelledby="polite-h">
+          <h2 id="polite-h">Politeness</h2>
+          <div class="setting">
+            <div>
+              <span id="delay-label" class="setting-label">Gap between requests to a shop</span>
+              <span class="muted small">Can be made slower, never faster than 1.5 s</span>
+            </div>
+            <div class="stepper" role="group" aria-labelledby="delay-label">
+              <button id="delay-minus" aria-label="Shorter gap">−</button>
+              <span id="delay-value" class="mono"></span>
+              <button id="delay-plus" aria-label="Longer gap">+</button>
+            </div>
+          </div>
+          <p id="delay-msg" class="msg" aria-live="polite"></p>
+          <dl class="facts facts-top">
+            <!-- Mirrors runnerEnv() in src/main/secrets.ts, which is the source of truth. -->
+            <dt>Identifies as</dt><dd class="mono small">SLPCPartsTrackerBot/0.1</dd>
+            <dt>At a time</dt><dd>One shop, never in parallel</dd>
+          </dl>
+        </section>
+      </div>
+
+      <div class="col">
+        <section class="card" aria-labelledby="sched-h">
+          <h2 id="sched-h">Scheduling</h2>
+          <div class="setting setting-line">
+            <div>
+              <span class="setting-label">Run scheduled syncs</span>
+              <span class="muted small">Checks every 5 minutes for a shop that is due</span>
+            </div>
+            <button id="t-scheduled" class="switch" role="switch" aria-checked="false" aria-label="Run scheduled syncs"><span></span></button>
+          </div>
+          <div class="setting setting-line">
+            <div>
+              <span class="setting-label">Start with Windows</span>
+              <span class="muted small">So tonight’s syncs happen without opening the app</span>
+            </div>
+            <button id="t-login" class="switch" role="switch" aria-checked="false" aria-label="Start with Windows"><span></span></button>
+          </div>
+          <div class="setting setting-line">
+            <div>
+              <span class="setting-label">Skip scheduled syncs on battery</span>
+              <span class="muted small">Run now still works on battery</span>
+            </div>
+            <button id="t-battery" class="switch" role="switch" aria-checked="false" aria-label="Skip scheduled syncs on battery"><span></span></button>
+          </div>
+        </section>
+
+        <section class="card" aria-labelledby="who-h">
+          <div class="card-head">
+            <h2 id="who-h">Who runs each shop</h2>
+            <span class="muted small">Nightly, Sri Lanka time</span>
+          </div>
+          <table class="owners"><tbody id="owners"></tbody></table>
+          <p class="muted small">This app owns the shops that block GitHub’s servers. If a GitHub run fails, this app covers that shop the same night.</p>
+        </section>
+      </div>
+    </main>
+
+    <footer class="foot">
+      <span id="foot-left"></span>
+      <span id="foot-right"></span>
+    </footer>
 
     <script src="dist/renderer.js"></script>
   </body>

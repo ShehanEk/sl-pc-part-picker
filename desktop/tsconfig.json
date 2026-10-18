@@ -7,6 +7,6 @@
   "compilerOptions": {
     "incremental": false
   },
-  "include": ["src/**/*.ts"],
+  "include": ["src/**/*.ts", "renderer/src/**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }

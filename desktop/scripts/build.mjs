@@ -95,6 +95,10 @@ const targets = [
     logLevel: 'info',
     entryPoints: [resolve(desktop, 'renderer/src/styles.css')],
     outfile: resolve(desktop, 'renderer/dist/renderer.css'),
+    // The bundled fonts. The window's CSP allows font-src 'self' only, so they
+    // are copied next to the stylesheet rather than loaded from Google.
+    loader: { '.woff2': 'file', '.woff': 'file' },
+    assetNames: 'fonts/[name]-[hash]',
   },
 ]
 

@@ -64,6 +64,8 @@ export type SchedulerDeps = {
   execute: (spec: JobSpec, trigger: 'schedule' | 'manual') => Promise<void>
   notify: (title: string, body: string) => void
   isPaused: () => boolean
+  /** The user's "skip scheduled syncs on battery" switch. */
+  skipOnBattery: () => boolean
 }
 
 export type Candidate = { shop: string; ageHours: number; reason: string }
@@ -138,10 +140,12 @@ export function dueShops(
 export class Scheduler {
   private timer: NodeJS.Timeout | null = null
   private ticking = false
+  private startedAt = 0
 
   constructor(private readonly deps: SchedulerDeps) {}
 
   start() {
+    this.startedAt = Date.now()
     // A minute's grace after launch: starting a 90-minute scrape while someone
     // is still logging in is not what they opened the app for.
     setTimeout(() => void this.tick(), 60_000)
@@ -149,6 +153,15 @@ export class Scheduler {
 
     // Waking from sleep is the single most likely moment for work to be due.
     powerMonitor.on('resume', () => void this.tick())
+  }
+
+  /** When the next scheduled check fires, for the window's status line. */
+  get nextCheckAt(): number | null {
+    if (!this.timer) return null
+    const now = Date.now()
+    const first = this.startedAt + 60_000
+    if (now < first) return first
+    return this.startedAt + Math.ceil((now - this.startedAt) / TICK_MS) * TICK_MS
   }
 
   stop() {
@@ -160,9 +173,10 @@ export class Scheduler {
     if (this.ticking || this.deps.isPaused()) return
     if (this.deps.runner.busy) return
 
-    // A 90-minute scrape is not something to start on battery. Manual runs are
-    // still allowed — this only governs the unattended path.
-    if (powerMonitor.isOnBatteryPower()) return
+    // A 90-minute scrape is not something to start on battery, unless the user
+    // has said otherwise. Manual runs are always allowed: this only governs the
+    // unattended path.
+    if (this.deps.skipOnBattery() && powerMonitor.isOnBatteryPower()) return
 
     this.ticking = true
     try {
