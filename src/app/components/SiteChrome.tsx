@@ -59,10 +59,10 @@ export async function SiteHeader({ search = true }: { search?: boolean }) {
             builder is for the people who want a whole machine. */}
         <Link
           href="/build"
-          className="inline-flex min-h-10 items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--accent-soft-border)] bg-white/80 px-3.5 text-[13.5px] font-semibold text-[var(--accent-strong)] transition hover:bg-[var(--accent-soft)]"
+          className="inline-flex min-h-11 items-center gap-2 rounded-[var(--radius-sm)] border border-[rgb(90_130_230/40%)] bg-[rgb(120_160_255/16%)] px-4 text-[14px] font-semibold text-[var(--accent-strong)] shadow-[0_4px_14px_-8px_rgb(47_109_211/50%)] transition hover:border-[var(--accent)] hover:bg-[rgb(120_160_255/24%)]"
         >
-          <CaseIcon className="h-4 w-4" />
-          PC builder
+          <CaseIcon className="h-[18px] w-[18px]" />
+          Build a PC
         </Link>
       </div>
     </header>

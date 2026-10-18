@@ -36,7 +36,11 @@ export const metadata: Metadata = {
 }
 
 /** Example searches, each one checked to return in-stock parts. */
-const EXAMPLES = ['RTX 5070', 'Ryzen 7', 'DDR5 32GB']
+const EXAMPLES: { q: string; slot: BuildSlot }[] = [
+  { q: 'RTX 5070', slot: 'gpu' },
+  { q: 'Ryzen 7', slot: 'cpu' },
+  { q: 'DDR5 32GB', slot: 'ram' },
+]
 
 type Gap = { part: SeoPart; slot: BuildSlot; best: number; worst: number; at: string; shops: number }
 
@@ -106,19 +110,37 @@ export default async function Home() {
             <SearchBox
               large
               placeholder={`Search ${totalParts.toLocaleString('en-LK')} parts, e.g. RTX 5070`}
+              after={
+                <Link
+                  href="/build"
+                  className="inline-flex min-h-14 flex-1 items-center justify-center gap-2 rounded-2xl border border-[rgb(90_130_230/40%)] bg-[rgb(120_160_255/16%)] px-5 text-[15px] font-semibold text-[var(--accent-strong)] transition hover:border-[var(--accent)] hover:bg-[rgb(120_160_255/24%)] sm:flex-none"
+                >
+                  <CaseIcon className="h-5 w-5" />
+                  Build a PC
+                </Link>
+              }
             />
           </div>
           <div className="flex flex-wrap items-center gap-2 text-[13px] text-ink-3">
             <span>Try:</span>
-            {EXAMPLES.map((q) => (
-              <Link
-                key={q}
-                href={`/search?q=${encodeURIComponent(q)}`}
-                className="rounded-full border border-[var(--accent-soft-border)] bg-[var(--accent-soft)] px-3 py-1.5 font-medium text-[var(--accent-strong)] transition hover:bg-white"
-              >
-                {q}
-              </Link>
-            ))}
+            {EXAMPLES.map(({ q, slot }) => {
+              const { Icon, tint, ink, strong } = CATEGORY_STYLE[slot]
+              return (
+                <Link
+                  key={q}
+                  href={`/search?q=${encodeURIComponent(q)}`}
+                  className="inline-flex items-center gap-1.5 rounded-full border py-1.5 pl-2.5 pr-3 font-medium transition hover:-translate-y-px"
+                  style={{
+                    background: tint,
+                    borderColor: `color-mix(in oklch, ${ink} 28%, transparent)`,
+                    color: strong,
+                  }}
+                >
+                  <Icon className="h-4 w-4" style={{ color: ink }} />
+                  {q}
+                </Link>
+              )
+            })}
           </div>
         </section>
 
@@ -219,10 +241,10 @@ export default async function Home() {
 
         <section
           aria-labelledby="builder"
-          className="mb-14 flex flex-wrap items-center justify-between gap-x-8 gap-y-5 rounded-[var(--radius)] border border-[var(--glass-border)] bg-[var(--sunken)] px-7 py-6"
+          className="mb-14 flex flex-wrap items-center justify-between gap-x-8 gap-y-5 rounded-[var(--radius)] border border-[rgb(90_130_230/22%)] bg-[rgb(120_160_255/9%)] px-7 py-6"
         >
           <div className="flex flex-1 basis-[420px] items-start gap-4">
-            <span className="grid h-11 w-11 flex-none place-items-center rounded-[var(--radius-sm)] border border-[var(--glass-border)] bg-white/90 text-ink-2">
+            <span className="grid h-11 w-11 flex-none place-items-center rounded-[var(--radius-sm)] bg-white text-accent shadow-[var(--glass-shadow)]">
               <CaseIcon className="h-6 w-6" />
             </span>
             <div className="flex flex-col gap-1">
@@ -237,7 +259,7 @@ export default async function Home() {
           </div>
           <Link
             href="/build"
-            className="inline-flex min-h-11 items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--accent-soft-border)] bg-white/90 px-[18px] text-[14px] font-semibold text-[var(--accent-strong)] transition hover:bg-[var(--accent-soft)]"
+            className="inline-flex min-h-11 items-center gap-2 rounded-[var(--radius-sm)] bg-[var(--accent)] px-[18px] text-[14px] font-semibold text-white transition hover:bg-[var(--accent-strong)]"
           >
             Open the PC builder
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden>

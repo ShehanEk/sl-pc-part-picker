@@ -4,17 +4,20 @@ import Form from 'next/form'
  * Part search. A plain GET to /search, so it works before JavaScript loads;
  * `next/form` makes the submit a client-side navigation once it has.
  *
- * `large` is the home page's hero box, with its own submit button. The header's
+ * `large` is the hero box, with its own submit button; `after` puts a second
+ * action beside that button (the home page's "Build a PC"). The header's
  * compact box submits on Enter.
  */
 export function SearchBox({
   large = false,
   defaultValue,
   placeholder = 'Search parts, e.g. RTX 5070',
+  after,
 }: {
   large?: boolean
   defaultValue?: string
   placeholder?: string
+  after?: React.ReactNode
 }) {
   const id = large ? 'search-hero' : 'search-header'
 
@@ -22,7 +25,7 @@ export function SearchBox({
     <Form
       action="/search"
       role="search"
-      className={large ? 'flex w-full max-w-[680px] flex-wrap gap-2.5' : 'w-full'}
+      className={large ? 'flex w-full max-w-[780px] flex-wrap gap-2.5' : 'w-full'}
     >
       <label htmlFor={id} className="sr-only">
         Search parts
@@ -62,12 +65,16 @@ export function SearchBox({
         />
       </div>
       {large && (
-        <button
-          type="submit"
-          className="min-h-14 rounded-2xl bg-[var(--accent)] px-6 text-[15px] font-semibold text-white transition hover:bg-[var(--accent-strong)]"
-        >
-          Compare prices
-        </button>
+        // On a phone the buttons share the row below the input, half each.
+        <div className="flex w-full gap-2.5 sm:w-auto">
+          <button
+            type="submit"
+            className="min-h-14 flex-1 rounded-2xl bg-[var(--accent)] px-6 text-[15px] font-semibold text-white transition hover:bg-[var(--accent-strong)] sm:flex-none"
+          >
+            Find cheapest
+          </button>
+          {after}
+        </div>
       )}
     </Form>
   )
