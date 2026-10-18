@@ -40,7 +40,8 @@ export const metadata: Metadata = {
     type: "website",
     url: SITE_URL,
   },
-  twitter: { card: "summary" },
+  // The large card, now that every page has a 1200 × 630 share image.
+  twitter: { card: "summary_large_image" },
   robots: {
     index: true,
     follow: true,

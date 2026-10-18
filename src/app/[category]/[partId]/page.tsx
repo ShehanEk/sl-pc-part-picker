@@ -7,7 +7,7 @@ import { CATEGORY_STYLE } from '@/app/components/PartIcons'
 import { SiteFooter, SiteHeader } from '@/app/components/SiteChrome'
 import { BUILD_SLOTS, type BuildSlot } from '@/compat/build'
 import { CATEGORY_COPY, SITE_NAME, canonical, rupees, sentenceCase } from '@/lib/site'
-import { fitNote, specLines, specPhrase } from '@/lib/specs'
+import { displayName, fitNote, specLines, specPhrase } from '@/lib/specs'
 import { loadDirectory, loadPriceIndex, type PricePoint, type SeoPart } from '@/queries/seo'
 
 /**
@@ -42,14 +42,6 @@ function asSlot(value: string): BuildSlot | null {
   return (BUILD_SLOTS as string[]).includes(value) ? (value as BuildSlot) : null
 }
 
-
-/** Shops list the brand in the model as often as not; don't say it twice. */
-function displayName(part: SeoPart): string {
-  const model = part.model.trim()
-  return model.toLowerCase().includes(part.brand.toLowerCase())
-    ? model
-    : `${part.brand} ${model}`
-}
 
 async function find(categoryParam: string, partId: string) {
   const slot = asSlot(categoryParam)
@@ -168,6 +160,9 @@ export default async function PartPage({
         '@type': 'Product',
         name,
         url: canonical(path),
+        // The share image from ./opengraph-image.tsx. Google's merchant
+        // listing results require an image, and flag products without one.
+        image: canonical(`${path}/opengraph-image`),
         category: copy.singular,
         brand: { '@type': 'Brand', name: part.brand },
         description: [

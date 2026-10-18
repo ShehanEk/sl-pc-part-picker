@@ -10,6 +10,14 @@ import type { BuildPart } from '@/compat/build'
 
 export type SpecLine = { label: string; value: string }
 
+/** Shops list the brand in the model as often as not; don't say it twice. */
+export function displayName(part: Pick<BuildPart, 'brand' | 'model'>): string {
+  const model = part.model.trim()
+  return model.toLowerCase().includes(part.brand.toLowerCase())
+    ? model
+    : `${part.brand} ${model}`
+}
+
 type SpecSource = BuildPart & {
   vramGb?: number | null
   efficiencyRating?: string | null
