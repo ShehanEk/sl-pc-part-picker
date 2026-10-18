@@ -26,7 +26,7 @@ export function AdminHeader({ current }: { current: 'overview' | 'gaps' }) {
     <header className="glass-header sticky top-0 z-30 flex flex-wrap items-center justify-between gap-4 px-5 py-3.5 sm:px-8">
       <div className="flex items-center gap-4">
         <span className="text-[15.5px] font-bold tracking-[-0.025em]">
-          PC Maker<span className="text-accent">.lk</span>
+          PCPrice<span className="text-accent">.lk</span>
           <span className="ml-2 rounded-full bg-[rgb(30_50_100/7%)] px-2 py-[3px] text-[10.5px] font-semibold uppercase tracking-[0.07em] text-ink-2">
             admin
           </span>

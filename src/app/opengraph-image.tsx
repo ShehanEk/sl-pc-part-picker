@@ -4,7 +4,7 @@ import { TRACKED_SHOPS } from '@/lib/site'
 
 /** The share image for the home page, and for any page without its own. */
 
-export const alt = 'PC Maker.lk: find the cheapest place to buy any PC part in Sri Lanka'
+export const alt = 'PCPrice.lk: find the cheapest place to buy any PC part in Sri Lanka'
 export const size = OG_SIZE
 export const contentType = 'image/png'
 

@@ -16,7 +16,7 @@ export const SITE_URL = (
     : 'http://localhost:3000')
 ).replace(/\/$/, '')
 
-export const SITE_NAME = 'PC Maker.lk'
+export const SITE_NAME = 'PCPrice.lk'
 
 export const canonical = (path: string) => `${SITE_URL}${path}`
 

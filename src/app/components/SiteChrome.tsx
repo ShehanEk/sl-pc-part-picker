@@ -34,7 +34,7 @@ export async function SiteHeader({ search = true }: { search?: boolean }) {
     <header className="glass-header sticky top-0 z-30 flex flex-wrap items-center justify-between gap-x-6 gap-y-3 px-5 py-3 sm:px-8">
       <div className="flex items-baseline gap-3">
         <Link href="/" className="text-[17.5px] font-bold tracking-[-0.025em]">
-          PC Maker<span className="text-accent">.lk</span>
+          PCPrice<span className="text-accent">.lk</span>
         </Link>
         <span className="hidden text-[12.5px] text-ink-3 md:inline">PC part prices, Sri Lanka</span>
       </div>

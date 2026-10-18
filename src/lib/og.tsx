@@ -96,7 +96,7 @@ export function CategoryChip({ slot, label }: { slot: BuildSlot; label: string }
 function Brand() {
   return (
     <div style={{ display: 'flex', fontSize: 30, fontWeight: 700, letterSpacing: '-0.025em' }}>
-      PC Maker<span style={{ color: BLUE }}>.lk</span>
+      PCPrice<span style={{ color: BLUE }}>.lk</span>
     </div>
   )
 }

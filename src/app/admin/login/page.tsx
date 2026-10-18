@@ -11,7 +11,7 @@ export default function LoginPage() {
     <main className="mx-auto flex min-h-screen max-w-[420px] flex-col justify-center px-5">
       <div className="glass px-6 py-7">
         <h1 className="text-[19px] font-semibold tracking-[-0.02em]">
-          PC Maker<span className="text-accent">.lk</span> admin
+          PCPrice<span className="text-accent">.lk</span> admin
         </h1>
         <p className="mt-2 text-[13px] leading-relaxed text-ink-3">
           Pipeline health, catalogue summary, and the spec fields the compatibility checks are

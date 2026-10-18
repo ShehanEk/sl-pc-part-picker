@@ -1,4 +1,4 @@
-# PC Maker.lk — SL PC Parts Tracker
+# PCPrice.lk — SL PC Parts Tracker
 
 Pick a PC part, see which Sri Lankan shop stocks it and at what price, and build
 a whole machine out of parts that actually work together — mixing shops freely.
