@@ -4,7 +4,8 @@ A tray app that monitors sync health and **runs the scrapers from this machine**
 
 ## Why it exists
 
-Two things the web admin dashboard structurally cannot do:
+Two things a web dashboard structurally cannot do (the site's own admin was
+removed on 2026-10-19; this app is the monitor):
 
 1. **gamestreet.lk answers GitHub's runners with 403 and a residential connection
    normally.** Spoofing a browser user-agent was rejected as evading an access

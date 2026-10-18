@@ -512,7 +512,7 @@ export async function runNormalize(
   )
 
   // Hand-entered values go on after the curated catalog, which is what makes
-  // them stick. Reverse these two and every admin edit would survive exactly
+  // them stick. Reverse these two and every hand-entered value would survive exactly
   // until the next nightly run and then vanish without a trace.
   const overrides = await applyOverrides()
   if (overrides.overrides > 0) {

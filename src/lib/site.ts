@@ -105,7 +105,7 @@ export const TRACKED_SHOPS = [
 
 /**
  * When each shop is expected to have run, from the caller workflows in
- * `.github/workflows/`. The admin dashboard compares a shop's last landed row
+ * `.github/workflows/`. The desktop app's monitor compares a shop's last landed row
  * against this to tell "quiet because nothing changed" from "quiet because it
  * has stopped working".
  *

@@ -173,7 +173,7 @@ export async function reapStaleRuns(olderThanHours = 3): Promise<number> {
   }
 }
 
-/** Recent runs, newest first — for the desktop history pane and the web admin. */
+/** Recent runs, newest first — for the desktop history pane. */
 /**
  * Each shop's most recent real (not dry-run) scrape attempt by one actor.
  * The desktop scheduler uses it to ask "has CI tried this shop tonight, and how

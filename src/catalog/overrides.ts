@@ -117,24 +117,3 @@ export async function applyOverrides(): Promise<ApplyOverridesResult> {
     })),
   }
 }
-
-/**
- * Apply the override for a single part, so an admin edit takes effect at once
- * rather than at the next nightly run.
- */
-export async function applyOverrideFor(partId: string): Promise<boolean> {
-  // The column list is `sql.raw` because it is a fixed constant in this file,
-  // but `partId` arrives from an admin form and is bound as a parameter. Do not
-  // be tempted to interpolate it into the raw string with hand-escaping —
-  // quoting rules are not a substitute for a bind variable.
-  const assignments = sql.raw(
-    OVERRIDE_COLUMNS.map((c) => `${c} = coalesce(o.${c}, p.${c})`).join(', '),
-  )
-
-  const res = await getDb().execute(sql`
-    update parts p set ${assignments}, updated_at = now()
-    from part_overrides o
-    where p.part_id = o.part_id and p.part_id = ${partId}
-  `)
-  return (res.rowCount ?? 0) > 0
-}

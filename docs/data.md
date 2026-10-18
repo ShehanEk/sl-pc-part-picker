@@ -102,8 +102,9 @@ which apply is decided by `category`.
 
 Four sources, in strict order of authority:
 
-0. **Manual overrides** (`part_overrides`), entered through `/admin` and applied
-   after everything else on every run. Each row carries a required source note.
+0. **Manual overrides** (`part_overrides`), entered through the web admin until
+   it was removed on 2026-10-19, and still applied after everything else on
+   every run. New hand-entered values go in the curated catalogs instead. Each row carries a required source note.
    Filling a null only — the mechanism cannot blank a value the pipeline knows.
 1. **Curated catalogs** in the repo — 54 GPUs, 86 CPUs, 5 PSUs, each entry
    citing its source. Applied last so they win outright.

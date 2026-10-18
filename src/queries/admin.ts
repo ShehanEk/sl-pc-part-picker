@@ -1,19 +1,17 @@
-import { eq, sql } from 'drizzle-orm'
+import { sql } from 'drizzle-orm'
 
 import { getDb } from '@/db'
-import { partOverrides, parts } from '@/db/schema'
-import { gapsForPart } from '@/catalog/gaps'
 import { BUILD_SLOTS, type BuildSlot } from '@/compat/build'
 import { SHOP_SCHEDULE, hoursSinceExpectedRun } from '@/lib/site'
 
 /**
- * Reads for the admin dashboard.
+ * Sync-health reads for the desktop app's monitor (desktop/src/main/admin-queries.ts).
  *
  * **Deliberately uncached.** Every other query module wraps its reads in
  * `unstable_cache` with a 30-minute revalidate, which is right for a catalogue
- * that changes once a night. It is exactly wrong here: a monitoring page that
- * can be half an hour stale cannot tell you the pipeline stopped half an hour
- * ago. These run on every request.
+ * that changes once a night. It is exactly wrong here: a monitor that can be
+ * half an hour stale cannot tell you the pipeline stopped half an hour ago.
+ * These run on every call.
  */
 
 export type ShopSync = {
@@ -196,157 +194,5 @@ export async function getCatalogSummary(): Promise<{
       orphanParts: Number(totals?.orphan_parts ?? 0),
       staleListings: Number(totals?.stale_listings ?? 0),
     },
-  }
-}
-
-export type GapRow = {
-  partId: string
-  category: BuildSlot
-  brand: string
-  model: string
-  shops: number
-  inStockShops: number
-  gaps: { field: string; label: string; unblocks?: string }[]
-  hasOverride: boolean
-}
-
-/**
- * Parts with spec fields a compatibility rule needs, ranked by how much filling
- * them would matter.
- *
- * ~1,400 cells are empty. A flat list of them is not a feature — it is a list
- * nobody finishes. Ordering by how many shops actually stock the part puts the
- * few dozen that appear in real builds at the top, which is the same reasoning
- * `applyCuratedSpecs` uses for its own uncovered report.
- */
-export async function listGaps(
-  category?: BuildSlot,
-  limit = 60,
-): Promise<{ rows: GapRow[]; totalParts: number; totalCells: number }> {
-  const db = getDb()
-
-  const all = await db
-    .select()
-    .from(parts)
-    .where(category ? eq(parts.category, category) : sql`true`)
-
-  const counts = (
-    await db.execute(sql`
-      select part_id,
-             count(distinct shop)::int as shops,
-             count(distinct shop) filter (where in_stock)::int as in_stock_shops
-      from listings group by part_id
-    `)
-  ).rows as { part_id: string; shops: number; in_stock_shops: number }[]
-  const byPart = new Map(counts.map((c) => [c.part_id, c]))
-
-  const overridden = new Set(
-    (await db.select({ partId: partOverrides.partId }).from(partOverrides)).map((o) => o.partId),
-  )
-
-  const rows: GapRow[] = []
-  let totalCells = 0
-
-  for (const part of all) {
-    const gaps = gapsForPart(part)
-    if (gaps.length === 0) continue
-    totalCells += gaps.length
-    const c = byPart.get(part.partId)
-    rows.push({
-      partId: part.partId,
-      category: part.category as BuildSlot,
-      brand: part.brand,
-      model: part.model,
-      shops: c?.shops ?? 0,
-      inStockShops: c?.in_stock_shops ?? 0,
-      gaps,
-      hasOverride: overridden.has(part.partId),
-    })
-  }
-
-  rows.sort(
-    (a, b) =>
-      b.inStockShops - a.inStockShops ||
-      b.shops - a.shops ||
-      a.model.localeCompare(b.model),
-  )
-
-  return { rows: rows.slice(0, limit), totalParts: rows.length, totalCells }
-}
-
-export type EvidenceRow = {
-  shop: string
-  url: string
-  title: string
-  specs: Record<string, string>
-}
-
-/**
- * Spec tables the scrapers already landed but the normalizer never reads.
- *
- * winsoft publishes Socket Type and GPU VRAM as JSON-LD, pcbuilders ships a
- * MANUFACTURER/MODEL/RAM-SIZE attribute table on every product, and the Tyno
- * sites carry manufacturer tables. All of it sits in `raw_listings.raw_payload`
- * unused. Putting it next to the empty field turns "go and look this up on the
- * vendor's site" into "read the value already in your database", which is also
- * the project's rule about citing rather than recalling.
- *
- * There is no part_id on raw_listings — resolution happens in memory and is
- * discarded — but `listings.url` is copied from `raw_listings.source_url`, so
- * that join is exact for the rows that won the per-(part, shop) dedupe.
- */
-export async function getEvidenceFor(partId: string): Promise<EvidenceRow[]> {
-  const rows = (
-    await getDb().execute(sql`
-      select r.shop, r.source_url, r.raw_title, r.raw_payload
-      from raw_listings r
-      where r.source_url in (select url from listings where part_id = ${partId})
-      order by r.scraped_at desc
-      limit 12
-    `)
-  ).rows as Record<string, unknown>[]
-
-  const seen = new Set<string>()
-  const out: EvidenceRow[] = []
-  for (const r of rows) {
-    const shop = String(r.shop)
-    if (seen.has(shop)) continue
-    seen.add(shop)
-    const payload = (r.raw_payload ?? {}) as Record<string, unknown>
-    const specs = (payload.specs ?? {}) as Record<string, string>
-    out.push({
-      shop,
-      url: String(r.source_url),
-      title: String(r.raw_title),
-      specs: typeof specs === 'object' && specs !== null ? specs : {},
-    })
-  }
-  return out
-}
-
-export async function getPartForEdit(partId: string) {
-  const db = getDb()
-  const part = (await db.select().from(parts).where(eq(parts.partId, partId)))[0]
-  if (!part) return null
-
-  const override =
-    (await db.select().from(partOverrides).where(eq(partOverrides.partId, partId)))[0] ?? null
-
-  const offers = (
-    await db.execute(sql`
-      select shop, price_lkr, url, in_stock, scraped_at
-      from listings where part_id = ${partId} order by in_stock desc, price_lkr asc
-    `)
-  ).rows as Record<string, unknown>[]
-
-  return {
-    part,
-    override,
-    offers: offers.map((o) => ({
-      shop: String(o.shop),
-      priceLkr: Number(o.price_lkr),
-      url: String(o.url),
-      inStock: Boolean(o.in_stock),
-    })),
   }
 }

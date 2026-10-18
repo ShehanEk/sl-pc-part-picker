@@ -201,7 +201,22 @@ work with it. Instead the override is repointed onto the canonical part inside
 learns. Mitigated, not solved: every run logs each field where the override
 disagrees with what it replaced, and the edit page shows both values.
 
-### The admin area is one password
+### The web admin was removed (2026-10-19)
+
+**Decision.** `/admin` (sync health, missing-spec list, spec editor), its login
+and `proxy.ts` are gone. The desktop app is the monitor. `part_overrides` and
+`applyOverrides()` stay, so specs already entered keep applying.
+
+**Why.** The desktop app already shows sync health, and runs the shops CI
+cannot reach. A second, password-protected UI on the public site was attack
+surface and upkeep for one operator.
+
+**Cost.** No way to enter a spec without a code change: new values go in the
+curated catalogs and ship with a deploy.
+
+### The admin area is one password (superseded 2026-10-19)
+
+Kept for the record; the admin was removed, see above.
 
 **Decision.** `ADMIN_PASSWORD` plus an HMAC-signed httpOnly cookie.
 `requireAdmin()` in the dashboard layout, `assertAdmin()` at the top of every

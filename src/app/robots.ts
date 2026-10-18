@@ -7,16 +7,13 @@ import { canonical } from '@/lib/site'
  * point at the sitemap, which is how ~1,100 part pages get discovered in
  * reasonable time rather than one link hop at a time.
  *
- * `/admin` and `/api` are disallowed to keep them out of search results, not to
- * protect them — a robots file is a request, and listing a path here arguably
- * advertises it. What actually protects those routes is the signed session
- * cookie checked inside every admin page and Server Action, and the bearer
- * token on the revalidate handler. The `noindex` on the admin layout is what
- * keeps them out of an index if a crawler ignores this.
+ * `/api` is disallowed to keep it out of search results, not to protect it — a
+ * robots file is a request. What actually protects the revalidate handler is
+ * its bearer token.
  */
 export default function robots(): MetadataRoute.Robots {
   return {
-    rules: { userAgent: '*', allow: '/', disallow: ['/admin', '/api'] },
+    rules: { userAgent: '*', allow: '/', disallow: ['/api'] },
     sitemap: canonical('/sitemap.xml'),
     host: canonical('/').replace(/\/$/, ''),
   }

@@ -85,11 +85,8 @@ without touching what a visitor sees.
 | `src/queries/build.ts` | Loads the whole catalogue for the PC builder, cached 30 min. |
 | `src/lib/search.ts` | Part search over the cached directory, by word. No index. |
 | `src/app/` | The public site: home (`/`), category pages, part pages, search (`/search`) and the PC builder (`/build`). |
-| `src/app/admin/` | Authenticated operations area — sync health, catalogue summary, and the spec-gap editor. The only place the app writes. |
-| `src/lib/admin-auth.ts` | One password, HMAC-signed cookie. `requireAdmin()` for pages, `assertAdmin()` for actions. |
-| `src/proxy.ts` | Keeps anonymous traffic off `/admin`. An optimisation, not the boundary. |
-| `src/catalog/gaps.ts` | Which spec fields a rule needs, and which nulls are correct rather than missing. |
-| `src/catalog/overrides.ts` | Applies hand-entered values on top of everything the pipeline produced. |
+| `src/queries/admin.ts` | Uncached sync-health reads for the desktop app's monitor. |
+| `src/catalog/overrides.ts` | Applies hand-entered values (`part_overrides`) on top of everything the pipeline produced. |
 
 `src/queries/parts.ts` is no longer imported by anything — it served the earlier
 part-detail UI and is dead code pending removal.
@@ -140,7 +137,7 @@ These are real and listed so they don't have to be rediscovered.
 - **gamestreet.lk, chamacomputers.lk and pcbuilders.lk depend on the desktop
   app.** They block GitHub's runners, so their workflows are manual-only and the
   app scrapes them nightly. If the app is not running, those three go stale;
-  the admin dashboard marks them "desktop" and shows how far behind they are.
+  the desktop app's dashboard shows how far behind they are.
 - **gamestreet.lk answers the GitHub runner with 403** while working fine
   locally. Not worked around: spoofing a browser user-agent would be evading an
   access control. The options are to ask the shop, retest later, or drop to
