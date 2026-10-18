@@ -17,7 +17,7 @@ import { Scheduler } from './scheduler'
 import * as secrets from './secrets'
 
 /**
- * PC Maker.lk desktop.
+ * PCPrice.lk desktop.
  *
  * Runs the scrape pipeline from this machine rather than from GitHub's runners,
  * which is the whole reason it exists: gamestreet.lk answers CI with 403 and
@@ -60,7 +60,7 @@ function loginItem() {
   return {
     // The registry value's name, and what Task Manager's Startup apps shows.
     // Without it Electron uses its internal app ID, which says nothing.
-    name: 'PC Maker Sync',
+    name: 'PCPrice Sync',
     path: join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe'),
     args: [
       '-NoProfile',
@@ -78,7 +78,22 @@ function loginItem() {
 // Set before anything asks for userData. Without it Electron falls back to the
 // generic "Electron" directory, which every unpackaged Electron app on the
 // machine shares — not somewhere to keep a database password.
-app.setName('PC Maker Sync')
+app.setName('PCPrice Sync')
+// The folder keeps the app's old name. secrets.json is encrypted with a key
+// kept in the same folder, so moving it would mean moving both together or
+// asking for every credential again. Nobody sees the folder name.
+app.setPath('userData', join(app.getPath('appData'), 'PC Maker Sync'))
+
+/**
+ * Moves "Start with Windows" from the app's old name to the new one, so the
+ * user's choice survives the rename. Does nothing once the old entry is gone.
+ */
+function migrateLoginItem() {
+  const old = { ...loginItem(), name: 'PC Maker Sync' }
+  if (!app.getLoginItemSettings(old).executableWillLaunchAtLogin) return
+  app.setLoginItemSettings({ ...old, openAtLogin: false })
+  app.setLoginItemSettings({ ...loginItem(), openAtLogin: true })
+}
 
 let win: BrowserWindow | null = null
 let tray: Tray | null = null
@@ -215,10 +230,10 @@ function updateTray() {
   const busy = runner?.busy
   tray.setToolTip(
     busy
-      ? `PC Maker.lk — running ${busy.kind === 'scrape' ? busy.shop : 'normalize'}`
+      ? `PCPrice.lk — running ${busy.kind === 'scrape' ? busy.shop : 'normalize'}`
       : paused
-        ? 'PC Maker.lk — paused'
-        : 'PC Maker.lk — idle',
+        ? 'PCPrice.lk — paused'
+        : 'PCPrice.lk — idle',
   )
   tray.setContextMenu(
     Menu.buildFromTemplate([
@@ -254,7 +269,7 @@ function showWindow() {
   win = new BrowserWindow({
     width: 1100,
     height: 780,
-    title: 'PC Maker.lk sync',
+    title: 'PCPrice.lk sync',
     icon: ICON,
     backgroundColor: '#f2f4f9',
     webPreferences: {
@@ -300,6 +315,7 @@ function seedCredentials() {
 }
 
 app.whenReady().then(() => {
+  migrateLoginItem()
   seedCredentials()
   paused = readPrefs().paused
 

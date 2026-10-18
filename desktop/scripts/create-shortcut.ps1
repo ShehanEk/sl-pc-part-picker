@@ -1,4 +1,4 @@
-# Puts a "PC Maker Sync" shortcut on the desktop. Run again if the repo moves:
+# Puts a "PCPrice Sync" shortcut on the desktop. Run again if the repo moves:
 #
 #   npm run shortcut
 #
@@ -11,7 +11,11 @@
 
 $app = Split-Path -Parent $PSScriptRoot
 $desktop = [Environment]::GetFolderPath('Desktop')
-$path = Join-Path $desktop 'PC Maker Sync.lnk'
+$path = Join-Path $desktop 'PCPrice Sync.lnk'
+
+# The shortcut this script made before the app was renamed.
+$old = Join-Path $desktop 'PC Maker Sync.lnk'
+if (Test-Path -LiteralPath $old) { Remove-Item -LiteralPath $old }
 
 $shortcut = (New-Object -ComObject WScript.Shell).CreateShortcut($path)
 $shortcut.TargetPath = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
@@ -19,7 +23,7 @@ $shortcut.Arguments = "-NoProfile -WindowStyle Hidden -Command `"Set-Location -L
 $shortcut.WorkingDirectory = $app
 $shortcut.IconLocation = Join-Path $app 'assets\icon.ico'
 $shortcut.WindowStyle = 7 # minimised, so the console never flashes up before it hides
-$shortcut.Description = 'PC Maker.lk price sync'
+$shortcut.Description = 'PCPrice.lk price sync'
 $shortcut.Save()
 
 Write-Output "created $path"

@@ -1,4 +1,4 @@
-# PC Maker.lk desktop
+# PCPrice.lk desktop
 
 A tray app that monitors sync health and **runs the scrapers from this machine**.
 
@@ -30,7 +30,8 @@ repo moves and does not quietly change behaviour when that file does. The
 Connection panel has an **Import from .env.local** button to repeat it
 deliberately, and the startup log says which database it ended up pointed at.
 
-Credentials live in `%APPDATA%/PC Maker Sync/secrets.json`, encrypted with the
+Credentials live in `%APPDATA%/PC Maker Sync/secrets.json` (the folder keeps
+the app's name from before it became PCPrice Sync; see `src/main/index.ts`), encrypted with the
 OS keychain via Electron's `safeStorage` — the file contains no readable
 connection string. If the platform reports no encryption available, the app
 refuses to store them rather than writing a database password in plaintext.
@@ -42,7 +43,7 @@ The switches in Settings (scheduled syncs on or off, skip on battery) live in
 
 ## Start with Windows
 
-The Settings switch registers a startup entry named **PC Maker Sync** (it shows
+The Settings switch registers a startup entry named **PCPrice Sync** (it shows
 in Task Manager's Startup apps). It runs the same command as the desktop
 shortcut, so a login start also rebuilds first, plus `--hidden` so the app comes
 up in the tray rather than opening its window.

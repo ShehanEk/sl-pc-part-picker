@@ -2,7 +2,7 @@
   "name": "pcmaker-desktop",
   "version": "0.1.0",
   "private": true,
-  "description": "Tray app that monitors PC Maker.lk sync health and runs the scrape pipeline locally",
+  "description": "Tray app that monitors PCPrice.lk sync health and runs the scrape pipeline locally",
   "main": "dist/main.cjs",
   "scripts": {
     "build": "node scripts/build.mjs",
