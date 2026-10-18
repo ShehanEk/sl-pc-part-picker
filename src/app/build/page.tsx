@@ -16,9 +16,8 @@ export const revalidate = 1800
 
 export const metadata: Metadata = {
   title: 'PC builder: build a PC from parts in stock in Sri Lanka',
-  description: `Build a PC from parts Sri Lankan shops actually stock. Mix parts from ${TRACKED_SHOPS.join(
-    ', ',
-  )}, and we check they work together and total the cheapest shop for each.`,
+  // Under ~155 characters, where Google cuts a result's description.
+  description: `Build a PC from parts in stock at ${TRACKED_SHOPS.length} Sri Lankan shops. We check every part fits and find the cheapest shop for each one.`,
   alternates: { canonical: canonical('/build') },
   openGraph: {
     title: `PC builder | ${SITE_NAME}`,

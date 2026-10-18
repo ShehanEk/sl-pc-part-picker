@@ -47,7 +47,7 @@ export async function generateMetadata({
   const description = cheapest
     ? `Compare ${inStock.length} ${copy.plural} in stock in Sri Lanka, from ${rupees(
         cheapest,
-      )}. Local shop prices updated daily, with a compatibility check for the rest of your build.`
+      )}. Prices from local shops, updated daily.`
     : `${copy.heading} prices from Sri Lankan shops, updated daily.`
 
   return {

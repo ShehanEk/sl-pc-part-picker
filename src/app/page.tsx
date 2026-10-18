@@ -22,9 +22,9 @@ export const metadata: Metadata = {
   title: {
     absolute: `${SITE_NAME} — compare PC part prices in Sri Lanka`,
   },
-  description: `Find the cheapest place to buy PC parts in Sri Lanka. Prices from ${TRACKED_SHOPS.join(
-    ', ',
-  )}, compared side by side and checked every night.`,
+  // Under ~155 characters, where Google cuts a result's description. The shop
+  // names used to be listed here and ran it to 201, so the benefit got cut.
+  description: `Find the cheapest place to buy PC parts in Sri Lanka. Prices from ${TRACKED_SHOPS.length} local shops, compared side by side and checked every night.`,
   alternates: { canonical: canonical('/') },
   openGraph: {
     title: `${SITE_NAME} — compare PC part prices in Sri Lanka`,

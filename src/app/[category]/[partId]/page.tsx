@@ -74,25 +74,27 @@ export async function generateMetadata({
 
   const priceClause =
     part.bestLkr !== null
-      ? `From ${rupees(part.bestLkr)} at ${part.inStockShops} ${
+      ? `from ${rupees(part.bestLkr)} at ${part.inStockShops} ${
           part.inStockShops === 1 ? 'shop' : 'shops'
         }.`
-      : `Last seen at ${rupees(part.lowLkr)}; currently out of stock everywhere we check.`
+      : `out of stock now, last seen at ${rupees(part.lowLkr)}.`
+
+  // Built to fit the ~155 characters Google shows before cutting. The name and
+  // the price always go in; the specs and the closing line only while they
+  // still fit. Joining every piece unconditionally put half the part pages
+  // over 160, and the out-of-stock ones as high as 225.
+  let description = `${name} price in Sri Lanka: ${priceClause}`
+  for (const piece of [specs ? `${specs}.` : '', 'Compare local shops, updated daily.']) {
+    if (piece && description.length + 1 + piece.length <= 155) description += ` ${piece}`
+  }
 
   return {
     title: `${name} price in Sri Lanka`,
-    description: [
-      `${name} price in Sri Lanka.`,
-      priceClause,
-      specs ? `${specs}.` : '',
-      'Compare local shops and check it fits your build. Updated daily.',
-    ]
-      .filter(Boolean)
-      .join(' '),
+    description,
     alternates: { canonical: canonical(path) },
     openGraph: {
       title: `${name} price in Sri Lanka | ${SITE_NAME}`,
-      description: priceClause,
+      description: priceClause[0].toUpperCase() + priceClause.slice(1),
       url: canonical(path),
       type: 'website',
     },

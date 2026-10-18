@@ -28,8 +28,10 @@ export const metadata: Metadata = {
     default: `${SITE_NAME} — PC parts prices in Sri Lanka`,
     template: `%s | ${SITE_NAME}`,
   },
+  // The fallback for any page without its own. Under ~155 characters, where
+  // Google cuts a description.
   description:
-    "Compare PC part prices across Sri Lankan shops and build a machine from parts that actually work together. Graphics cards, processors, motherboards, memory, drives, power supplies and cases, updated daily.",
+    "Compare PC part prices across Sri Lankan shops and find the cheapest place to buy graphics cards, processors, RAM, SSDs and more. Updated daily.",
   applicationName: SITE_NAME,
   alternates: { canonical: "/" },
   openGraph: {
