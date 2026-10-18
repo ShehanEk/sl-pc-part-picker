@@ -162,6 +162,14 @@ export const priceHistory = pgTable(
     shop: text('shop').notNull(),
     recordedOn: date('recorded_on').notNull(),
     priceLkr: numeric('price_lkr', { precision: 12, scale: 2 }).notNull(),
+    /**
+     * Whether the shop had it in stock that day. Without it, 22% of the
+     * history was prices nobody could pay, and the chart's "lowest price" was
+     * often one of them. Null only on rows from before the column existed that
+     * could not be matched back to a scrape; read as in stock, the same rule the
+     * listings use for a shop that publishes no stock status.
+     */
+    inStock: boolean('in_stock'),
   },
   (t) => [
     primaryKey({ columns: [t.partId, t.shop, t.recordedOn] }),

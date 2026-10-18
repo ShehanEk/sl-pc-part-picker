@@ -162,7 +162,12 @@ async function _loadPriceIndex(days = 90): Promise<Record<string, PricePoint[]>>
       lowest: sql<string>`min(${priceHistory.priceLkr})`,
     })
     .from(priceHistory)
-    .where(sql`${priceHistory.recordedOn} >= current_date - make_interval(days => ${days})`)
+    // In-stock prices only, so the chart agrees with the "cheapest in stock"
+    // card beside it. A day with nothing in stock anywhere simply has no point.
+    .where(
+      sql`${priceHistory.recordedOn} >= current_date - make_interval(days => ${days})
+          and coalesce(${priceHistory.inStock}, true)`,
+    )
     .groupBy(priceHistory.partId, priceHistory.recordedOn)
     .orderBy(asc(priceHistory.partId), asc(priceHistory.recordedOn))
 

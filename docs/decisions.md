@@ -376,6 +376,25 @@ its 319 products are "Available on backorder", so taking the flag at face value
 would have made it the shop that stocks everything and let it win every
 cheapest-in-stock comparison with parts that have to be ordered in.
 
+### Price history records stock, and the chart plots only in-stock prices
+
+**2026-10-18. Decision.** `price_history` has an `in_stock` column, written
+with every daily point, and the part-page chart takes the lowest *in-stock*
+price per day.
+
+**Why.** The table recorded a price per shop per day with no stock flag, so the
+chart's "lowest price" was often one nobody could pay. An RTX 5070's line ended
+at Rs 237,000, chamacomputers' out-of-stock listing, under a headline of
+Rs 325,000 in stock. 22% of the history was out-of-stock prices. A caption
+admitting it was the stopgap, not the fix.
+
+**Backfill.** Stock cannot be recovered from `price_history` itself, so each old
+row was matched to that shop's most recent raw scrape at the same price
+(migrations `0004`, then `0005` widening the window to seven days for rows
+written days after a shop's last scrape). 739 of 25,308 rows stay NULL, read as
+in stock — the rule listings already use for a shop that publishes no stock
+status. 732 of them are gamestreet.lk, which published none until 2026-10-18.
+
 ---
 
 ## Scraping conduct

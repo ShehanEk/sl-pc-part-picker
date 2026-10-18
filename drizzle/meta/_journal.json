@@ -29,6 +29,20 @@
       "when": 1789068802048,
       "tag": "0003_adorable_iron_monger",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792299919387,
+      "tag": "0004_whole_stick",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792300122536,
+      "tag": "0005_price_history_stock_backfill",
+      "breakpoints": true
     }
   ]
 }

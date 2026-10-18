@@ -209,6 +209,7 @@ async function _getPriceSeries(partId: string, days = 30): Promise<PricePoint[]>
       and(
         eq(priceHistory.partId, partId),
         sql`${priceHistory.recordedOn} >= current_date - make_interval(days => ${days})`,
+        sql`coalesce(${priceHistory.inStock}, true)`,
       ),
     )
     .groupBy(priceHistory.recordedOn)

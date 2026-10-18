@@ -105,7 +105,8 @@ Four tables (`src/db/schema.ts`):
   stamp `normalized_at`. This is what makes ingest reprocessable.
 - **`listings`** — one row per `(part_id, shop)`, overwritten each run. Current
   price and stock.
-- **`price_history`** — append-only, one row per `(part_id, shop, day)`.
+- **`price_history`** — append-only, one row per `(part_id, shop, day)`, with
+  the day's stock status so the chart can plot buyable prices only.
 
 The `part_id` is the join between a shop's marketing text and a compatibility
 fact, and getting it wrong is the failure mode that matters: too coarse and two
@@ -144,8 +145,6 @@ These are real and listed so they don't have to be rediscovered.
   locally. Not worked around: spoofing a browser user-agent would be evading an
   access control. The options are to ask the shop, retest later, or drop to
   three shops.
-- **Price history is two days deep.** Trend lines need weeks of nightly runs
-  before they say anything.
 - **PSU connector coverage is 5 units.** Most `gpu-connector` checks therefore
   answer `unknown` rather than `pass`. That is the honest result, but it makes
   the check quiet.

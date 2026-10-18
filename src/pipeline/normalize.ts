@@ -471,6 +471,9 @@ export async function runNormalize(
     shop: r.shop,
     recordedOn: today,
     priceLkr: String(r.priceLkr),
+    // The chart plots the lowest *buyable* price, so stock is recorded with
+    // every point rather than looked up afterwards, when it can't be.
+    inStock: r.inStock,
   }))
 
   for (let i = 0; i < historyValues.length; i += 100) {
@@ -479,7 +482,7 @@ export async function runNormalize(
       .values(historyValues.slice(i, i + 100))
       .onConflictDoUpdate({
         target: [priceHistory.partId, priceHistory.shop, priceHistory.recordedOn],
-        set: { priceLkr: sql`excluded.price_lkr` },
+        set: { priceLkr: sql`excluded.price_lkr`, inStock: sql`excluded.in_stock` },
       })
   }
   result.historyRows = historyValues.length

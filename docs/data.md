@@ -150,11 +150,19 @@ Reading this table honestly:
 
 ## Price history
 
-Append-only, one row per `(part, shop, day)`. Re-running on the same day
-refreshes that day's price rather than adding a duplicate.
+Append-only, one row per `(part, shop, day)`, with that day's price and whether
+the shop had it in stock (`in_stock`). Re-running on the same day refreshes that
+day's row rather than adding a duplicate.
 
-Currently **3,331 points across 4 days** (2026-08-23 → 2026-08-26). Trends need
-weeks of nightly runs before they mean anything.
+The part-page chart plots the **lowest in-stock price** per day, the same rule as
+the "cheapest in stock" card beside it. Until 2026-10-18 the table had no stock
+column, so 22% of the history (5,651 of 25,308 points) was prices no shop would
+sell at, and the chart could dip below the headline price. Older rows were
+backfilled by matching each to that shop's most recent scrape at the same price
+(migrations 0004 and 0005). 739 stay unknown and are read as in stock; 732 of
+them are gamestreet.lk, which published no stock status until 2026-10-18.
+
+Currently **25,308 points across 52 days** (2026-08-23 → 2026-10-17).
 
 ## Deliberately not captured
 

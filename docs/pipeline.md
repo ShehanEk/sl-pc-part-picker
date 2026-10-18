@@ -144,7 +144,8 @@ In order:
    you cannot; among equals, the cheapest wins.
 4. **`price_history`** — one row per `(part_id, shop, day)`, upserted, so
    re-running on the same day refreshes that day's price rather than adding a
-   duplicate. That is what keeps a trend line one point per day.
+   duplicate. That is what keeps a trend line one point per day. Stock is
+   recorded with each row, because it cannot be recovered afterwards.
 5. **`raw_listings.normalized_at`** — stamped for every row considered.
 6. **Curated specs applied last**, so they overwrite anything a retailer's spec
    table contributed during this run.

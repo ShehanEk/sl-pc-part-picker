@@ -367,15 +367,14 @@ export default async function PartPage({
                   </span>
                 </div>
                 {/*
-                  The history table records a price per shop per day with no stock
-                  flag, so this is the lowest price *listed* — not necessarily one
-                  that was in stock. Saying "cheapest" here would contradict the
-                  card beside it, which counts only what you can actually buy.
+                  In-stock prices only, the same rule as the card beside it. Before
+                  price_history recorded stock, this line could dip to a price no
+                  shop would sell at, below the "cheapest in stock" headline.
                 */}
                 <PriceChart points={series} />
                 <p className="m-0 text-[12.5px] text-ink-3">
-                  Lowest price listed each day over the last {series.length} days, including
-                  listings that were out of stock.
+                  Lowest in-stock price across the shops we check, on each of the{' '}
+                  {series.length} days we have checked.
                 </p>
               </section>
             )}
@@ -514,7 +513,7 @@ export default async function PartPage({
 }
 
 /**
- * The lowest listed price per day. Rendered server-side as plain SVG so it is in
+ * The lowest in-stock price per day. Rendered server-side as plain SVG so it is in
  * the HTML and costs no JavaScript; it lengthens on its own as the nightly runs
  * accumulate.
  */
@@ -541,7 +540,7 @@ function PriceChart({ points }: { points: PricePoint[] }) {
         preserveAspectRatio="none"
         className="block h-[140px] w-full"
         role="img"
-        aria-label={`Lowest listed price from ${first.day} to ${last.day}: ${rupees(first.lowestLkr)} to ${rupees(last.lowestLkr)}, ranging ${rupees(min)} to ${rupees(max)}.`}
+        aria-label={`Lowest in-stock price from ${first.day} to ${last.day}: ${rupees(first.lowestLkr)} to ${rupees(last.lowestLkr)}, ranging ${rupees(min)} to ${rupees(max)}.`}
       >
         <path d={`${line} L${w} ${h} L0 ${h} Z`} fill="var(--accent-soft)" />
         <path d={line} fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
