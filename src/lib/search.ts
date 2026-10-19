@@ -31,6 +31,12 @@ function matchesWord(nameWords: string[], q: string): boolean {
   return false
 }
 
+/** Whether every word of `query` matches a word of `text`, by the rules above. */
+export function matchesQuery(text: string, query: string): boolean {
+  const textWords = words(text)
+  return words(query).every((q) => matchesWord(textWords, q))
+}
+
 export function searchParts(directory: Directory, query: string): SeoPart[] {
   const queryWords = words(query)
   if (queryWords.length === 0) return []

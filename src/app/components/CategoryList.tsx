@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useMemo, useState } from 'react'
 
 import type { BuildSlot } from '@/compat/build'
+import { matchesQuery } from '@/lib/search'
 
 /**
  * The filterable list on a category page.
@@ -30,6 +31,17 @@ export type ListRow = {
 
 type Sort = 'price' | 'saving' | 'shops'
 
+/** Placeholder examples: words that really occur in each category's names and specs. */
+const FILTER_EXAMPLES: Record<BuildSlot, string> = {
+  cpu: 'Ryzen 5 or 14600',
+  motherboard: 'B650 or AM5',
+  ram: 'DDR5 or 32GB',
+  gpu: '5060 or 16GB',
+  storage: 'NVMe or 1TB',
+  psu: '750W or Gold',
+  case: 'ATX',
+}
+
 const rs = (n: number) => `Rs ${Math.round(n).toLocaleString('en-LK')}`
 
 export function CategoryList({
@@ -51,6 +63,7 @@ export function CategoryList({
   const [shopsOn, setShopsOn] = useState<Set<string>>(new Set(shops))
   const [sort, setSort] = useState<Sort>('price')
   const [filtersOpen, setFiltersOpen] = useState(false)
+  const [query, setQuery] = useState('')
 
   const brandCounts = useMemo(() => countBy(rows.map((r) => r.brand)), [rows])
   const facetCounts = useMemo(
@@ -60,6 +73,7 @@ export function CategoryList({
 
   const shown = useMemo(() => {
     const priced = rows.flatMap((row) => {
+      if (query && !matchesQuery(`${row.brand} ${row.model} ${row.specs} ${row.facet ?? ''}`, query)) return []
       if (brands.size && !brands.has(row.brand)) return []
       if (facets.size && (!row.facet || !facets.has(row.facet))) return []
       const offers = row.offers.filter((o) => shopsOn.has(o.shop))
@@ -91,7 +105,7 @@ export function CategoryList({
         (sort === 'shops' ? b.inStock - a.inStock : 0) ||
         price(a) - price(b),
     )
-  }, [rows, brands, facets, shopsOn, hideOutOfStock, sort])
+  }, [rows, query, brands, facets, shopsOn, hideOutOfStock, sort])
 
   const filtering =
     hideOutOfStock || brands.size > 0 || facets.size > 0 || shopsOn.size !== shops.length
@@ -217,8 +231,22 @@ export function CategoryList({
       >
         <div className="hairline-b flex flex-wrap items-center justify-between gap-2.5 px-5 py-3.5">
           <h2 id="results" className="text-[14px] font-semibold" aria-live="polite">
-            {shown.length} {noun}
+            {query || filtering ? `${shown.length} of ${rows.length}` : shown.length} {noun}
           </h2>
+          <label className="flex min-h-9 max-w-[340px] flex-[1_1_220px] items-center gap-2 rounded-[10px] border border-[rgb(30_50_100/12%)] bg-white px-3 focus-within:border-[var(--accent)]">
+            <span className="sr-only">Filter {noun}</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" className="flex-none text-ink-3" aria-hidden>
+              <circle cx="11" cy="11" r="6.5" />
+              <path d="m16 16 4.5 4.5" />
+            </svg>
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={`Filter, e.g. ${FILTER_EXAMPLES[slot]}`}
+              className="min-w-0 flex-1 bg-transparent text-[13px] text-ink outline-none"
+            />
+          </label>
           <label className="flex items-center gap-2 text-[13px] text-ink-2">
             Sort
             <select
@@ -233,7 +261,14 @@ export function CategoryList({
           </label>
         </div>
 
-        {shown.length === 0 ? (
+        {shown.length === 0 && query ? (
+          <p className="px-5 py-8 text-[13.5px] text-ink-3">
+            No {noun} match “{query}”{filtering ? ' with these filters' : ''}.{' '}
+            <button type="button" onClick={() => setQuery('')} className="text-accent underline underline-offset-2">
+              Clear the search
+            </button>
+          </p>
+        ) : shown.length === 0 ? (
           <p className="px-5 py-8 text-[13.5px] text-ink-3">
             Nothing matches those filters.{' '}
             <button type="button" onClick={reset} className="text-accent underline underline-offset-2">
