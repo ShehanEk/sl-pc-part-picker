@@ -3,6 +3,7 @@ import { Instrument_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
 import { SITE_NAME, SITE_URL } from "@/lib/site";
+import { Analytics } from "./components/Analytics";
 
 const sans = Instrument_Sans({
   subsets: ["latin"],
@@ -59,6 +60,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="en-LK" className={`${sans.variable} ${mono.variable} h-full`}>
       <body className="min-h-full font-[family-name:var(--font-sans)] antialiased">
         {children}
+        <Analytics />
       </body>
     </html>
   );

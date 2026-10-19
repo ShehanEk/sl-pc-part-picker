@@ -100,7 +100,10 @@ export function SiteFooter() {
         <p className="mt-5 max-w-[70ch] text-[12px] leading-relaxed text-ink-4">
           {SITE_NAME} tracks prices at {TRACKED_SHOPS.join(', ')} and checks that the parts you
           pick work together. Prices are scraped daily and shown in Sri Lankan rupees; confirm
-          with the shop before buying, as stock and prices change between our checks.
+          with the shop before buying, as stock and prices change between our checks.{' '}
+          <Link href="/privacy" className="text-ink-3 underline underline-offset-2 hover:text-accent">
+            Privacy
+          </Link>
         </p>
       </div>
     </footer>
