@@ -6,7 +6,7 @@ import { SearchBox } from '../components/SearchBox'
 import { SiteFooter, SiteHeader } from '../components/SiteChrome'
 
 import { BUILD_SLOTS } from '@/compat/build'
-import { CATEGORY_COPY, rupees, sentenceCase } from '@/lib/site'
+import { CATEGORY_COPY, canonical, rupees, sentenceCase } from '@/lib/site'
 import { searchParts } from '@/lib/search'
 import { loadDirectory } from '@/queries/seo'
 
@@ -32,6 +32,8 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   return {
     title: q ? `“${q}” prices in Sri Lanka` : 'Search PC parts',
     robots: { index: false, follow: true },
+    // Otherwise it inherits the layout's canonical and claims to be the home page.
+    alternates: { canonical: canonical('/search') },
   }
 }
 

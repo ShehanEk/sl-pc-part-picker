@@ -15,6 +15,19 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // The old address keeps working for anyone with a link, and Google moves its
+  // index to pcprice.lk instead of seeing the same site under two names.
+  // Preview deployments have their own hostnames and are not affected.
+  async redirects() {
+    return [
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "sl-pc-part-picker.vercel.app" }],
+        destination: "https://pcprice.lk/:path*",
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
