@@ -66,6 +66,63 @@ interpolation was invalid and **no caller workflow ever registered its
 schedule**. Renamed to `timeout_minutes`. The lesson: workflow inputs must be
 valid identifiers.
 
+### The domain is pcprice.lk, and the site is PCPrice.lk (2026-10-19)
+
+**Decision.** Moved from `sl-pc-part-picker.vercel.app` to `pcprice.lk`, and
+renamed the site from "PC Maker.lk" to "PCPrice.lk". The desktop app became
+"PCPrice Sync".
+
+**Why.** The name says the main job, finding the price, which "PC Maker" did
+not. A `.lk` domain tells Google the site is for Sri Lanka. It was renamed
+before Search Console was set up, so no ranking was lost.
+
+**Cost.** Some internal names keep "pcmaker" on purpose: the builder's
+`sessionStorage` keys (renaming would drop visitors' builds) and the desktop
+app's data folder, `%APPDATA%/PC Maker Sync`, whose encryption key lives beside
+`secrets.json`.
+
+### Vercel alone, no Cloudflare in front (2026-10-19)
+
+**Decision.** DNS on Vercel's nameservers; no Cloudflare proxy.
+
+**Why.** Vercel already gives HTTPS, a CDN and DDoS protection, and the pages
+are prebuilt, so bots cost little. A proxy in front of Vercel adds a second
+dashboard and an SSL mode that can break HTTPS.
+
+**Cost.** Cloudflare's free bot rules are stronger than Vercel's Hobby
+firewall. Revisit if bot traffic becomes a real cost; switching needs no code.
+
+### Security headers without a Content-Security-Policy (2026-10-19)
+
+**Decision.** Four headers on every response from `next.config.ts`; no CSP.
+
+**Why.** A real CSP needs a per-request nonce for Next's inline scripts, and
+reading one renders every page on demand, which would undo prerendering 1,350
+pages.
+
+**Cost.** No defence-in-depth against injected script. The site renders no
+user input as HTML, which keeps that risk small.
+
+### Part share images are drawn on demand (2026-10-19)
+
+**Decision.** Home and category share images are prerendered; part images are
+made on first request and cached for 30 minutes.
+
+**Why.** Prerendering 1,350 images adds minutes to every deploy, and most are
+never fetched: only shared links ask for them.
+
+### Google Analytics with no consent popup (2026-10-20)
+
+**Decision.** GA4 on the production deployment only, with `/privacy` as the
+notice its terms require, linked from the footer. No cookie banner.
+
+**Why.** The owner did not want a popup on a site whose whole job is a fast
+answer. GA was chosen over Vercel Analytics for its free outbound-click
+tracking: clicks out to shops are the number that shows the site's value.
+
+**Cost.** Without consent, visitors who expect to be asked (EU visitors, and
+Sri Lanka's PDPA) are not. Revisit if the audience or the law makes it matter.
+
 ---
 
 ## Pipeline
@@ -500,6 +557,15 @@ functions and run identically on either side.
 blue bloom. There is no dark equivalent that keeps the same feel, and a bad
 inversion is worse than no dark mode — an earlier iteration shipped a dropdown
 that rendered white-on-white in dark mode.
+
+### Category lists filter by text in the browser (2026-10-20)
+
+**Decision.** A text box above each category list filters the rows already on
+the page, by word, using the same matching as `/search`.
+
+**Why.** The page already holds every part, so filtering needs no request and
+no cost. Reusing `matchesQuery` keeps "Ryzen 7" from matching a Ryzen 5 7500F
+here just as it doesn't in search.
 
 ### Tests are `node:test`, not a framework
 

@@ -5,7 +5,7 @@
 A buyer in Sri Lanka cannot use PCPartPicker to buy a PC. It knows every part
 ever made and none of the local prices, so a compatible build on it is often a
 build nobody here stocks. This project inverts that: a small catalogue of only
-what four Colombo retailers actually have, with the compatibility checking that
+what six Sri Lankan retailers actually have, with the compatibility checking that
 makes the catalogue usable.
 
 Two things follow from that premise and shape everything below.
@@ -24,12 +24,13 @@ rather than a dead motherboard.
 
 ```mermaid
 flowchart TB
-  subgraph shops["Five retailer sites"]
+  subgraph shops["Six retailer sites"]
     S1["gamestreet.lk"]
     S2["chamacomputers.lk"]
     S3["nanotek.lk"]
     S4["redlinetech.lk"]
     S5["pcbuilders.lk"]
+    S6["winsoft.lk"]
   end
 
   subgraph ci["GitHub Actions — nightly, staggered"]
@@ -84,7 +85,13 @@ without touching what a visitor sees.
 | `src/compat/build.ts` | Build-level evaluation, candidate ranking, next-slot suggestion. Pure. |
 | `src/queries/build.ts` | Loads the whole catalogue for the PC builder, cached 30 min. |
 | `src/lib/search.ts` | Part search over the cached directory, by word. No index. |
-| `src/app/` | The public site: home (`/`), category pages, part pages, search (`/search`) and the PC builder (`/build`). |
+| `src/app/` | The public site: home (`/`), category pages, part pages, search (`/search`), the PC builder (`/build`) and `/privacy`. |
+| `src/app/components/CategoryList.tsx` | A category's list with its filters, sort and text filter, all in the browser. The text filter reuses `matchesQuery` from `src/lib/search.ts`. |
+| `src/lib/og.tsx` + `opengraph-image.tsx` files | Share images (1200 × 630) for home, each category and each part, drawn by `next/og` with the site fonts in `assets/fonts/`. |
+| `src/app/components/Analytics.tsx` | Google Analytics 4, loaded only when `VERCEL_ENV` is `production`. |
+| `src/app/api/revalidate/route.ts` | Clears the `catalog` cache tag. Called by the nightly normalize workflow with a bearer token. |
+| `next.config.ts` | Security headers on every response, and the permanent redirect from `sl-pc-part-picker.vercel.app` to `pcprice.lk`. |
+| `scripts/favicon.mjs` | Generates the favicon, SVG icon and Apple icon from one SVG. |
 | `src/queries/admin.ts` | Uncached sync-health reads for the desktop app's monitor. |
 | `src/catalog/overrides.ts` | Applies hand-entered values (`part_overrides`) on top of everything the pipeline produced. |
 
@@ -128,7 +135,29 @@ they run identically on either side. The build itself lives in React state and
 never touches the URL or the server.
 
 Query results are wrapped in `unstable_cache` with `revalidate: 1800` and the
-tag `'catalog'`.
+tag `'catalog'`. The nightly normalize workflow clears that tag through
+`/api/revalidate` when it finishes, so new prices show within a minute rather
+than up to 30 minutes later.
+
+Share images: home and the seven category images are made at build. The 1,350
+part images are drawn on first request and cached, because prerendering them
+all would add minutes to every deploy for images that are mostly never fetched.
+
+## Hosting, domain and analytics
+
+- **Domain:** `pcprice.lk`, registered with the LK Domain Registry, nameservers
+  pointed at Vercel. `www.pcprice.lk` and `sl-pc-part-picker.vercel.app` both
+  redirect permanently (308) to it. Canonicals, the sitemap and share images
+  take the host from `SITE_URL` in `src/lib/site.ts`.
+- **Security headers:** `nosniff`, `X-Frame-Options: DENY`,
+  `strict-origin-when-cross-origin` and a `Permissions-Policy`, from
+  `next.config.ts`. Vercel adds HSTS. There is no Content-Security-Policy; see
+  [decisions](decisions.md#security-headers-without-a-content-security-policy-2026-10-19).
+- **Analytics:** Google Analytics 4, production only, no consent popup.
+  `/privacy` is the notice GA's terms require. Clicks out to shops come from GA's
+  enhanced measurement, not from code.
+- **Search:** the domain is verified in Google Search Console and the sitemap
+  is submitted.
 
 ## Known gaps
 

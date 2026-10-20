@@ -4,10 +4,10 @@ Pick a PC part, see which Sri Lankan shop stocks it and at what price, and build
 a whole machine out of parts that actually work together — mixing shops freely.
 
 The premise is narrowness. PCPartPicker knows every part in the world and none
-of the prices here; this knows only what four Colombo retailers have on the
+of the prices here; this knows only what six Sri Lankan retailers have on the
 shelf, which is the only catalogue a buyer in Sri Lanka can act on.
 
-**Live:** deployed on Vercel · **Repo:** [ShehanEk/sl-pc-part-picker](https://github.com/ShehanEk/sl-pc-part-picker)
+**Live:** [pcprice.lk](https://pcprice.lk) · **Repo:** [ShehanEk/sl-pc-part-picker](https://github.com/ShehanEk/sl-pc-part-picker)
 
 ## Documentation
 
@@ -18,6 +18,7 @@ shelf, which is the only catalogue a buyer in Sri Lanka can act on.
 | [Data pipeline](docs/pipeline.md) | The four stages, schedules, failure modes, how to run and reprocess |
 | [What we capture](docs/data.md) | Retailers, fields, spec coverage, and what is deliberately not captured |
 | [Retailer inspection](docs/retailers.md) | Per-site scraping mechanics, selectors, robots.txt, gotchas |
+| [Status](docs/status.md) | What is live, how hosting, domain and analytics are set up, open items |
 
 ## Quick start
 
@@ -49,7 +50,7 @@ npm run scrape -- all
 npm run normalize
 ```
 
-A full scrape of all five shops takes upwards of an hour, dominated by
+A full scrape of all six shops takes upwards of an hour, dominated by
 nanotek.lk (three requests per product, serialised, with a 1.5s floor per host —
 that gap is deliberate). For a quick smoke test:
 
@@ -69,6 +70,7 @@ npm run scrape -- gamestreet.lk --categories gpu --max-products 5 --dry-run
 | `npm run normalize` | Stage 3–4: resolve raw rows to parts, write `listings` + `price_history` |
 | `npm run seed:specs` | Push the curated spec catalogs onto `parts` |
 | `npm run db:generate` / `db:migrate` / `db:studio` | Drizzle schema tooling |
+| `node scripts/favicon.mjs` | Regenerate `favicon.ico`, `icon.svg` and `apple-icon.png` in `src/app/` |
 
 Useful scrape flags: `--categories gpu,psu`, `--max-products N`, `--max-pages N`,
 `--dry-run`. Useful normalize flags: `--limit N`, `--redo`, `--no-ai`, `--dry-run`.
@@ -80,7 +82,8 @@ Useful scrape flags: `--categories gpu,psu`, `--max-products N`, `--max-pages N`
 | `DATABASE_URL` | yes | App and pipeline. Neon **pooled** connection. |
 | `DATABASE_URL_UNPOOLED` | migrations only | `drizzle-kit`. Same host without `-pooler`. |
 | `ANTHROPIC_API_KEY` | no | Normalizer's fallback title matcher. Without it, titles the rules can't parse are left unmatched rather than the run failing. |
-| `REVALIDATE_SECRET` | no | Lets the nightly job clear the site's read cache when it finishes. |
+| `REVALIDATE_SECRET` | no | Lets the nightly job clear the site's read cache when it finishes. Must match in Vercel and in GitHub Actions secrets; the workflow also needs the Actions variable `SITE_URL`. |
+| `NEXT_PUBLIC_GA_ID` | no | Overrides the Google Analytics ID in `src/app/components/Analytics.tsx`. GA loads only on the Vercel production deployment. |
 | `SCRAPER_USER_AGENT` | no | Overrides the default bot UA. |
 | `SCRAPER_DELAY_MS` | no | Minimum gap between requests to one host. Floor is 1500ms; a smaller or unparseable value is ignored. |
 
