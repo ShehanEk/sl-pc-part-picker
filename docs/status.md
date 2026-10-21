@@ -3,13 +3,17 @@
 What is live and how it is set up. Update this when something ships or a
 setting moves. Why each choice was made is in [decisions](decisions.md).
 
-Last updated 20 October 2026.
+Last updated 21 October 2026.
 
 ## Live
 
 - **Site:** [pcprice.lk](https://pcprice.lk). Home, seven category pages with
   filters and a text filter, ~1,350 part pages, search, the PC builder at
   `/build`, and `/privacy`.
+- **Category filters:** RAM by memory type, capacity and speed; motherboards by
+  socket, memory type and form factor; drives by type and capacity; power
+  supplies by wattage and efficiency; GPUs, processors and cases by one spec
+  each. Plus stock, brand and shop everywhere.
 - **Share images** for home, categories and parts (WhatsApp, Facebook, X, and
   the Product image Google reads from structured data).
 - **Favicon:** a processor with "Rs" on it. Regenerate with

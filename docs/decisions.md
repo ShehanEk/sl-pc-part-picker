@@ -567,6 +567,22 @@ the page, by word, using the same matching as `/search`.
 no cost. Reusing `matchesQuery` keeps "Ryzen 7" from matching a Ryzen 5 7500F
 here just as it doesn't in search.
 
+### Several spec filters per category, only where the data covers them (2026-10-21)
+
+**Decision.** Each category lists its filter groups in `FACETS`. RAM: memory
+type, capacity, speed. Motherboards: socket, memory type, form factor. Drives:
+type, capacity. Power supplies: wattage, efficiency. Picks within a group are
+OR; across groups, AND.
+
+**Bug that shaped it.** A category could show only one filter, so RAM had
+capacity but no DDR4/DDR5, though every kit has its type. Beta users reported
+it.
+
+**Why only these.** A filter over a column that is mostly empty hides most of
+the list. Each one added covers 77–100% of its category. Processors get no
+memory-type filter: LGA1700 chips take either generation, so their type is
+unset, and a DDR5 filter would wrongly hide them.
+
 ### Tests are `node:test`, not a framework
 
 **Decision.** 46 tests run via `tsx --test`. No Jest, no Vitest.
