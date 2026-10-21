@@ -25,9 +25,12 @@ export type ListRow = {
   model: string
   brand: string
   specs: string
-  facet: string | null
+  /** One value per entry in `facets`, in the same order; null when unknown. */
+  facets: (string | null)[]
   offers: ListOffer[]
 }
+
+export type ListFacet = { label: string; order?: string[] }
 
 type Sort = 'price' | 'saving' | 'shops'
 
@@ -47,19 +50,21 @@ const rs = (n: number) => `Rs ${Math.round(n).toLocaleString('en-LK')}`
 export function CategoryList({
   slot,
   rows,
-  facetLabel,
+  facets,
   shops,
   noun,
 }: {
   slot: BuildSlot
   rows: ListRow[]
-  facetLabel: string
+  facets: ListFacet[]
   shops: string[]
   noun: string
 }) {
   const [hideOutOfStock, setHideOutOfStock] = useState(false)
   const [brands, setBrands] = useState<Set<string>>(new Set())
-  const [facets, setFacets] = useState<Set<string>>(new Set())
+  // One set of chosen values per facet. Within a facet, values are OR;
+  // across facets, AND: DDR5 and 32 GB means DDR5 kits that are 32 GB.
+  const [picked, setPicked] = useState<Set<string>[]>(() => facets.map(() => new Set()))
   const [shopsOn, setShopsOn] = useState<Set<string>>(new Set(shops))
   const [sort, setSort] = useState<Sort>('price')
   const [filtersOpen, setFiltersOpen] = useState(false)
@@ -67,15 +72,15 @@ export function CategoryList({
 
   const brandCounts = useMemo(() => countBy(rows.map((r) => r.brand)), [rows])
   const facetCounts = useMemo(
-    () => countBy(rows.flatMap((r) => (r.facet ? [r.facet] : []))),
-    [rows],
+    () => facets.map((_, i) => countBy(rows.flatMap((r) => (r.facets[i] ? [r.facets[i]] : [])))),
+    [rows, facets],
   )
 
   const shown = useMemo(() => {
     const priced = rows.flatMap((row) => {
-      if (query && !matchesQuery(`${row.brand} ${row.model} ${row.specs} ${row.facet ?? ''}`, query)) return []
+      if (query && !matchesQuery(`${row.brand} ${row.model} ${row.specs} ${row.facets.join(' ')}`, query)) return []
       if (brands.size && !brands.has(row.brand)) return []
-      if (facets.size && (!row.facet || !facets.has(row.facet))) return []
+      if (picked.some((set, i) => set.size > 0 && !set.has(row.facets[i] ?? ''))) return []
       const offers = row.offers.filter((o) => shopsOn.has(o.shop))
       if (offers.length === 0) return []
       const buyable = offers.filter((o) => o.buyable)
@@ -105,15 +110,18 @@ export function CategoryList({
         (sort === 'shops' ? b.inStock - a.inStock : 0) ||
         price(a) - price(b),
     )
-  }, [rows, query, brands, facets, shopsOn, hideOutOfStock, sort])
+  }, [rows, query, brands, picked, shopsOn, hideOutOfStock, sort])
 
   const filtering =
-    hideOutOfStock || brands.size > 0 || facets.size > 0 || shopsOn.size !== shops.length
+    hideOutOfStock ||
+    brands.size > 0 ||
+    picked.some((set) => set.size > 0) ||
+    shopsOn.size !== shops.length
 
   const reset = () => {
     setHideOutOfStock(false)
     setBrands(new Set())
-    setFacets(new Set())
+    setPicked(facets.map(() => new Set()))
     setShopsOn(new Set(shops))
   }
 
@@ -149,18 +157,19 @@ export function CategoryList({
           In stock only
         </label>
 
-        {Object.keys(facetCounts).length > 1 && (
-          <fieldset className="m-0 border-0 p-0">
-            <legend className="eyebrow pb-2.5 text-[11px]">{facetLabel}</legend>
+        {facets.map((facet, i) =>
+          Object.keys(facetCounts[i]).length > 1 && (
+          <fieldset key={facet.label} className="m-0 border-0 p-0">
+            <legend className="eyebrow pb-2.5 text-[11px]">{facet.label}</legend>
             <div className="flex flex-wrap gap-1.5">
-              {sortValues(Object.keys(facetCounts)).map((value) => {
-                const on = facets.has(value)
+              {sortValues(Object.keys(facetCounts[i]), facet.order).map((value) => {
+                const on = picked[i].has(value)
                 return (
                   <button
                     key={value}
                     type="button"
                     aria-pressed={on}
-                    onClick={() => setFacets(toggle(facets, value))}
+                    onClick={() => setPicked(picked.map((set, j) => (j === i ? toggle(set, value) : set)))}
                     className={`mono min-h-9 rounded-[10px] border px-2.5 text-[12px] transition ${
                       on
                         ? 'border-[var(--accent)] bg-[var(--accent)] text-white'
@@ -173,6 +182,7 @@ export function CategoryList({
               })}
             </div>
           </fieldset>
+          ),
         )}
 
         {Object.keys(brandCounts).length > 1 && (
@@ -353,8 +363,15 @@ function toggle(set: Set<string>, value: string): Set<string> {
   return next
 }
 
-/** "8 GB" before "12 GB": numbers by value, everything else alphabetically. */
-function sortValues(values: string[]): string[] {
+/**
+ * "8 GB" before "12 GB": numbers by value, everything else alphabetically,
+ * unless the facet gives its own order (80+ Bronze before Gold before Platinum).
+ */
+function sortValues(values: string[], order?: string[]): string[] {
+  if (order) {
+    const rank = (v: string) => (order.includes(v) ? order.indexOf(v) : order.length)
+    return values.sort((a, b) => rank(a) - rank(b) || a.localeCompare(b))
+  }
   const num = (v: string) => {
     const m = v.match(/^([\d.]+)\s*(TB|GB|W)?/)
     if (!m) return null

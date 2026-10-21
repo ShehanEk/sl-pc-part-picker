@@ -63,23 +63,57 @@ export async function generateMetadata({
   }
 }
 
-/** The one spec worth filtering on, per category. */
-const FACET: Record<BuildSlot, { label: string; value: (p: SeoPart) => string | null }> = {
-  gpu: { label: 'Video memory', value: (p) => (p.vramGb ? `${p.vramGb} GB` : null) },
-  cpu: { label: 'Socket', value: (p) => p.socket ?? null },
-  motherboard: { label: 'Socket', value: (p) => p.socket ?? null },
-  ram: { label: 'Capacity', value: (p) => (p.capacityGb ? `${p.capacityGb} GB` : null) },
-  storage: {
-    label: 'Capacity',
-    value: (p) =>
-      p.capacityGb
-        ? p.capacityGb >= 1000
-          ? `${p.capacityGb / 1000} TB`
-          : `${p.capacityGb} GB`
-        : null,
-  },
-  psu: { label: 'Wattage', value: (p) => (p.ratedWatts ? `${p.ratedWatts} W` : null) },
-  case: { label: 'Form factor', value: (p) => p.formFactor ?? null },
+type Facet = {
+  label: string
+  value: (p: SeoPart) => string | null
+  /** Display order when alphabetical or numeric order would be wrong. */
+  order?: string[]
+}
+
+const STORAGE_TYPE = { 'm2-nvme': 'M.2 NVMe', 'm2-sata': 'M.2 SATA', sata: 'SATA' } as const
+
+/**
+ * The specs worth filtering on, per category, in sidebar order.
+ *
+ * Only specs the data actually covers: a filter over a mostly-empty column
+ * hides most of the list. Processors have no memory-type filter on purpose:
+ * LGA1700 chips take either generation, so their `ramType` is null, and a DDR5
+ * filter would wrongly hide them.
+ */
+const FACETS: Record<BuildSlot, Facet[]> = {
+  gpu: [{ label: 'Video memory', value: (p) => (p.vramGb ? `${p.vramGb} GB` : null) }],
+  cpu: [{ label: 'Socket', value: (p) => p.socket ?? null }],
+  motherboard: [
+    { label: 'Socket', value: (p) => p.socket ?? null },
+    { label: 'Memory type', value: (p) => p.ramType ?? null },
+    { label: 'Form factor', value: (p) => p.formFactor ?? null },
+  ],
+  ram: [
+    { label: 'Memory type', value: (p) => p.ramType ?? null },
+    { label: 'Capacity', value: (p) => (p.capacityGb ? `${p.capacityGb} GB` : null) },
+    { label: 'Speed', value: (p) => (p.speedMhz ? `${p.speedMhz} MHz` : null) },
+  ],
+  storage: [
+    { label: 'Type', value: (p) => (p.storageInterface ? STORAGE_TYPE[p.storageInterface] : null) },
+    {
+      label: 'Capacity',
+      value: (p) =>
+        p.capacityGb
+          ? p.capacityGb >= 1000
+            ? `${p.capacityGb / 1000} TB`
+            : `${p.capacityGb} GB`
+          : null,
+    },
+  ],
+  psu: [
+    { label: 'Wattage', value: (p) => (p.ratedWatts ? `${p.ratedWatts} W` : null) },
+    {
+      label: 'Efficiency',
+      value: (p) => p.efficiencyRating ?? null,
+      order: ['80+', '80+ Bronze', '80+ Silver', '80+ Gold', '80+ Platinum', '80+ Titanium'],
+    },
+  ],
+  case: [{ label: 'Form factor', value: (p) => p.formFactor ?? null }],
 }
 
 export default async function CategoryPage({
@@ -102,7 +136,7 @@ export default async function CategoryPage({
     model: p.model,
     brand: p.brand,
     specs: specSummary(p),
-    facet: FACET[slot].value(p),
+    facets: FACETS[slot].map((f) => f.value(p)),
     offers: p.offers.map((o) => ({
       shop: o.shop,
       priceLkr: o.priceLkr,
@@ -213,7 +247,7 @@ export default async function CategoryPage({
           <CategoryList
             slot={slot}
             rows={rows}
-            facetLabel={FACET[slot].label}
+            facets={FACETS[slot].map(({ label, order }) => ({ label, order }))}
             shops={shops}
             noun={copy.plural}
           />
