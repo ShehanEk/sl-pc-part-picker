@@ -55,6 +55,12 @@ export async function SiteHeader({ search = true }: { search?: boolean }) {
             Checked {checked}
           </span>
         )}
+        <Link
+          href="/deals"
+          className="inline-flex min-h-11 items-center rounded-[var(--radius-sm)] px-3 text-[14px] font-semibold text-ink-2 transition hover:bg-white/70 hover:text-ink"
+        >
+          Deals
+        </Link>
         {/* Secondary on purpose: the site is for finding a price, and the
             builder is for the people who want a whole machine. */}
         <Link

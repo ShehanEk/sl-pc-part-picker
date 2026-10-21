@@ -7,7 +7,10 @@ import { SiteFooter, SiteHeader } from './components/SiteChrome'
 
 import { BUILD_SLOTS, type BuildSlot } from '@/compat/build'
 import { CATEGORY_COPY, SITE_NAME, TRACKED_SHOPS, canonical, rupees, sentenceCase } from '@/lib/site'
-import { loadDirectory, type SeoPart } from '@/queries/seo'
+import { findDeals, toDealItems } from '@/lib/deals'
+import { loadDirectory, loadPriceIndex, type SeoPart } from '@/queries/seo'
+
+import { DealCard } from './components/Deals'
 
 /**
  * Home: pick a category, pick the part, see who sells it cheapest.
@@ -67,9 +70,10 @@ function biggestGaps(directory: Record<BuildSlot, SeoPart[]>, count: number): Ga
 }
 
 export default async function Home() {
-  const directory = await loadDirectory()
+  const [directory, priceIndex] = await Promise.all([loadDirectory(), loadPriceIndex()])
   const totalParts = BUILD_SLOTS.reduce((n, slot) => n + directory[slot].length, 0)
   const gaps = biggestGaps(directory, 4)
+  const deals = toDealItems(findDeals(directory, priceIndex))
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -185,6 +189,28 @@ export default async function Home() {
             })}
           </ul>
         </section>
+
+        {deals.length > 0 && (
+          <section aria-labelledby="deals" className="flex flex-col gap-4 pb-14">
+            <div className="flex flex-wrap items-baseline justify-between gap-3">
+              <div className="flex flex-col gap-1">
+                <h2 id="deals" className="text-[22px] font-semibold tracking-[-0.02em]">
+                  Below their usual price
+                </h2>
+                <p className="m-0 text-[15px] text-ink-2">Cheaper today than over the last 30 days.</p>
+              </div>
+              <Link href="/deals" className="whitespace-nowrap text-[14px] font-semibold text-accent hover:underline">
+                See all {deals.length} {deals.length === 1 ? 'deal' : 'deals'} →
+              </Link>
+            </div>
+            {/* Sideways scroll on phones, a row of four from small screens up. */}
+            <div className="-mx-5 flex snap-x gap-3.5 overflow-x-auto px-5 pb-1 sm:mx-0 sm:overflow-visible sm:px-0">
+              {deals.slice(0, 4).map((d) => (
+                <DealCard key={d.partId} deal={d} />
+              ))}
+            </div>
+          </section>
+        )}
 
         {gaps.length > 0 && (
           <section aria-labelledby="gaps" className="flex flex-col gap-4 pb-14">
