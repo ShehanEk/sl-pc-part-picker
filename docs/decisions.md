@@ -583,6 +583,26 @@ the list. Each one added covers 77–100% of its category. Processors get no
 memory-type filter: LGA1700 chips take either generation, so their type is
 unset, and a DDR5 filter would wrongly hide them.
 
+### Deals come from our price history, not the shops' banners (2026-10-22)
+
+**Decision.** A deal is a part whose cheapest in-stock price is at least 5%
+under the median of its daily lows over the previous 30 days, with at least 7
+of those days on record. Drops over 30% are left out. `/deals` lists them; the
+home page shows the top four; the header links to it.
+
+**Why not scrape the shops' offers.** Home-page offers are mostly images, are
+vague ("up to 20% off"), break with every redesign, and are the shops' own
+artwork. Price history is precise, covers all six shops equally, and is
+already loaded by the pages, so deals cost no query.
+
+**Why the 30% cap.** The first real run put an 8GB RTX 5060 Ti, filed under the
+16GB card, at the top as "−33%". A deals page promotes matching errors to the
+most visible spot, and real discounts that deep are rare.
+
+**Cost.** "Below usual" also catches a newly tracked shop that is simply
+cheaper, so the copy never says "price cut". Bundles and bank-card offers are
+not captured.
+
 ### Tests are `node:test`, not a framework
 
 **Decision.** 46 tests run via `tsx --test`. No Jest, no Vitest.

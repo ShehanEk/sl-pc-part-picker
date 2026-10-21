@@ -3,13 +3,15 @@
 What is live and how it is set up. Update this when something ships or a
 setting moves. Why each choice was made is in [decisions](decisions.md).
 
-Last updated 21 October 2026.
+Last updated 22 October 2026.
 
 ## Live
 
 - **Site:** [pcprice.lk](https://pcprice.lk). Home, seven category pages with
-  filters and a text filter, ~1,350 part pages, search, the PC builder at
-  `/build`, and `/privacy`.
+  filters and a text filter, ~1,350 part pages, `/deals`, search, the PC
+  builder at `/build`, and `/privacy`.
+- **Deals:** parts at least 5% below their 30-day usual price, on `/deals`, as
+  the top four on the home page, and linked from the header.
 - **Category filters:** RAM by memory type, capacity and speed; motherboards by
   socket, memory type and form factor; drives by type and capacity; power
   supplies by wattage and efficiency; GPUs, processors and cases by one spec
@@ -32,6 +34,12 @@ Last updated 21 October 2026.
 | Google Search Console | Domain property, TXT record in Vercel DNS | Verified; sitemap read successfully |
 
 ## Open items
+
+- **Wrong RTX 5060 Ti listing.** gamestreet.lk's 8GB card was filed under
+  `rtx-5060-ti-16gb` before the "8GBB" fix. Its `listings` row goes stale within
+  7 days, or delete it: `delete from listings where part_id = 'rtx-5060-ti-16gb'
+  and shop = 'gamestreet.lk';`. Its old `price_history` rows still pull that
+  part's chart low.
 
 - **Privacy contact email.** `/privacy` has no Contact section until there is
   an address to publish.
