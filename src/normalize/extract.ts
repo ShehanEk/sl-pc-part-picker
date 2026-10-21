@@ -159,14 +159,18 @@ function findBrand(title: string, brands: string[]): string | null {
 }
 
 /**
- * VRAM, e.g. "12GB", "8G", "16 GB".
+ * VRAM, e.g. "12GB", "8G", "16 GB", and the typo "8GBB".
  *
  * Deliberately refuses a digit glued to surrounding alphanumerics so ASUS-style
  * "O12G" (meaning OC, 12G) and memory types like "GDDR6X" are not mistaken for
  * a capacity.
+ *
+ * "8GBB" is real: gamestreet.lk listed an "RTX 5060 TI 8GBB" that, read as no
+ * capacity at all, was filed under the 16GB card and showed as its cheapest
+ * offer, a 33% "deal" that was really a different card.
  */
 function extractVramGb(title: string): number | null {
-  const matches = [...title.matchAll(/(?<![a-z0-9])(\d{1,3})\s*gb?(?![a-z0-9])/gi)]
+  const matches = [...title.matchAll(/(?<![a-z0-9])(\d{1,3})\s*g(?:bb?)?(?![a-z0-9])/gi)]
   for (const m of matches) {
     const value = Number(m[1])
     // Real cards are 1-64GB; anything else is a model number that looked like one.
