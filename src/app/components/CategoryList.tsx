@@ -228,11 +228,35 @@ export function CategoryList({
           <button
             type="button"
             onClick={reset}
-            className="min-h-10 rounded-[var(--radius-sm)] border border-[rgb(30_50_100/12%)] bg-white text-[13.5px] font-medium text-ink-2 hover:text-ink"
+            className="hidden min-h-10 rounded-[var(--radius-sm)] border border-[rgb(30_50_100/12%)] bg-white text-[13.5px] font-medium text-ink-2 hover:text-ink lg:block"
           >
             Clear filters
           </button>
         )}
+
+        {/* Phones: with the panel open the list is five groups away, so a bar
+            pinned to the bottom says how many match and goes straight there. */}
+        <div className="sticky bottom-3 flex gap-2 rounded-[18px] border border-[rgb(30_50_100/10%)] bg-white/95 p-2.5 shadow-[0_-8px_24px_-12px_rgb(35_55_110/35%)] lg:hidden">
+          {filtering && (
+            <button
+              type="button"
+              onClick={reset}
+              className="min-h-[46px] rounded-[12px] border border-[rgb(30_50_100/14%)] bg-white px-3.5 text-[14px] font-semibold text-ink-2"
+            >
+              Clear
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              setFiltersOpen(false)
+              document.getElementById('results')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            }}
+            className="min-h-[46px] flex-1 rounded-[12px] bg-[var(--accent)] text-[15px] font-semibold text-white"
+          >
+            Show {shown.length} {shown.length === 1 ? 'result' : 'results'}
+          </button>
+        </div>
       </aside>
 
       <section
@@ -240,7 +264,8 @@ export function CategoryList({
         className="glass min-w-0 flex-[999_1_560px] overflow-hidden"
       >
         <div className="hairline-b flex flex-wrap items-center justify-between gap-2.5 px-5 py-3.5">
-          <h2 id="results" className="text-[14px] font-semibold" aria-live="polite">
+          {/* scroll-mt clears the sticky header when "Show results" jumps here. */}
+          <h2 id="results" className="scroll-mt-36 text-[14px] font-semibold" aria-live="polite">
             {query || filtering ? `${shown.length} of ${rows.length}` : shown.length} {noun}
           </h2>
           <label className="flex min-h-9 max-w-[340px] flex-[1_1_220px] items-center gap-2 rounded-[10px] border border-[rgb(30_50_100/12%)] bg-white px-3 focus-within:border-[var(--accent)]">

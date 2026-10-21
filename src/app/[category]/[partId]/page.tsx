@@ -8,7 +8,7 @@ import { SiteFooter, SiteHeader } from '@/app/components/SiteChrome'
 import { BUILD_SLOTS, type BuildSlot } from '@/compat/build'
 import { CATEGORY_COPY, SITE_NAME, canonical, rupees, sentenceCase } from '@/lib/site'
 import { displayName, fitNote, specLines, specPhrase } from '@/lib/specs'
-import { loadDirectory, loadPriceIndex, type PricePoint, type SeoPart } from '@/queries/seo'
+import { loadDirectory, loadPriceIndex, type PricePoint } from '@/queries/seo'
 
 /**
  * A page per part — /gpu/rtx-5070-12gb.
@@ -196,6 +196,59 @@ export default async function PartPage({
     ],
   }
 
+  // Rendered twice below: above the price table on phones, in the aside on desktop.
+  const priceBox = best ? (
+    <>
+      <h2 className="eyebrow text-[11px]">Cheapest in stock</h2>
+      <p className="m-0 flex flex-col gap-1">
+        <span className="mono text-[36px] font-medium leading-none tracking-[-0.03em] text-accent">
+          {rupees(best.priceLkr)}
+        </span>
+        <span className="text-[14px] text-ink-2">
+          at <span className="mono text-ink">{best.shop}</span>
+        </span>
+      </p>
+      <a
+        href={best.url}
+        target="_blank"
+        rel="noopener nofollow"
+        className="flex min-h-[50px] items-center justify-center gap-2 rounded-[14px] bg-[var(--accent)] text-[15px] font-semibold text-white transition hover:bg-[var(--accent-strong)]"
+      >
+        Go to {best.shop}
+        <ExternalIcon className="h-4 w-4" />
+        <span className="sr-only">(opens in a new tab)</span>
+      </a>
+      <p className="m-0 border-t border-[var(--hairline)] pt-3 text-[13.5px] leading-[1.45] text-ink-2">
+        {dearest !== null && dearest > best.priceLkr ? (
+          <>
+            <strong className="font-semibold text-ink">
+              {rupees(dearest - best.priceLkr)} less
+            </strong>{' '}
+            than the dearest shop that has it in stock.
+          </>
+        ) : buyable.length > 1 ? (
+          <>Same price at all {buyable.length} shops that have it in stock.</>
+        ) : (
+          <>Only {best.shop} has it in stock right now.</>
+        )}
+      </p>
+    </>
+  ) : (
+    <>
+      <h2 className="eyebrow text-[11px]">Out of stock everywhere</h2>
+      <p className="m-0 flex flex-col gap-1">
+        <span className="mono text-[30px] font-medium leading-none tracking-[-0.03em] text-ink-3">
+          {rupees(part.lowLkr)}
+        </span>
+        <span className="text-[14px] text-ink-2">last listed price</span>
+      </p>
+      <p className="m-0 text-[13.5px] leading-[1.45] text-ink-2">
+        None of the {part.offers.length} shops carrying it has it in stock. Check back
+        after tonight’s price check.
+      </p>
+    </>
+  )
+
   return (
     <>
       <script
@@ -265,6 +318,12 @@ export default async function PartPage({
         </div>
 
         <div className="flex flex-wrap items-start gap-5">
+          {/* Phones: the answer comes first, not 3–4 screens down below the
+              table, chart and related cards. The aside keeps it on desktop. */}
+          <section aria-label="Cheapest in stock" className="w-full lg:hidden flex flex-col gap-3.5 rounded-[var(--radius)] border border-[var(--accent-soft-border)] bg-white/95 p-[22px] shadow-[0_14px_34px_-18px_rgb(35_55_110/35%)]">
+            {priceBox}
+          </section>
+
           <div className="flex min-w-0 flex-[999_1_600px] flex-col gap-5">
             <section aria-labelledby="prices" className="glass overflow-hidden">
               <div className="hairline-b flex flex-wrap items-baseline justify-between gap-2 px-5 py-4">
@@ -404,58 +463,9 @@ export default async function PartPage({
           </div>
 
           <aside aria-label="Where to buy" className="flex min-w-0 flex-[1_1_300px] flex-col gap-4 lg:max-w-[380px]">
-            <section className="flex flex-col gap-3.5 rounded-[var(--radius)] border border-[var(--accent-soft-border)] bg-white/95 p-[22px] shadow-[0_14px_34px_-18px_rgb(35_55_110/35%)]">
-              {best ? (
-                <>
-                  <h2 className="eyebrow text-[11px]">Cheapest in stock</h2>
-                  <p className="m-0 flex flex-col gap-1">
-                    <span className="mono text-[36px] font-medium leading-none tracking-[-0.03em] text-accent">
-                      {rupees(best.priceLkr)}
-                    </span>
-                    <span className="text-[14px] text-ink-2">
-                      at <span className="mono text-ink">{best.shop}</span>
-                    </span>
-                  </p>
-                  <a
-                    href={best.url}
-                    target="_blank"
-                    rel="noopener nofollow"
-                    className="flex min-h-[50px] items-center justify-center gap-2 rounded-[14px] bg-[var(--accent)] text-[15px] font-semibold text-white transition hover:bg-[var(--accent-strong)]"
-                  >
-                    Go to {best.shop}
-                    <ExternalIcon className="h-4 w-4" />
-                    <span className="sr-only">(opens in a new tab)</span>
-                  </a>
-                  <p className="m-0 border-t border-[var(--hairline)] pt-3 text-[13.5px] leading-[1.45] text-ink-2">
-                    {dearest !== null && dearest > best.priceLkr ? (
-                      <>
-                        <strong className="font-semibold text-ink">
-                          {rupees(dearest - best.priceLkr)} less
-                        </strong>{' '}
-                        than the dearest shop that has it in stock.
-                      </>
-                    ) : buyable.length > 1 ? (
-                      <>Same price at all {buyable.length} shops that have it in stock.</>
-                    ) : (
-                      <>Only {best.shop} has it in stock right now.</>
-                    )}
-                  </p>
-                </>
-              ) : (
-                <>
-                  <h2 className="eyebrow text-[11px]">Out of stock everywhere</h2>
-                  <p className="m-0 flex flex-col gap-1">
-                    <span className="mono text-[30px] font-medium leading-none tracking-[-0.03em] text-ink-3">
-                      {rupees(part.lowLkr)}
-                    </span>
-                    <span className="text-[14px] text-ink-2">last listed price</span>
-                  </p>
-                  <p className="m-0 text-[13.5px] leading-[1.45] text-ink-2">
-                    None of the {part.offers.length} shops carrying it has it in stock. Check back
-                    after tonight’s price check.
-                  </p>
-                </>
-              )}
+            {/* Desktop. On phones the same box sits above the price table. */}
+            <section className="hidden lg:flex flex-col gap-3.5 rounded-[var(--radius)] border border-[var(--accent-soft-border)] bg-white/95 p-[22px] shadow-[0_14px_34px_-18px_rgb(35_55_110/35%)]">
+              {priceBox}
             </section>
 
             <section
@@ -529,6 +539,7 @@ function PriceChart({ points }: { points: PricePoint[] }) {
     .join(' ')
   const first = points[0]
   const last = points.at(-1)!
+
 
   return (
     <figure className="m-0 flex flex-col gap-2">

@@ -23,14 +23,19 @@ export type DealItem = {
 
 const rs = (n: number) => `Rs ${Math.round(n).toLocaleString('en-LK')}`
 
-function Tile({ slot, size }: { slot: BuildSlot; size: number }) {
+/** `size` in px, or `className` for a size that changes with the breakpoint. */
+function Tile({ slot, size, className }: { slot: BuildSlot; size?: number; className?: string }) {
   const { Icon, tint, ink } = CATEGORY_STYLE[slot]
   return (
     <span
-      className="grid flex-none place-items-center"
-      style={{ width: size, height: size, borderRadius: size / 4, background: tint, color: ink }}
+      className={`grid flex-none place-items-center ${className ?? ''}`}
+      style={{
+        background: tint,
+        color: ink,
+        ...(size ? { width: size, height: size, borderRadius: size / 4 } : {}),
+      }}
     >
-      <Icon width={size * 0.58} height={size * 0.58} />
+      <Icon className="h-[58%] w-[58%]" />
     </span>
   )
 }
@@ -47,16 +52,25 @@ function Row({ deal }: { deal: DealItem }) {
   const { strong } = CATEGORY_STYLE[deal.slot]
   return (
     <li className="hairline-b last:border-b-0">
+      {/* Phones: icon beside the name and the price on one line, so a deal
+          takes ~130px rather than ~240px. From sm up: the price in its own
+          right-hand column, as designed for desktop. */}
       <Link
         href={`/${deal.slot}/${deal.partId}`}
-        className="row-tap flex flex-wrap items-center gap-x-[18px] gap-y-2.5 px-5 py-4"
+        className="row-tap flex items-start gap-3 px-4 py-3.5 sm:flex-wrap sm:items-center sm:gap-x-[18px] sm:gap-y-2.5 sm:px-5 sm:py-4"
       >
-        <Tile slot={deal.slot} size={44} />
-        <span className="flex min-w-0 flex-[1_1_260px] flex-col gap-1">
+        <Tile slot={deal.slot} className="h-9 w-9 rounded-[9px] sm:h-11 sm:w-11 sm:rounded-[11px]" />
+        <span className="flex min-w-0 flex-1 flex-col gap-1 sm:flex-[1_1_260px]">
           <span className="text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: strong }}>
             {deal.heading}
           </span>
-          <span className="text-[15.5px] font-semibold tracking-[-0.01em]">{deal.name}</span>
+          <span className="text-[15px] font-semibold leading-snug tracking-[-0.01em] sm:text-[15.5px]">{deal.name}</span>
+          <span className="flex flex-wrap items-baseline gap-x-1.5 sm:hidden">
+            <span className="mono text-[17px] font-medium text-accent">{rs(deal.priceLkr)}</span>
+            <span className="text-[12.5px] text-ink-2">
+              at {deal.shop} · usually <span className="line-through">{rs(deal.usualLkr)}</span>
+            </span>
+          </span>
           <span className="flex flex-wrap items-center gap-1.5">
             <Saving deal={deal} />
             {deal.lowest && (
@@ -66,7 +80,7 @@ function Row({ deal }: { deal: DealItem }) {
             )}
           </span>
         </span>
-        <span className="ml-auto flex flex-col items-end gap-0.5 text-right">
+        <span className="ml-auto hidden flex-col items-end gap-0.5 text-right sm:flex">
           <span className="mono whitespace-nowrap text-[18px] font-medium tracking-[-0.02em] text-accent">
             {rs(deal.priceLkr)}
           </span>
@@ -77,7 +91,7 @@ function Row({ deal }: { deal: DealItem }) {
             usually <span className="line-through">{rs(deal.usualLkr)}</span>
           </span>
         </span>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="flex-none text-ink-4" aria-hidden>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="hidden flex-none text-ink-4 sm:block" aria-hidden>
           <path d="m9 6 6 6-6 6" />
         </svg>
       </Link>
