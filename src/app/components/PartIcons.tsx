@@ -3,7 +3,7 @@ import type { Category } from '@/lib/site'
 
 
 /**
- * Line-art icons for the eight part categories.
+ * Line-art icons for the part categories.
  *
  * Drawn on a shared 24px grid with a single stroke weight so a row of them
  * reads as one set. They inherit colour from the tile via `currentColor`.
@@ -126,6 +126,29 @@ export function PeripheralsIcon(props: IconProps) {
   )
 }
 
+/** Laptop: an open lid on its base. */
+export function LaptopIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M4.6 15V6.3a1.1 1.1 0 0 1 1.1-1.1h12.6a1.1 1.1 0 0 1 1.1 1.1V15" />
+      <path d="M2.4 15h19.2l-1 2.5a1.2 1.2 0 0 1-1.1.8h-15a1.2 1.2 0 0 1-1.1-.8z" />
+      <path d="M10.4 16.6h3.2" />
+    </Icon>
+  )
+}
+
+/** Console: a gamepad, d-pad and two buttons. */
+export function ConsoleIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M7.2 7h9.6a4.4 4.4 0 0 1 4.3 3.5l1 4.9a2.6 2.6 0 0 1-4.5 2.3L15.8 16H8.2l-1.8 1.7a2.6 2.6 0 0 1-4.5-2.3l1-4.9A4.4 4.4 0 0 1 7.2 7z" />
+      <path d="M7.3 9.9v3.4M5.6 11.6H9" />
+      <circle cx="16" cy="10.6" r=".7" />
+      <circle cx="17.8" cy="12.6" r=".7" />
+    </Icon>
+  )
+}
+
 /**
  * One colour per category, used everywhere a category appears: the home page
  * tiles, the category pills, part pages and the builder. Hues are spaced round
@@ -146,4 +169,7 @@ export const CATEGORY_STYLE: Record<
   psu: { Icon: PsuIcon, tint: 'oklch(0.95 0.035 25)', ink: 'oklch(0.55 0.18 25)', strong: 'oklch(0.48 0.17 25)' },
   case: { Icon: CaseIcon, tint: 'oklch(0.95 0.045 115)', ink: 'oklch(0.55 0.12 115)', strong: 'oklch(0.46 0.1 115)' },
   peripherals: { Icon: PeripheralsIcon, tint: 'oklch(0.95 0.035 355)', ink: 'oklch(0.53 0.16 355)', strong: 'oklch(0.47 0.15 355)' },
+  // Slate: the wheel is full, so laptops stand apart by being nearly grey.
+  laptops: { Icon: LaptopIcon, tint: 'oklch(0.95 0.012 250)', ink: 'oklch(0.45 0.06 250)', strong: 'oklch(0.4 0.06 250)' },
+  consoles: { Icon: ConsoleIcon, tint: 'oklch(0.95 0.04 45)', ink: 'oklch(0.57 0.15 45)', strong: 'oklch(0.48 0.14 45)' },
 }

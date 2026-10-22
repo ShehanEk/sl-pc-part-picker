@@ -103,6 +103,32 @@ export type Identity =
   | StorageIdentity
   | CaseIdentity
   | PeripheralIdentity
+  | LaptopIdentity
+  | ConsoleIdentity
+
+export type LaptopIdentity = {
+  category: 'laptops'
+  partId: string
+  brand: string
+  model: string
+  /** "Core i7-13620H", or only "Core i7" when the listing says no more. */
+  cpuModel: string | null
+  /** "RTX 4060", "Integrated", or null when the listing does not say. */
+  gpuModel: string | null
+  memoryGb: number | null
+  storageGb: number | null
+  screenInches: number | null
+  makerCode: string | null
+}
+
+export type ConsoleIdentity = {
+  category: 'consoles'
+  partId: string
+  brand: string
+  model: string
+  consoleType: 'console' | 'handheld'
+  platform: 'PlayStation' | 'Xbox' | 'Nintendo' | 'Windows' | 'SteamOS'
+}
 
 const GPU_BOARD_PARTNERS = [
   'asus', 'msi', 'gigabyte', 'zotac', 'inno3d', 'pny', 'palit', 'galax',
@@ -885,11 +911,318 @@ export function extractPeripheral(
   }
 }
 
+// Laptops
+
+/**
+ * Major laptop brands, as [title pattern, display name]. The lookaheads match
+ * a title that leads with the series alone ("ThinkPad X1 Carbon", "MacBook
+ * Air") without eating the series name.
+ */
+const LAPTOP_BRANDS: [string, string][] = [
+  ['lenovo', 'Lenovo'],
+  ['(?=(?:thinkpad|thinkbook|ideapad|legion|loq|yoga)\\b)', 'Lenovo'],
+  ['hp', 'HP'],
+  ['(?=(?:omen|victus|pavilion|elitebook|probook|omnibook)\\b)', 'HP'],
+  ['dell', 'Dell'],
+  ['(?=(?:latitude|inspiron|vostro|xps|alienware)\\b)', 'Dell'],
+  ['asus', 'ASUS'],
+  ['(?=(?:rog|tuf|vivobook|zenbook|expertbook)\\b)', 'ASUS'],
+  ['acer', 'Acer'],
+  ['(?=(?:nitro|predator|aspire|swift)\\b)', 'Acer'],
+  ['msi', 'MSI'],
+  ['apple', 'Apple'],
+  ['(?=macbook\\b)', 'Apple'],
+  ['gigabyte', 'Gigabyte'],
+  ['(?=aorus\\b)', 'Gigabyte'],
+  ['samsung', 'Samsung'],
+  ['(?:microsoft\\s*)?(?=surface\\b)', 'Microsoft'],
+]
+
+function leadingBrand(title: string, brands: [string, string][]): { name: string; length: number } | null {
+  for (const [pattern, name] of brands) {
+    const m = title.match(new RegExp(`^\\s*${pattern}\\b`, 'i'))
+    if (m) return { name, length: m[0].length }
+  }
+  return null
+}
+
+/**
+ * Not a new laptop. Used and refurbished machines are dropped for the same
+ * reason used parts are: a lower price for a different condition would win
+ * every comparison, with nothing on the row to say why. Apple's shelf also
+ * carries desktops.
+ */
+const NOT_A_NEW_LAPTOP =
+  /\b(used|refurb(?:ished)?|pre[\s-]*owned|open[\s-]*box|ex[\s-]*uk|mac\s*mini|imac|mac\s*studio|ipad)\b/i
+
+/**
+ * The processor, as precisely as the text allows. Every laptop listing names
+ * one, and no bag, stand or memory stick does, so a miss here is also how
+ * accessories on the shelf are dropped.
+ */
+export function laptopCpu(text: string): string | null {
+  // "Ryzen™ 3" and "Core™️ Ultra 9": the mark sits between the words.
+  const t = text.replace(/[–—]/g, '-').replace(/[™®️]/g, '')
+  let m = t.match(/\bm([1-6])(\s*(?:pro|max|ultra))?(?![a-z0-9])/i)
+  if (m && /\b(apple|macbook)\b/i.test(t)) {
+    return `Apple M${m[1]}${m[2] ? ` ${m[2].trim()[0].toUpperCase()}${m[2].trim().slice(1).toLowerCase()}` : ''}`
+  }
+  m = t.match(/\bultr[ae]\s*(x)?\s*([579])(?:\s*-?\s*(\d{3}[a-z]{0,2}))?(?![a-z0-9])/i)
+  if (m) return `Core Ultra ${m[1] ? 'X' : ''}${m[2]}${m[3] ? ` ${m[3].toUpperCase()}` : ''}`
+  // `i` glued to a SKU ("B1503CVA-I716512G5D") must not read as an i7: the
+  // number has to end cleanly.
+  m = t.match(/\bi([3579])(?:\s*-?\s*(\d{4,5}[a-z]{0,2}|n\d{3}))?(?![a-z0-9])/i)
+  if (m) return `Core i${m[1]}${m[2] ? `-${m[2].toUpperCase()}` : ''}`
+  m = t.match(/\b(celeron|pentium)(?:\s*(?:silver\s*)?(n?\d{4}))?/i)
+  if (m) return `${m[1][0].toUpperCase()}${m[1].slice(1).toLowerCase()}${m[2] ? ` ${m[2].toUpperCase()}` : ''}`
+  m = t.match(/\bcore\s*([357])(?:\s*-?\s*(\d{3}[a-z]?))?(?![a-z0-9])/i)
+  if (m) return `Core ${m[1]}${m[2] ? ` ${m[2].toUpperCase()}` : ''}`
+  m = t.match(/\bryzen\s*(ai\s*)?r?([3579])(?:\s*(?:pro\s*)?-?\s*(\d{3,4}[a-z]{0,2}))?(?![a-z0-9])/i)
+  if (m) return `Ryzen ${m[1] ? 'AI ' : ''}${m[2]}${m[3] ? ` ${m[3].toUpperCase()}` : ''}`
+  // "AMD R3 7320U": Ryzen with the word left out, so the number is required.
+  m = t.match(/\br([3579])\s*-?\s*(\d{4}[a-z]{1,2})(?![a-z0-9])/i)
+  if (m) return `Ryzen ${m[1]} ${m[2].toUpperCase()}`
+  m = t.match(/\bsnapdragon\s*x\s*(elite|plus)?/i)
+  if (m) return `Snapdragon X${m[1] ? ` ${m[1][0].toUpperCase()}${m[1].slice(1).toLowerCase()}` : ''}`
+  return null
+}
+
+/**
+ * "RTX 4060", "RTX 5070 Ti", "RX 7600S", or "Integrated" where the listing
+ * names a built-in GPU. Null when it says nothing: an ASUS TUF A15 listed
+ * without its RTX 2050 is not an integrated-graphics laptop.
+ */
+export function laptopGpu(text: string): string | null {
+  let m = text.match(/\b(?:geforce\s*)?(rtx|gtx)\s*(\d{4})(\s*ti)?(?![0-9])/i)
+  if (m) return `${m[1].toUpperCase()} ${m[2]}${m[3] ? ' Ti' : ''}`
+  m = text.match(/\brx\s*(\d{4})([ms])?(?![0-9])/i)
+  if (m) return `RX ${m[1]}${m[2] ? m[2].toUpperCase() : ''}`
+  if (/\b(?:uhd|iris|arc|radeon|intel)\s*(?:xe\s*)?graphics\b|\bintegrated\b|\bapple\s*m\d\b|\bmacbook\b/i.test(text)) {
+    return 'Integrated'
+  }
+  return null
+}
+
+const toGb = (n: string, unit: string) => Number(n) * (/t/i.test(unit) ? 1000 : 1)
+
+/** System memory: "16GB DDR5", "32GB RAM", "16GB unified". Never "8GB GDDR6". */
+function laptopMemory(text: string): number | null {
+  const m =
+    text.match(/(?<![0-9])(\d{1,3})\s*gb\s*(?:of\s*)?(?:ram|ddr\d|lpddr\w*|unified|memory)/i) ??
+    text.match(/(?<![a-z])(?:ddr\d|ram)\s*(\d{1,3})\s*gb/i)
+  if (m) return Number(m[1])
+  // A separated title with "| 16GB |" or "/ 16GB /" and nothing else in the cell.
+  // Two digits at most, so the "512GB" cell of "8GB/512GB" is not memory.
+  const cell = text.split(/[|/]/).find((c) => /^\s*(\d{1,2})\s*gb\s*$/i.test(c))
+  if (cell) return Number(cell.match(/\d+/)![0])
+  // Apple style, "16GB 512GB": memory, then storage.
+  const pair = text.match(/(?<![0-9])(\d{1,2})\s*gb\s*[/,]?\s*(?:\d{3,4}\s*gb|\d\s*tb)/i)
+  return pair ? Number(pair[1]) : null
+}
+
+/** Storage: "512GB NVMe", "1TB SSD", "512 NVME SSD", "256GB UFS". */
+function laptopStorage(text: string): number | null {
+  const m = text.match(
+    /(?<![0-9])(\d{1,4})\s*(gb|tb)?\s*(?:gen\s*\d\s*)?(?:pcie\s*)?(?:m\.2\s*)?(?:nvme|ssd|hdd|ufs|emmc|storage|m\.2)/i,
+  )
+  if (m && (m[2] || ['128', '256', '512'].includes(m[1]))) return toGb(m[1], m[2] ?? 'gb')
+  const pair = text.match(/(?<![0-9])\d{1,2}\s*gb\s*[/,]?\s*(\d{3,4})\s*(gb|tb)|(?<![0-9])\d{1,2}\s*gb\s*[/,]?\s*(\d)\s*(tb)/i)
+  return pair ? toGb(pair[1] ?? pair[3], pair[2] ?? pair[4]) : null
+}
+
+function laptopScreen(text: string): number | null {
+  const m = text.match(/(?<![0-9.])(1[0-8](?:\.\d)?)\s*(?:"|''|”|″|’’|'|-?\s*inch)/i)
+  return m ? Number(m[1]) : null
+}
+
+/**
+ * The maker's full part number, which fixes the whole configuration:
+ * ASUS "FA506NCG-HN332WS", MSI "A13UDX 2407XLK", HP "15-FA2013DX", Lenovo's
+ * machine type "83FD05TLK", Acer "ANV15-52-9161". A bare model code such as
+ * "G615JPR" is not one: the same code ships with different memory.
+ */
+const MAKER_CODES = [
+  /\b([a-z]{1,4}\d{1,4}[a-z]{1,6}\d?)[\s-]([a-z]{1,3}\d{2,}[a-z0-9]*(?:-[a-z0-9]{2,4})?|\d{3,4}[a-z]{2,4})\b/i,
+  /\b(\d{2}-[a-z]{2}\d{4}[a-z]{2,3})\b/i,
+  /\b(8\d[a-z]{2}\d{2}[a-z0-9]{2,4})\b/i,
+  /\b([a-z]{2,3}\d{2}-\d{2}-[a-z0-9]{4})\b/i,
+]
+
+function makerCode(title: string): string | null {
+  for (const re of MAKER_CODES) {
+    const m = title.match(re)
+    if (m) return m.slice(1).filter(Boolean).join('-').toUpperCase()
+  }
+  return null
+}
+
+const LAPTOP_NOISE = new RegExp(
+  `(?<![a-z0-9])(?:${[
+    'laptop', 'notebook', 'gaming', 'intel', 'amd', 'processor', 'series', 'edition',
+    'black', 'white', 'silver', 'gr[ae]y', 'blue', 'green', 'gold', 'new', '\\d{4}',
+    'oled', 'touch', 'fhd', 'qhd', 'wuxga', 'wqxga', 'ai\\+?',
+  ].join('|')})(?![a-z0-9])`,
+  'gi',
+)
+
+const LAPTOP_ACRONYMS = /^(tuf|rog|loq|xps|hx|oled|duo)$/i
+
+/** Where the name ends and the specs begin: the processor, a pipe or a comma. */
+const SPEC_START =
+  /\||,|\s[-–]\s|\b(?:intel|amd|apple\s*m\d|core|ryzen|ultr[ae]|i[3579](?![a-z0-9])|m[1-6](?![a-z0-9])|snapdragon|\d{1,2}(?:\.\d)?\s*(?:"|''|”|″|inch))/i
+
+/**
+ * Laptops from the major brands.
+ *
+ * Two listings are the same laptop when the maker's part number matches, or
+ * failing that when brand, series, processor, graphics, memory and storage
+ * all match. A listing with neither is dropped: comparing a 16GB machine's
+ * price with an 8GB one's is a wrong answer, and the model name alone does
+ * not tell them apart.
+ *
+ * `specs` is the shop's own spec table, used where the title leaves a value
+ * out (winsoft lists CPU, GPU and screen there).
+ */
+export function extractLaptop(
+  rawTitle: string,
+  specs: Record<string, string> = {},
+): LaptopIdentity | null {
+  // Shops paste codes with non-breaking and figure dashes: "G615JPR‑S5035WS".
+  rawTitle = rawTitle.replace(/[‐‑‒–—]/g, '-')
+  if (NOT_A_NEW_LAPTOP.test(rawTitle)) return null
+  const brand = leadingBrand(rawTitle, LAPTOP_BRANDS)
+  if (!brand) return null
+
+  const spec = (re: RegExp) =>
+    Object.entries(specs).find(([k]) => re.test(k))?.[1] ?? ''
+  const cpuModel = laptopCpu(rawTitle) ?? laptopCpu(spec(/processor|cpu/i))
+  const gpuModel = laptopGpu(rawTitle) ?? laptopGpu(spec(/gpu|graphic/i))
+  const memoryGb = laptopMemory(rawTitle) ?? laptopMemory(`${spec(/ram|memory/i)} ram`)
+  const storageGb = laptopStorage(rawTitle) ?? laptopStorage(`${spec(/storage|ssd|hdd/i)} ssd`)
+  const screenInches = laptopScreen(rawTitle) ?? laptopScreen(`${spec(/screen|display/i)}"`)
+
+  const rest = stripAsides(rawTitle.slice(brand.length))
+  const name = rest.slice(0, rest.search(SPEC_START) === -1 ? undefined : rest.search(SPEC_START))
+  // The code can sit after the name: "TUF Gaming A15, FA506NCG-HN332WS, …".
+  const code = makerCode(rest)
+  // A processor or a maker code is what tells a laptop from the brackets,
+  // bags and memory sticks that share its shelf.
+  if (!cpuModel && !code) return null
+  const seriesTokens = name
+    .replace(code ? new RegExp(code.replace(/-/g, '[\\s-]'), 'i') : /(?!)/, ' ')
+    .replace(LAPTOP_NOISE, ' ')
+    .replace(/[^a-z0-9+\s]/gi, ' ')
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 5)
+  const series = seriesTokens
+    .map((t) =>
+      /\d/.test(t) || LAPTOP_ACRONYMS.test(t) ? t.toUpperCase() : t[0].toUpperCase() + t.slice(1).toLowerCase(),
+    )
+    .join(' ')
+
+  let partId: string
+  if (code) {
+    partId = slug(`${brand.name} ${code}`)
+  } else if (cpuModel && memoryGb && storageGb && series) {
+    partId = slug(
+      [brand.name, series, cpuModel, gpuModel ?? '', `${memoryGb}gb`, `${storageGb}gb`].join(' '),
+    )
+  } else {
+    return null
+  }
+
+  return {
+    category: 'laptops',
+    partId,
+    brand: brand.name,
+    model: series || code || cpuModel || 'Laptop',
+    cpuModel,
+    gpuModel,
+    memoryGb,
+    storageGb,
+    screenInches,
+    makerCode: code,
+  }
+}
+
+// Consoles and handhelds
+
+/** Shelf-mates: controllers, headsets, stands, wheels and games. */
+const NOT_A_CONSOLE =
+  /\b(controller|dual\s*-?\s*sense|dualshock|headset|stand|cooling|charging|charger|station|camera|cover|skin|bag|case|remote|wheel|pedals?|shifter|monitor|games?|grip|cable|adapter|dock|edge|joy-?con)\b/i
+
+type ConsoleMatch = Omit<ConsoleIdentity, 'category' | 'partId'>
+
+const capacity = (t: string) => {
+  const m = t.match(/(?<![0-9])(\d{3,4}\s*gb|\d\s*tb)(?![a-z])/i)
+  return m ? m[1].replace(/\s+/g, '').toUpperCase() : null
+}
+
+function consoleModel(t: string): ConsoleMatch | null {
+  if (/playstation\s*portal/i.test(t)) {
+    return { brand: 'Sony', model: 'PlayStation Portal', consoleType: 'handheld', platform: 'PlayStation' }
+  }
+  if (/\b(?:playstation\s*5|ps\s*5)\b/i.test(t)) {
+    const pro = /\bpro\b/i.test(t)
+    const parts = [
+      'PlayStation 5',
+      pro && 'Pro',
+      !pro && /\bslim\b/i.test(t) && 'Slim',
+      !pro && (/\bdigital\b/i.test(t) ? 'Digital' : /\bdis[ck]\b/i.test(t) ? 'Disc' : null),
+      // A Pro only ever ships with 2TB, so saying so does not make another one.
+      !pro && capacity(t),
+    ]
+    return { brand: 'Sony', model: parts.filter(Boolean).join(' '), consoleType: 'console', platform: 'PlayStation' }
+  }
+  let m = t.match(/\bxbox\s*series\s*([xs])\b/i)
+  if (m) {
+    const parts = [`Xbox Series ${m[1].toUpperCase()}`, /\bdigital\b/i.test(t) && 'Digital', capacity(t)]
+    return { brand: 'Microsoft', model: parts.filter(Boolean).join(' '), consoleType: 'console', platform: 'Xbox' }
+  }
+  m = t.match(/\bswitch\s*(2|oled|lite)?\b/i)
+  if (m && /\bnintendo\b/i.test(t)) {
+    const variant = m[1] ? (m[1] === '2' ? '2' : m[1].toUpperCase() === 'OLED' ? 'OLED' : 'Lite') : null
+    return { brand: 'Nintendo', model: ['Nintendo Switch', variant].filter(Boolean).join(' '), consoleType: 'handheld', platform: 'Nintendo' }
+  }
+  if (/\bsteam\s*deck\b/i.test(t)) {
+    const parts = ['Steam Deck', /\boled\b/i.test(t) && 'OLED', capacity(t)]
+    return { brand: 'Valve', model: parts.filter(Boolean).join(' '), consoleType: 'handheld', platform: 'SteamOS' }
+  }
+  if (/\brog\s*(?:xbox\s*)?ally\b/i.test(t)) {
+    const parts = ['ROG', /\bxbox\b/i.test(t) && 'Xbox', 'Ally', /\bally\s*x\b/i.test(t) && 'X']
+    return { brand: 'ASUS', model: parts.filter(Boolean).join(' '), consoleType: 'handheld', platform: 'Windows' }
+  }
+  m = t.match(/\blegion\s*go\s*(s|2)?\b/i)
+  if (m) {
+    return { brand: 'Lenovo', model: ['Legion Go', m[1]?.toUpperCase()].filter(Boolean).join(' '), consoleType: 'handheld', platform: 'Windows' }
+  }
+  m = t.match(/\bclaw\b\s*-?\s*(a1m|\d\s*ai\+?)?/i)
+  if (m && /\bmsi\b/i.test(t)) {
+    return { brand: 'MSI', model: ['Claw', m[1]?.toUpperCase().replace(/\s+/g, ' ')].filter(Boolean).join(' '), consoleType: 'handheld', platform: 'Windows' }
+  }
+  return null
+}
+
+/**
+ * Game consoles and handheld gaming PCs. Each is a short, fixed list of
+ * models, so the name is rebuilt from what the title says ("PlayStation 5" +
+ * Slim + Disc + 1TB) rather than cleaned up from it, and word order or "PS5"
+ * versus "PlayStation 5" cannot split one console into two.
+ */
+export function extractConsole(rawTitle: string): ConsoleIdentity | null {
+  if (NOT_A_CONSOLE.test(rawTitle)) return null
+  const found = consoleModel(stripAsides(rawTitle))
+  if (!found) return null
+  return { category: 'consoles', partId: slug(found.model), ...found }
+}
+
 /** Extract using the category the retailer claimed, returning null if it disagrees. */
 export function extractIdentity(
   category: string,
   rawTitle: string,
   retailerCategory?: string,
+  specs?: Record<string, string>,
 ): Identity | null {
   if (category === 'gpu') return extractGpu(rawTitle)
   if (category === 'psu') return extractPsu(rawTitle)
@@ -899,5 +1232,7 @@ export function extractIdentity(
   if (category === 'storage') return extractStorage(rawTitle)
   if (category === 'case') return extractCase(rawTitle)
   if (category === 'peripherals') return extractPeripheral(rawTitle, retailerCategory)
+  if (category === 'laptops') return extractLaptop(rawTitle, specs)
+  if (category === 'consoles') return extractConsole(rawTitle)
   return null
 }

@@ -183,6 +183,24 @@ function toNewPart(identity: Identity, specs: ObservedSpecs | undefined): NewPar
         peripheralType: identity.peripheralType,
         wireless: identity.wireless,
       }
+    case 'laptops':
+      return {
+        ...base,
+        category: 'laptops',
+        cpuModel: identity.cpuModel,
+        gpuModel: identity.gpuModel,
+        memoryGb: identity.memoryGb,
+        storageGb: identity.storageGb,
+        screenInches: identity.screenInches === null ? null : String(identity.screenInches),
+        makerCode: identity.makerCode,
+      }
+    case 'consoles':
+      return {
+        ...base,
+        category: 'consoles',
+        consoleType: identity.consoleType,
+        platform: identity.platform,
+      }
   }
 }
 
@@ -310,6 +328,7 @@ export async function runNormalize(
       category,
       row.rawTitle,
       String(payload.retailerCategory ?? ''),
+      specs,
     )
     // Listings that omit the memory size mint a capacity-less id ("rtx-5090"),
     // which would otherwise sit alongside "rtx-5090-32gb" as a separate product

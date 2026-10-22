@@ -658,6 +658,51 @@ across two or three categories.
 Connection is read from the title, so a wireless product the title does not
 call wireless shows as Wired.
 
+### Laptops: same maker code, or the same full config (2026-10-23)
+
+**Decision.** `/laptops` lists new laptops from Lenovo, HP, Dell, ASUS, Acer,
+MSI, Apple, Gigabyte, Samsung and Microsoft. Two listings are one laptop when
+the maker's part number matches (`FA506NCG-HN332WS`, `15-FA2013DX`,
+`83FD05TLK`), or failing that when brand, series, processor, graphics, memory
+and storage all match. A listing with neither is dropped. Used, refurbished and
+open-box machines are dropped, as used parts are. Filters: graphics,
+processor family, memory, storage.
+
+**Why strict.** The same model sells in several memory and storage
+configurations at different prices. Matching on model alone would compare a
+16GB machine's price with an 8GB one's.
+
+**Cost.** nanotek, redlinetech and winsoft titles give model and processor but
+not memory or storage, and their product pages do not add them, so few of their
+laptops are listed (nanotek 7 of 68 in a sample). Listing them unmerged, priced
+at one shop each, was offered and declined on 2026-10-23. A GPU the title does
+not name shows as unstated, not as integrated.
+
+### Consoles and handhelds: one fixed name per model (2026-10-23)
+
+**Decision.** `/consoles` covers PlayStation, Xbox and Nintendo consoles and
+handheld gaming PCs (Steam Deck, ROG Ally, Legion Go, MSI Claw), with Type and
+Platform filters. The name is rebuilt from what the title says
+("PlayStation 5" + Slim + Disc + 1TB) rather than cleaned from it, so "PS5" and
+"PlayStation 5", or any word order, land on one id. A PS5 Pro drops its storage
+from the id, since it only ships with 2TB.
+
+**Cost.** Only three shops sell consoles today (nanotek, chamacomputers,
+pcbuilders), about a dozen in all. Laptops, consoles and peripherals have no
+place in the PC builder.
+
+### The catalogue is cached per category (2026-10-23)
+
+**Decision.** `loadDirectory` assembles ten cached entries, one per category,
+instead of caching the whole catalogue as one.
+
+**Why.** Adding laptops took the single entry to 2.46 MB. Next.js does not
+store an entry over 2 MB: the write fails with only a log line, and the stale
+entry keeps being served, so the nightly refresh would have stopped updating
+prices without anything visibly breaking.
+
+**Cost.** Twenty small queries per refresh instead of two.
+
 ### Tests are `node:test`, not a framework
 
 **Decision.** 46 tests run via `tsx --test`. No Jest, no Vitest.

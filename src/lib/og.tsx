@@ -43,6 +43,8 @@ const HEX: Record<Category, { tint: string; ink: string; strong: string }> = {
   psu: { tint: '#ffe6e3', ink: '#c53637', strong: '#a92227' },
   case: { tint: '#edf3d1', ink: '#70790e', strong: '#575e0a' },
   peripherals: { tint: '#ffe5f0', ink: '#ae3a70', strong: '#972b5f' },
+  laptops: { tint: '#e9eff6', ink: '#3b5876', strong: '#2e4a67' },
+  consoles: { tint: '#ffe7d9', ink: '#bc541a', strong: '#9a3c00' },
 }
 
 export const INK = '#151b24'

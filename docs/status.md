@@ -3,11 +3,11 @@
 What is live and how it is set up. Update this when something ships or a
 setting moves. Why each choice was made is in [decisions](decisions.md).
 
-Last updated 22 October 2026.
+Last updated 23 October 2026.
 
 ## Live
 
-- **Site:** [pcprice.lk](https://pcprice.lk). Home, eight category pages with
+- **Site:** [pcprice.lk](https://pcprice.lk). Home, ten category pages with
   filters and a text filter, ~1,500 part pages, `/deals`, search, the PC
   builder at `/build`, and `/privacy`.
 - **Deals:** parts at least 5% below their 30-day usual price, on `/deals`, as
@@ -18,10 +18,16 @@ Last updated 22 October 2026.
 - **Category filters:** RAM by memory type, capacity and speed; motherboards by
   socket, memory type and form factor; drives by type and capacity; power
   supplies by wattage and efficiency; GPUs, processors and cases by one spec
-  each; keyboards, mice and gamepads by type and connection. Plus stock, brand
-  and shop everywhere.
+  each; keyboards, mice and gamepads by type and connection; laptops by
+  graphics, processor, memory and storage; consoles by type and platform. Plus
+  stock, brand and shop everywhere.
 - **Keyboards, mice and gamepads** at `/peripherals` (22 October 2026): major
   brands only, from all six shops. Not part of the PC builder.
+- **Laptops** at `/laptops` and **game consoles and handhelds** at `/consoles`
+  (23 October 2026). Laptops are listed only with a maker code or a full
+  config, so most come from chamacomputers, gamestreet and pcbuilders.
+  Consoles come from nanotek, chamacomputers and pcbuilders. Neither is in the
+  PC builder.
 - **Share images** for home, categories and parts (WhatsApp, Facebook, X, and
   the Product image Google reads from structured data).
 - **Favicon:** a processor with "Rs" on it. Regenerate with
@@ -55,3 +61,14 @@ Last updated 22 October 2026.
   that cannot read the `shehaneks-projects` team, so Vercel settings are changed
   by hand.
 - **`src/queries/parts.ts`** is dead code pending removal.
+- **Price-history cache size.** `loadPriceIndex` in `src/queries/seo.ts` is one
+  cache entry, 0.77 MB on 23 October 2026. Next.js will not store an entry
+  over 2 MB, and then keeps serving the stale one. Split it like the directory
+  if it nears 1.5 MB.
+- **redlinetech pagination.** Its robots.txt now allows `/category/*?page=`
+  (found 2026-10-22), so the 12-per-category cap in `tyno.ts` could be lifted.
+  Re-check robots.txt before switching it on.
+- **pcbuilders `per_page`.** Its robots.txt has `Disallow: /*?*per_page=*`,
+  which probably covers the Store API calls the scraper makes with
+  `per_page=100`. Needs a decision: drop the parameter (more requests at the
+  default page size) or confirm the rule does not apply to the API.

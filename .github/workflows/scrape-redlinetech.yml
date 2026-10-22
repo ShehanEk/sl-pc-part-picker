@@ -12,6 +12,6 @@ jobs:
     uses: ./.github/workflows/scrape.yml
     with:
       shop: redlinetech.lk
-      categories: gpu,psu,cpu,motherboard,ram,storage,case,peripherals
+      categories: gpu,psu,cpu,motherboard,ram,storage,case,peripherals,laptops,consoles
       timeout_minutes: 45
     secrets: inherit

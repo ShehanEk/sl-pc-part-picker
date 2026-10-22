@@ -56,6 +56,13 @@ const CATEGORY_IDS: Partial<Record<Category, CategoryId | CategoryId[]>> = {
     { id: 377, label: 'MOUSE' },
     { id: 390, label: 'GAME CONTROLLERS' },
   ],
+  // New only: 391 is Used Laptops, and the parent 404 adds laptop RAM, bags
+  // and stands.
+  laptops: { id: 407, label: 'NEW LAPTOPS' },
+  consoles: [
+    { id: 1570, label: 'GAMING CONSOLES' },
+    { id: 1571, label: 'HANDHELD GAMING' },
+  ],
 }
 
 const PER_PAGE = 100

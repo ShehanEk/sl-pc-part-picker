@@ -16,7 +16,7 @@ jobs:
       # All seven. Narrowing them would not shorten the run: discovery comes
       # from the sitemap, which does not say what a product is, so every page
       # gets read either way.
-      categories: gpu,psu,cpu,motherboard,ram,storage,case,peripherals
+      categories: gpu,psu,cpu,motherboard,ram,storage,case,peripherals,laptops,consoles
       # ~330 product pages at the 1.5s floor, about nine minutes.
       timeout_minutes: 30
     secrets: inherit

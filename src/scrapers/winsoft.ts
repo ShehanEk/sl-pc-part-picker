@@ -39,6 +39,8 @@ const CATEGORY_SLUGS: Record<Category, string | string[] | null> = {
   psu: 'power-supply',
   case: 'cases',
   peripherals: ['mouse-keyboard-combo', 'controllers'],
+  laptops: 'laptops',
+  consoles: null,
 }
 
 /**
@@ -61,6 +63,10 @@ const CATEGORY_MAP: Record<string, Category> = {
   // Combos and the racing wheels in controllers are dropped by the extractor.
   'mouse, keyboard & combo': 'peripherals',
   controllers: 'peripherals',
+  // Product pages list either first: ['Gaming Laptop', 'Laptops > HP'] or the
+  // other way round.
+  laptops: 'laptops',
+  'gaming laptop': 'laptops',
 }
 
 /**

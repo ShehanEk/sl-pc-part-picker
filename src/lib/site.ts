@@ -1,4 +1,4 @@
-import { BUILD_SLOTS } from '@/compat/build'
+import { BUILD_SLOTS, type BuildSlot } from '@/compat/build'
 import type { Category } from '@/scrapers/types'
 
 export type { Category }
@@ -27,10 +27,14 @@ export const canonical = (path: string) => `${SITE_URL}${path}`
  * Every category the site browses, in menu order: the build slots, then those
  * the builder does not use. A category is also its URL: /gpu, /peripherals.
  */
-export const CATEGORIES: Category[] = [...BUILD_SLOTS, 'peripherals']
+export const CATEGORIES: Category[] = [...BUILD_SLOTS, 'peripherals', 'laptops', 'consoles']
 
 export const isCategory = (value: string): value is Category =>
   (CATEGORIES as string[]).includes(value)
+
+/** Whether the PC builder has a slot for this category. */
+export const isBuildSlot = (value: Category): value is BuildSlot =>
+  (BUILD_SLOTS as string[]).includes(value)
 
 /**
  * Per-category wording for the browse pages.
@@ -103,6 +107,20 @@ export const CATEGORY_COPY: Record<
     singular: 'keyboard, mouse or gamepad',
     blurb:
       'Gaming keyboards, mice and controllers from the major brands, Logitech, Razer, Corsair, SteelSeries, HyperX, ASUS and more, with the cheapest local price for each and which shop has it.',
+  },
+  laptops: {
+    heading: 'Laptop',
+    plural: 'laptops',
+    singular: 'laptop',
+    blurb:
+      'New laptops from the major brands in stock in Sri Lanka, with processor, graphics, memory and storage, so you only compare a price against the same machine.',
+  },
+  consoles: {
+    heading: 'Game console and handheld',
+    plural: 'game consoles and handhelds',
+    singular: 'console or handheld',
+    blurb:
+      'PlayStation, Xbox and Nintendo consoles and handheld gaming PCs like the Steam Deck, ROG Ally and Legion Go, with the cheapest local price for each.',
   },
 }
 

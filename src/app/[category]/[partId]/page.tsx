@@ -5,8 +5,7 @@ import { notFound } from 'next/navigation'
 import { AddToBuild } from '@/app/components/AddToBuild'
 import { CATEGORY_STYLE } from '@/app/components/PartIcons'
 import { SiteFooter, SiteHeader } from '@/app/components/SiteChrome'
-import { BUILD_SLOTS, type BuildSlot } from '@/compat/build'
-import { CATEGORIES, CATEGORY_COPY, isCategory, type Category, SITE_NAME, canonical, rupees, sentenceCase } from '@/lib/site'
+import { CATEGORIES, CATEGORY_COPY, isBuildSlot, isCategory, type Category, SITE_NAME, canonical, rupees, sentenceCase } from '@/lib/site'
 import { displayName, fitNote, specLines, specPhrase } from '@/lib/specs'
 import { loadDirectory, loadPriceIndex, type PricePoint } from '@/queries/seo'
 
@@ -113,8 +112,8 @@ export default async function PartPage({
   const { slot, part } = found
   const copy = CATEGORY_COPY[slot]
   const { Icon, tint, ink, strong } = CATEGORY_STYLE[slot]
-  // Peripherals have pages but no place in a build.
-  const buildSlot = (BUILD_SLOTS as string[]).includes(slot) ? (slot as BuildSlot) : null
+  // Peripherals, laptops and consoles have pages but no place in a build.
+  const buildSlot = isBuildSlot(slot) ? slot : null
   const name = displayName(part)
   const path = `/${slot}/${part.partId}`
   const specs = specLines(part)

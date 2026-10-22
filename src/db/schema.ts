@@ -22,12 +22,16 @@ export const categoryEnum = pgEnum('category', [
   'ram',
   'storage',
   'case',
-  // Not a build slot: browsed and priced like the rest, but the builder and its
-  // compatibility checks never see it.
+  // Not build slots: browsed and priced like the rest, but the builder and its
+  // compatibility checks never see them.
   'peripherals',
+  'laptops',
+  'consoles',
 ])
 
 export const peripheralTypeEnum = pgEnum('peripheral_type', ['keyboard', 'mouse', 'gamepad'])
+
+export const consoleTypeEnum = pgEnum('console_type', ['console', 'handheld'])
 
 /**
  * How a drive attaches. The distinction matters because an M.2 stick and a
@@ -107,6 +111,19 @@ export const parts = pgTable(
     // peripherals
     peripheralType: peripheralTypeEnum('peripheral_type'),
     wireless: boolean('wireless'),
+
+    // laptops. `cpuModel` is as precise as the listing allows: "Core i7-13620H"
+    // or just "Core i7". `gpuModel` is "RTX 4060", "Integrated", or null if unstated.
+    cpuModel: text('cpu_model'),
+    gpuModel: text('gpu_model'),
+    memoryGb: integer('memory_gb'),
+    storageGb: integer('storage_gb'),
+    screenInches: numeric('screen_inches', { precision: 4, scale: 1 }),
+    makerCode: text('maker_code'),
+
+    // consoles
+    consoleType: consoleTypeEnum('console_type'),
+    platform: text('platform'),
 
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()

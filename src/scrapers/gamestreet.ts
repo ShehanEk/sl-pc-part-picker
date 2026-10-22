@@ -35,6 +35,7 @@ const CATEGORY_IDS: Partial<Record<Category, CategoryId | CategoryId[]>> = {
     { cat: 6, scat: 17, label: 'MOUSE' },
     { cat: 6, scat: 30, label: 'CONTROLLER' },
   ],
+  laptops: { cat: 1, scat: 0, label: 'LAPTOPS' },
 }
 
 const b64 = (n: number) => Buffer.from(String(n), 'utf8').toString('base64')

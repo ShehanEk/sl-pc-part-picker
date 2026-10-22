@@ -1,5 +1,5 @@
 import { unstable_cache } from 'next/cache'
-import { asc, sql } from 'drizzle-orm'
+import { asc, eq, inArray, sql } from 'drizzle-orm'
 
 import { getDb } from '@/db'
 import { listings, parts, priceHistory } from '@/db/schema'
@@ -37,6 +37,14 @@ export type SeoPart = Omit<BuildPart, 'category'> & {
   category: Category
   peripheralType: 'keyboard' | 'mouse' | 'gamepad' | null
   wireless: boolean | null
+  cpuModel: string | null
+  gpuModel: string | null
+  memoryGb: number | null
+  storageGb: number | null
+  screenInches: number | null
+  makerCode: string | null
+  consoleType: 'console' | 'handheld' | null
+  platform: string | null
   vramGb: number | null
   efficiencyRating: string | null
   offers: SeoOffer[]
@@ -50,16 +58,30 @@ export type SeoPart = Omit<BuildPart, 'category'> & {
 
 export type Directory = Record<Category, SeoPart[]>
 
-export const loadDirectory = unstable_cache(_loadDirectory, ['seo-directory'], {
+export async function loadDirectory(): Promise<Directory> {
+  const lists = await Promise.all(CATEGORIES.map((c) => loadCategory(c)))
+  return Object.fromEntries(CATEGORIES.map((c, i) => [c, lists[i]])) as Directory
+}
+
+/**
+ * One category of the directory, cached as its own entry.
+ *
+ * The whole directory was one entry until laptops took it to 2.4MB, past the
+ * 2MB Next.js allows. Over the limit the write fails and the stale entry keeps
+ * being served, so prices would have stopped updating without an error on the
+ * page. Ten entries keep each well under it.
+ */
+const loadCategory = unstable_cache(_loadCategory, ['seo-category'], {
   revalidate: CACHE_SECONDS,
   tags: ['catalog'],
 })
 
-async function _loadDirectory(): Promise<Directory> {
+async function _loadCategory(category: Category): Promise<SeoPart[]> {
   const db = getDb()
+  const inCategory = db.select({ partId: parts.partId }).from(parts).where(eq(parts.category, category))
   const [allParts, allListings] = await Promise.all([
-    db.select().from(parts),
-    db.select().from(listings),
+    db.select().from(parts).where(eq(parts.category, category)),
+    db.select().from(listings).where(inArray(listings.partId, inCategory)),
   ])
 
   const staleBefore = Date.now() - STALE_AFTER_DAYS * 86_400_000
@@ -80,7 +102,7 @@ async function _loadDirectory(): Promise<Directory> {
     else byPart.set(l.partId, [offer])
   }
 
-  const out = Object.fromEntries(CATEGORIES.map((s) => [s, [] as SeoPart[]])) as Directory
+  const out: SeoPart[] = []
 
   for (const p of allParts) {
     const slot = p.category
@@ -100,7 +122,7 @@ async function _loadDirectory(): Promise<Directory> {
     const prices = offers.map((o) => o.priceLkr)
     const buyable = offers.filter((o) => o.inStock && !o.stale)
 
-    out[slot].push({
+    out.push({
       partId: p.partId,
       category: slot,
       brand: p.brand,
@@ -126,6 +148,14 @@ async function _loadDirectory(): Promise<Directory> {
       efficiencyRating: p.efficiencyRating,
       peripheralType: p.peripheralType,
       wireless: p.wireless,
+      cpuModel: p.cpuModel,
+      gpuModel: p.gpuModel,
+      memoryGb: p.memoryGb,
+      storageGb: p.storageGb,
+      screenInches: p.screenInches === null ? null : Number(p.screenInches),
+      makerCode: p.makerCode,
+      consoleType: p.consoleType,
+      platform: p.platform,
       offers,
       bestLkr: buyable.length ? Math.min(...buyable.map((o) => o.priceLkr)) : null,
       lowLkr: Math.min(...prices),
@@ -135,13 +165,11 @@ async function _loadDirectory(): Promise<Directory> {
     })
   }
 
-  for (const slot of CATEGORIES) {
-    out[slot].sort(
-      (a, b) =>
-        Number(b.inStockShops > 0) - Number(a.inStockShops > 0) ||
-        (a.bestLkr ?? a.lowLkr) - (b.bestLkr ?? b.lowLkr),
-    )
-  }
+  out.sort(
+    (a, b) =>
+      Number(b.inStockShops > 0) - Number(a.inStockShops > 0) ||
+      (a.bestLkr ?? a.lowLkr) - (b.bestLkr ?? b.lowLkr),
+  )
 
   return out
 }

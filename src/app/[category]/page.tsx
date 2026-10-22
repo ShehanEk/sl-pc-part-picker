@@ -5,8 +5,8 @@ import { notFound } from 'next/navigation'
 import { CategoryList, type ListRow } from '@/app/components/CategoryList'
 import { CATEGORY_STYLE } from '@/app/components/PartIcons'
 import { SiteFooter, SiteHeader } from '@/app/components/SiteChrome'
-import { CATEGORIES, isCategory, type Category, CATEGORY_COPY, SITE_NAME, TRACKED_SHOPS, canonical, rupees, sentenceCase } from '@/lib/site'
-import { peripheralLabel, specSummary } from '@/lib/specs'
+import { CATEGORIES, isBuildSlot, isCategory, type Category, CATEGORY_COPY, SITE_NAME, TRACKED_SHOPS, canonical, rupees, sentenceCase } from '@/lib/site'
+import { consoleTypeLabel, cpuFamily, peripheralLabel, sizeLabel, specSummary } from '@/lib/specs'
 import { loadDirectory, type SeoPart } from '@/queries/seo'
 
 /**
@@ -123,6 +123,16 @@ const FACETS: Record<Category, Facet[]> = {
       label: 'Connection',
       value: (p) => (p.wireless == null ? null : p.wireless ? 'Wireless' : 'Wired'),
     },
+  ],
+  laptops: [
+    { label: 'Graphics', value: (p) => p.gpuModel ?? null },
+    { label: 'Processor', value: (p) => cpuFamily(p.cpuModel) },
+    { label: 'Memory', value: (p) => (p.memoryGb ? `${p.memoryGb} GB` : null) },
+    { label: 'Storage', value: (p) => sizeLabel(p.storageGb) },
+  ],
+  consoles: [
+    { label: 'Type', value: (p) => consoleTypeLabel(p.consoleType), order: ['Console', 'Handheld'] },
+    { label: 'Platform', value: (p) => p.platform ?? null },
   ],
 }
 
@@ -263,7 +273,7 @@ export default async function CategoryPage({
           />
         )}
 
-        {slot !== 'peripherals' && (
+        {isBuildSlot(slot) && (
           <p className="mt-4 px-1 text-[13px] leading-relaxed text-ink-3">
             Picking a {copy.singular} for a whole machine?{' '}
             <Link href="/build" className="text-accent underline-offset-2 hover:underline">

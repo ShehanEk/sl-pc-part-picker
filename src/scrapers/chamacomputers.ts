@@ -27,6 +27,10 @@ const CATEGORY_PATHS: Partial<Record<Category, string | string[]>> = {
   case: 'pc cases',
   // There is no peripherals parent: /products/peripherals lists nothing.
   peripherals: ['keyboards', 'mouse', 'controllers'],
+  // Mixed with used laptops and accessories; the extractor drops both. Its
+  // children (commercial, macbook, used) answer 200 with a not-found page.
+  laptops: 'laptops',
+  consoles: 'consoles',
 }
 
 type ChamaProduct = {
@@ -100,7 +104,8 @@ export const chamacomputers: Scraper = {
       for (const path of [CATEGORY_PATHS[category] ?? []].flat()) {
 
         const seen = new Set<number>()
-        const maxPages = opts.maxPages ?? 30
+        // Laptops run to ~64 pages; the loop stops at the first empty page anyway.
+      const maxPages = opts.maxPages ?? 80
 
         for (let page = 1; page <= maxPages; page++) {
           const url =

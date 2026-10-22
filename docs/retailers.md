@@ -20,6 +20,42 @@ Last inspected: 2026-08-23. pcbuilders.lk added 2026-08-25, winsoft.lk 2026-08-2
 
 None needs a headless browser. All are reachable with plain `fetch`.
 
+## Peripherals: where each shop keeps keyboards, mice and gamepads
+
+Added 2026-10-22. Five of the six shops split these across two or three
+categories, so a scraper mapping can be a list. Only nanotek has one shelf for
+all three.
+
+| Shop | Source categories | Also on the shelf (dropped by the extractor) |
+|---|---|---|
+| gamestreet.lk | `cat=6` with `scat=16` KEYBOARD, `17` MOUSE, `30` CONTROLLER | combos, racing wheels, flight sticks |
+| chamacomputers.lk | `keyboards`, `mouse`, `controllers` (`/products/peripherals` lists nothing) | combos |
+| nanotek.lk | `keyboardmouse-gamepad-controller` | combos, pads, wheels, grips, bungees |
+| redlinetech.lk | `mouse-keyboard-combo`, `controllers` | combos, wheels, shifters |
+| pcbuilders.lk | term ids 380, 377, 390 | combos |
+| winsoft.lk | `mouse-keyboard-combo`, `controllers`; JSON-LD first segment `Mouse, Keyboard & Combo` or `Controllers` | combos, wheels |
+
+- **Traps:**
+  - redlinetech's `keyboard-mouse` holds only combos, despite the name.
+  - gamestreet's `scat=0` (all of cat 6) mixes in drives, headsets and webcams.
+  - pcbuilders' parent term 24 adds headsets, speakers and capture cards.
+- **The shelf names the type** where a title does not. That works for every
+  shop except nanotek, whose one shelf names all three, so a nanotek title
+  that never says "mouse" or "keyboard" is dropped.
+
+## Laptops and consoles: source categories
+
+Added 2026-10-23. Gamestreet, redlinetech and winsoft sell no consoles.
+
+| Shop | Laptops | Consoles | Notes |
+|---|---|---|---|
+| gamestreet.lk | `cat=1`, `scat=0` | none | Full specs in every title |
+| chamacomputers.lk | `laptops` | `consoles` | ~64 pages of laptops, mixed with used ones and accessories; its laptop children answer 200 with a not-found page |
+| nanotek.lk | `laptop`, `apple` | `console-handheld-gaming` | MacBooks are under `apple`, beside Mac minis; titles give no memory or storage |
+| redlinetech.lk | `laptops` (page 1 only) | none | Titles give no memory or storage |
+| pcbuilders.lk | term 407 | terms 1570, 1571 | Not 391 (used laptops) or parent 404 (adds RAM, bags, stands) |
+| winsoft.lk | `laptops`; JSON-LD `Laptops` or `Gaming Laptop`, in either order | none | Spec table gives CPU family, GPU and screen, not memory or storage |
+
 ## gamestreet.lk
 
 Cheapest to scrape. Category listings are server-rendered with title, brand and
@@ -208,7 +244,7 @@ regenerated, and three of its URLs already 404. Of the 12 graphics cards on the
 live category page, **only 5 appear in it** — the other 7 are newer than the
 snapshot.
 
-So the scraper takes the union: seven category pages plus the sitemap, then
+So the scraper takes the union: the category pages plus the sitemap, then
 reads each product page. That lifted graphics cards from 12 to 19 and the shop
 as a whole from 87 to 111 products. Coverage is still partial by construction.
 The way to more is to ask the shop for a feed, not to fetch `?page=2`.
@@ -240,69 +276,6 @@ drives and, actually observed, a DVD rewriter.
   prices. Matching only the first let a "Crucial 32GB DDR5 5600MHz Desktop RAM
   (Not Sold Separately)" through at a price nobody could pay for it alone.
 - **Most of the catalogue is not PC parts.** 200 of the ~330 pages read are
-  laptops, mice, monitors and printers, discarded on their category.
-
-## winsoft.lk
-
-The most restricted robots.txt of the six, and the only shop where **complete
-coverage is not compliantly reachable**.
-
-```
-Disallow: /*?*
-Disallow: /*&*
-Disallow: /*?page=
-Disallow: */page/*
-Disallow: /search
-```
-
-Every query-string URL is off limits *and* so is path pagination, so a category
-listing is capped at its first 12 products with no second route through it.
-
-### Discovery is the union of two partial sources
-
-Neither source is complete, and neither contains the other:
-
-| Source | Gives | Problem |
-|---|---|---|
-| `/category/<slug>` | current products, 12 per category | pagination disallowed |
-| `sitemap.xml` | a wider set, 291 product URLs | **stale** |
-
-The sitemap is stale in a measurable way: every `lastmod` in it is the same
-value (`2026-07-20T17:27:57`), it was evidently generated once and never
-regenerated, and three of its URLs already 404. Of the 12 graphics cards on the
-live category page, **only 5 appear in it** — the other 7 are newer than the
-snapshot.
-
-So the scraper takes the union: seven category pages plus the sitemap, then
-reads each product page. That lifted graphics cards from 12 to 19 and the shop
-as a whole from 87 to 111 products. Coverage is still partial by construction.
-The way to more is to ask the shop for a feed, not to fetch `?page=2`.
-
-### The product page is JSON-LD
-
-Each `/product/<slug>` carries one `application/ld+json` `Product` block with
-`name`, `sku`, `category`, `offers.price` and an `additionalProperty` spec table
-(Brand, GPU Chipset, GPU VRAM, Motherboard Chipset, Socket Type). Nothing is
-scraped out of markup.
-
-Category comes from the JSON-LD `category`, which is sometimes a path
-("Storage > SSD"); the first segment is mapped. **External Storage** is
-deliberately left unmapped — it is where the shop files enclosures, portable
-drives and, actually observed, a DVD rewriter.
-
-### Gotchas found the hard way
-
-- **`offers.availability` is hardcoded to `OutOfStock`.** Every product page
-  says it, including ones the page itself renders as "In Stock" with a working
-  Add to Cart. Believing it would have marked the entire shop out of stock,
-  which drops it out of the configurator altogether. The `additionalProperty`
-  row named `Availability` is the field that actually varies — but its casing
-  does not ("In Stock", "in stock", "In stock"), so compare case-insensitively.
-- **The Add to Cart button is not a stock signal.** It renders even on the one
-  product whose spec table says Out of Stock.
-- **Some parts are not sold on their own**, marked two different ways:
-  "(SYSTEM ONLY)" and "(Not Sold Separately)". Both are bundled-with-a-build
-  prices. Matching only the first let a "Crucial 32GB DDR5 5600MHz Desktop RAM
-  (Not Sold Separately)" through at a price nobody could pay for it alone.
-- **Most of the catalogue is not PC parts.** 200 of the ~330 pages read are
-  laptops, mice, monitors and printers, discarded on their category.
+  laptops, monitors and printers, discarded on their category. Its keyboards
+  and mice are scraped since 2026-10-22, but they are Armaggeddon and Alcatroz,
+  so the brand rule drops them.

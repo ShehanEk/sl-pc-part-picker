@@ -11,12 +11,36 @@ import type { Category } from '@/lib/site'
 
 export type SpecLine = { label: string; value: string }
 
-/** Shops list the brand in the model as often as not; don't say it twice. */
-export function displayName(part: Pick<BuildPart, 'brand' | 'model'>): string {
+/**
+ * Shops list the brand in the model as often as not; don't say it twice.
+ *
+ * A laptop's maker code goes on the end, or its config when it has none: one
+ * series ships in several configurations, which would otherwise share a page
+ * title ("Apple Macbook Pro" was twelve different machines).
+ */
+export function displayName(
+  part: Pick<BuildPart, 'brand' | 'model'> & {
+    category?: string
+    makerCode?: string | null
+    cpuModel?: string | null
+    gpuModel?: string | null
+    memoryGb?: number | null
+    storageGb?: number | null
+  },
+): string {
   const model = part.model.trim()
-  return model.toLowerCase().includes(part.brand.toLowerCase())
+  const name = model.toLowerCase().includes(part.brand.toLowerCase())
     ? model
     : `${part.brand} ${model}`
+  if (part.category !== 'laptops') return name
+  if (part.makerCode) return name.includes(part.makerCode) ? name : `${name} ${part.makerCode}`
+  const config = [
+    part.cpuModel,
+    part.gpuModel !== 'Integrated' && part.gpuModel,
+    part.memoryGb && `${part.memoryGb}GB`,
+    sizeLabel(part.storageGb)?.replace(' ', ''),
+  ].filter(Boolean)
+  return config.length ? `${name} (${config.join(', ')})` : name
 }
 
 type SpecSource = Omit<BuildPart, 'category'> & {
@@ -25,6 +49,14 @@ type SpecSource = Omit<BuildPart, 'category'> & {
   efficiencyRating?: string | null
   peripheralType?: 'keyboard' | 'mouse' | 'gamepad' | null
   wireless?: boolean | null
+  cpuModel?: string | null
+  gpuModel?: string | null
+  memoryGb?: number | null
+  storageGb?: number | null
+  screenInches?: number | null
+  makerCode?: string | null
+  consoleType?: 'console' | 'handheld' | null
+  platform?: string | null
 }
 
 export function specLines(part: SpecSource): SpecLine[] {
@@ -81,6 +113,18 @@ export function specLines(part: SpecSource): SpecLine[] {
       push('Type', peripheralLabel(part.peripheralType))
       push('Connection', part.wireless == null ? null : part.wireless ? 'Wireless' : 'Wired')
       break
+    case 'laptops':
+      push('Processor', part.cpuModel)
+      push('Graphics', part.gpuModel)
+      push('Memory', part.memoryGb ? `${part.memoryGb} GB` : null)
+      push('Storage', sizeLabel(part.storageGb))
+      push('Screen', part.screenInches ? `${part.screenInches}"` : null)
+      push('Maker code', part.makerCode)
+      break
+    case 'consoles':
+      push('Type', consoleTypeLabel(part.consoleType))
+      push('Platform', part.platform)
+      break
   }
 
   return out
@@ -107,6 +151,23 @@ function connectorLabel(c: BuildPart['powerConnector'] | undefined): string | nu
     default:
       return null
   }
+}
+
+/** "512 GB", "1 TB". */
+export function sizeLabel(gb: number | null | undefined): string | null {
+  if (!gb) return null
+  return gb >= 1000 ? `${gb / 1000} TB` : `${gb} GB`
+}
+
+/** "Core i7-13620H" → "Core i7", for the laptop Processor filter. */
+export function cpuFamily(cpu: string | null | undefined): string | null {
+  if (!cpu) return null
+  const m = cpu.match(/^(Core Ultra X?\d|Core i\d|Core \d|Ryzen AI \d|Ryzen \d|Apple M\d|Snapdragon X|Celeron|Pentium)/)
+  return m ? m[1] : cpu
+}
+
+export function consoleTypeLabel(t: SpecSource['consoleType']): string | null {
+  return t === 'handheld' ? 'Handheld' : t === 'console' ? 'Console' : null
 }
 
 /** Exported for the Type filter, so the filter and the spec row match. */

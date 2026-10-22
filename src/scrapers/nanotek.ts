@@ -57,6 +57,9 @@ export const nanotek = createTynoScraper({
     // One shelf for all three; it also holds pads, wheels and combos, which the
     // extractor drops.
     peripherals: 'keyboardmouse-gamepad-controller',
+    // MacBooks are not under `laptop` but `apple`, among Mac minis and docks.
+    laptops: ['laptop', 'apple'],
+    consoles: 'console-handheld-gaming',
   },
   parsePrice,
 })

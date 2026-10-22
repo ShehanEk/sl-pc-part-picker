@@ -44,6 +44,8 @@ const FILTER_EXAMPLES: Record<Category, string> = {
   psu: '750W or Gold',
   case: 'ATX',
   peripherals: 'G502 or DualSense',
+  laptops: 'TUF or RTX 4060',
+  consoles: 'PS5 or Switch',
 }
 
 const rs = (n: number) => `Rs ${Math.round(n).toLocaleString('en-LK')}`
