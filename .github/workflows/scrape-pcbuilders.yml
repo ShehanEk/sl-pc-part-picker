@@ -12,6 +12,6 @@ jobs:
     uses: ./.github/workflows/scrape.yml
     with:
       shop: pcbuilders.lk
-      categories: gpu,psu,cpu,motherboard,ram,storage,case
+      categories: gpu,psu,cpu,motherboard,ram,storage,case,peripherals
       timeout_minutes: 20
     secrets: inherit

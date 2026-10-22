@@ -5,9 +5,8 @@ import { notFound } from 'next/navigation'
 import { CategoryList, type ListRow } from '@/app/components/CategoryList'
 import { CATEGORY_STYLE } from '@/app/components/PartIcons'
 import { SiteFooter, SiteHeader } from '@/app/components/SiteChrome'
-import { BUILD_SLOTS, type BuildSlot } from '@/compat/build'
-import { CATEGORY_COPY, SITE_NAME, TRACKED_SHOPS, canonical, rupees, sentenceCase } from '@/lib/site'
-import { specSummary } from '@/lib/specs'
+import { CATEGORIES, isCategory, type Category, CATEGORY_COPY, SITE_NAME, TRACKED_SHOPS, canonical, rupees, sentenceCase } from '@/lib/site'
+import { peripheralLabel, specSummary } from '@/lib/specs'
 import { loadDirectory, type SeoPart } from '@/queries/seo'
 
 /**
@@ -23,11 +22,11 @@ export const revalidate = 1800
 export const dynamicParams = false
 
 export function generateStaticParams() {
-  return BUILD_SLOTS.map((category) => ({ category }))
+  return CATEGORIES.map((category) => ({ category }))
 }
 
-function asSlot(value: string): BuildSlot | null {
-  return (BUILD_SLOTS as string[]).includes(value) ? (value as BuildSlot) : null
+function asSlot(value: string): Category | null {
+  return isCategory(value) ? value : null
 }
 
 export async function generateMetadata({
@@ -80,7 +79,7 @@ const STORAGE_TYPE = { 'm2-nvme': 'M.2 NVMe', 'm2-sata': 'M.2 SATA', sata: 'SATA
  * LGA1700 chips take either generation, so their `ramType` is null, and a DDR5
  * filter would wrongly hide them.
  */
-const FACETS: Record<BuildSlot, Facet[]> = {
+const FACETS: Record<Category, Facet[]> = {
   gpu: [{ label: 'Video memory', value: (p) => (p.vramGb ? `${p.vramGb} GB` : null) }],
   cpu: [{ label: 'Socket', value: (p) => p.socket ?? null }],
   motherboard: [
@@ -114,6 +113,17 @@ const FACETS: Record<BuildSlot, Facet[]> = {
     },
   ],
   case: [{ label: 'Form factor', value: (p) => p.formFactor ?? null }],
+  peripherals: [
+    {
+      label: 'Type',
+      value: (p) => peripheralLabel(p.peripheralType),
+      order: ['Keyboard', 'Mouse', 'Gamepad'],
+    },
+    {
+      label: 'Connection',
+      value: (p) => (p.wireless == null ? null : p.wireless ? 'Wireless' : 'Wired'),
+    },
+  ],
 }
 
 export default async function CategoryPage({
@@ -214,7 +224,7 @@ export default async function CategoryPage({
           aria-label="Categories"
           className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-6 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0"
         >
-          {BUILD_SLOTS.map((s) => {
+          {CATEGORIES.map((s) => {
             const style = CATEGORY_STYLE[s]
             const current = s === slot
             return (
@@ -253,13 +263,15 @@ export default async function CategoryPage({
           />
         )}
 
-        <p className="mt-4 px-1 text-[13px] leading-relaxed text-ink-3">
-          Picking a {copy.singular} for a whole machine?{' '}
-          <Link href="/build" className="text-accent underline-offset-2 hover:underline">
-            Use the PC builder
-          </Link>{' '}
-          and it will only show you parts that fit what you have already chosen.
-        </p>
+        {slot !== 'peripherals' && (
+          <p className="mt-4 px-1 text-[13px] leading-relaxed text-ink-3">
+            Picking a {copy.singular} for a whole machine?{' '}
+            <Link href="/build" className="text-accent underline-offset-2 hover:underline">
+              Use the PC builder
+            </Link>{' '}
+            and it will only show you parts that fit what you have already chosen.
+          </p>
+        )}
       </main>
 
       <SiteFooter />

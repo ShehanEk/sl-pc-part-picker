@@ -59,6 +59,8 @@ export const redlinetech = createTynoScraper({
     ram: 'memory-ram',
     storage: 'storage',
     case: 'cases',
+    // Not `keyboard-mouse`: despite the name it holds only combos.
+    peripherals: ['mouse-keyboard-combo', 'controllers'],
   },
   parsePrice,
 })

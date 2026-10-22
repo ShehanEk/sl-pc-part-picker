@@ -5,7 +5,7 @@ import type { ReactNode } from 'react'
 import { ImageResponse } from 'next/og'
 
 import { CATEGORY_STYLE } from '@/app/components/PartIcons'
-import type { BuildSlot } from '@/compat/build'
+import type { Category } from '@/lib/site'
 
 /**
  * The share images — what WhatsApp, Facebook and Google show for a link.
@@ -34,7 +34,7 @@ const fonts = Promise.all([
 ])
 
 /** `CATEGORY_STYLE`'s tint, ink and strong, converted from oklch. */
-const HEX: Record<BuildSlot, { tint: string; ink: string; strong: string }> = {
+const HEX: Record<Category, { tint: string; ink: string; strong: string }> = {
   gpu: { tint: '#dbf6e7', ink: '#008053', strong: '#006d45' },
   cpu: { tint: '#e5efff', ink: '#3760c9', strong: '#2a51b8' },
   motherboard: { tint: '#d9f4fb', ink: '#00778d', strong: '#006477' },
@@ -42,6 +42,7 @@ const HEX: Record<BuildSlot, { tint: string; ink: string; strong: string }> = {
   storage: { tint: '#ffeacf', ink: '#b46e00', strong: '#8e5400' },
   psu: { tint: '#ffe6e3', ink: '#c53637', strong: '#a92227' },
   case: { tint: '#edf3d1', ink: '#70790e', strong: '#575e0a' },
+  peripherals: { tint: '#ffe5f0', ink: '#ae3a70', strong: '#972b5f' },
 }
 
 export const INK = '#151b24'
@@ -50,7 +51,7 @@ export const LABEL = '#677284'
 export const BLUE = '#2f6dd3'
 export const MONO = 'JetBrains Mono'
 
-export function CategoryTile({ slot, size }: { slot: BuildSlot; size: number }) {
+export function CategoryTile({ slot, size }: { slot: Category; size: number }) {
   const { Icon } = CATEGORY_STYLE[slot]
   const { tint, ink } = HEX[slot]
   return (
@@ -70,7 +71,7 @@ export function CategoryTile({ slot, size }: { slot: BuildSlot; size: number }) 
   )
 }
 
-export function CategoryChip({ slot, label }: { slot: BuildSlot; label: string }) {
+export function CategoryChip({ slot, label }: { slot: Category; label: string }) {
   const { Icon } = CATEGORY_STYLE[slot]
   const { tint, ink, strong } = HEX[slot]
   return (

@@ -6,7 +6,7 @@ import { AddToBuild } from '@/app/components/AddToBuild'
 import { CATEGORY_STYLE } from '@/app/components/PartIcons'
 import { SiteFooter, SiteHeader } from '@/app/components/SiteChrome'
 import { BUILD_SLOTS, type BuildSlot } from '@/compat/build'
-import { CATEGORY_COPY, SITE_NAME, canonical, rupees, sentenceCase } from '@/lib/site'
+import { CATEGORIES, CATEGORY_COPY, isCategory, type Category, SITE_NAME, canonical, rupees, sentenceCase } from '@/lib/site'
 import { displayName, fitNote, specLines, specPhrase } from '@/lib/specs'
 import { loadDirectory, loadPriceIndex, type PricePoint } from '@/queries/seo'
 
@@ -33,13 +33,13 @@ export const dynamicParams = false
  */
 export async function generateStaticParams() {
   const directory = await loadDirectory()
-  return BUILD_SLOTS.flatMap((category) =>
+  return CATEGORIES.flatMap((category) =>
     directory[category].map((p) => ({ category, partId: p.partId })),
   )
 }
 
-function asSlot(value: string): BuildSlot | null {
-  return (BUILD_SLOTS as string[]).includes(value) ? (value as BuildSlot) : null
+function asSlot(value: string): Category | null {
+  return isCategory(value) ? value : null
 }
 
 
@@ -113,6 +113,8 @@ export default async function PartPage({
   const { slot, part } = found
   const copy = CATEGORY_COPY[slot]
   const { Icon, tint, ink, strong } = CATEGORY_STYLE[slot]
+  // Peripherals have pages but no place in a build.
+  const buildSlot = (BUILD_SLOTS as string[]).includes(slot) ? (slot as BuildSlot) : null
   const name = displayName(part)
   const path = `/${slot}/${part.partId}`
   const specs = specLines(part)
@@ -468,24 +470,26 @@ export default async function PartPage({
               {priceBox}
             </section>
 
-            <section
-              aria-labelledby="build"
-              className="flex flex-col gap-2.5 rounded-[var(--radius)] border border-[var(--glass-border)] bg-[var(--sunken)] px-5 py-[18px]"
-            >
-              <h2 id="build" className="text-[14.5px] font-semibold">
-                Building a PC?
-              </h2>
-              <p className="m-0 text-[13.5px] leading-[1.5] text-ink-2">
-                Add this {copy.singular} to the PC builder and it checks everything else you pick
-                fits with it.
-              </p>
-              <AddToBuild slot={slot} partId={part.partId} shop={best?.shop ?? null}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" aria-hidden>
-                  <path d="M12 5v14M5 12h14" />
-                </svg>
-                Add to my build
-              </AddToBuild>
-            </section>
+            {buildSlot && (
+              <section
+                aria-labelledby="build"
+                className="flex flex-col gap-2.5 rounded-[var(--radius)] border border-[var(--glass-border)] bg-[var(--sunken)] px-5 py-[18px]"
+              >
+                <h2 id="build" className="text-[14.5px] font-semibold">
+                  Building a PC?
+                </h2>
+                <p className="m-0 text-[13.5px] leading-[1.5] text-ink-2">
+                  Add this {copy.singular} to the PC builder and it checks everything else you pick
+                  fits with it.
+                </p>
+                <AddToBuild slot={buildSlot} partId={part.partId} shop={best?.shop ?? null}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" aria-hidden>
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                  Add to my build
+                </AddToBuild>
+              </section>
+            )}
 
             {specs.length > 0 && (
               <section aria-labelledby="specs" className="glass overflow-hidden">

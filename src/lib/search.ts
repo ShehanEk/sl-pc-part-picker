@@ -1,5 +1,4 @@
-import { BUILD_SLOTS } from '@/compat/build'
-import { CATEGORY_COPY } from '@/lib/site'
+import { CATEGORIES, CATEGORY_COPY } from '@/lib/site'
 import type { Directory, SeoPart } from '@/queries/seo'
 
 /**
@@ -43,7 +42,7 @@ export function searchParts(directory: Directory, query: string): SeoPart[] {
   const phrase = squash(query)
 
   const hits: { part: SeoPart; phrase: boolean }[] = []
-  for (const slot of BUILD_SLOTS) {
+  for (const slot of CATEGORIES) {
     const copy = CATEGORY_COPY[slot]
     for (const part of directory[slot]) {
       const name = `${part.brand} ${part.model} ${copy.heading} ${copy.plural}`

@@ -1,6 +1,5 @@
-import { BUILD_SLOTS, type BuildSlot } from '@/compat/build'
 import { LABEL, MONO, OG_SIZE, BLUE, CategoryTile, ogImage } from '@/lib/og'
-import { CATEGORY_COPY, TRACKED_SHOPS, rupees } from '@/lib/site'
+import { CATEGORIES, type Category, CATEGORY_COPY, TRACKED_SHOPS, rupees } from '@/lib/site'
 import { loadDirectory } from '@/queries/seo'
 
 /** The share image for a category page: how many are in stock, and from what. */
@@ -12,7 +11,7 @@ export const size = OG_SIZE
 export const contentType = 'image/png'
 
 export function generateStaticParams() {
-  return BUILD_SLOTS.map((category) => ({ category }))
+  return CATEGORIES.map((category) => ({ category }))
 }
 
 function Stat({ label, value, color }: { label: string; value: string; color?: string }) {
@@ -39,7 +38,7 @@ function Stat({ label, value, color }: { label: string; value: string; color?: s
 }
 
 export default async function Image({ params }: { params: Promise<{ category: string }> }) {
-  const slot = (await params).category as BuildSlot
+  const slot = (await params).category as Category
   const copy = CATEGORY_COPY[slot]
   const inStock = (await loadDirectory())[slot].filter((p) => p.bestLkr !== null)
   const cheapest = inStock.length ? Math.min(...inStock.map((p) => p.bestLkr!)) : null
@@ -53,7 +52,8 @@ export default async function Image({ params }: { params: Promise<{ category: st
             style={{
               display: 'flex',
               flexDirection: 'column',
-              fontSize: 66,
+              // Smaller for the long one, so "…gamepad prices" stays on one line.
+              fontSize: copy.heading.length > 20 ? 50 : 66,
               fontWeight: 600,
               lineHeight: 1.04,
               letterSpacing: '-0.04em',

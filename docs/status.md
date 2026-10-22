@@ -7,15 +7,21 @@ Last updated 22 October 2026.
 
 ## Live
 
-- **Site:** [pcprice.lk](https://pcprice.lk). Home, seven category pages with
-  filters and a text filter, ~1,350 part pages, `/deals`, search, the PC
+- **Site:** [pcprice.lk](https://pcprice.lk). Home, eight category pages with
+  filters and a text filter, ~1,500 part pages, `/deals`, search, the PC
   builder at `/build`, and `/privacy`.
 - **Deals:** parts at least 5% below their 30-day usual price, on `/deals`, as
   the top four on the home page, and linked from the header.
+- **Phones:** checked at 375px on 22 October 2026. No page scrolls sideways.
+  Part pages show the cheapest shop on the first screen, deal rows are compact,
+  and open category filters have a "Show N results" bar.
 - **Category filters:** RAM by memory type, capacity and speed; motherboards by
   socket, memory type and form factor; drives by type and capacity; power
   supplies by wattage and efficiency; GPUs, processors and cases by one spec
-  each. Plus stock, brand and shop everywhere.
+  each; keyboards, mice and gamepads by type and connection. Plus stock, brand
+  and shop everywhere.
+- **Keyboards, mice and gamepads** at `/peripherals` (22 October 2026): major
+  brands only, from all six shops. Not part of the PC builder.
 - **Share images** for home, categories and parts (WhatsApp, Facebook, X, and
   the Product image Google reads from structured data).
 - **Favicon:** a processor with "Rs" on it. Regenerate with

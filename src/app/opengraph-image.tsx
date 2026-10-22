@@ -1,6 +1,5 @@
-import { BUILD_SLOTS } from '@/compat/build'
 import { OG_SIZE, CategoryTile, ogImage } from '@/lib/og'
-import { TRACKED_SHOPS } from '@/lib/site'
+import { CATEGORIES, TRACKED_SHOPS } from '@/lib/site'
 
 /** The share image for the home page, and for any page without its own. */
 
@@ -26,7 +25,7 @@ export default function Image() {
           <span>to buy any PC part</span>
         </div>
         <div style={{ display: 'flex', gap: 18 }}>
-          {BUILD_SLOTS.map((slot) => (
+          {CATEGORIES.map((slot) => (
             <CategoryTile key={slot} slot={slot} size={96} />
           ))}
         </div>

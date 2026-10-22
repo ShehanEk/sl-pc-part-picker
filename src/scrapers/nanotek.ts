@@ -54,6 +54,9 @@ export const nanotek = createTynoScraper({
     ram: 'memory-ram',
     storage: 'storage-nas',
     case: 'casings',
+    // One shelf for all three; it also holds pads, wheels and combos, which the
+    // extractor drops.
+    peripherals: 'keyboardmouse-gamepad-controller',
   },
   parsePrice,
 })

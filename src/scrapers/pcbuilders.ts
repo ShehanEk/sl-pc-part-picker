@@ -22,11 +22,14 @@ import type { Category, ScrapeOptions, ScrapedRow, Scraper } from './types'
 const BASE_URL = 'https://pcbuilders.lk'
 const API = `${BASE_URL}/wp-json/wc/store/v1/products`
 
+type CategoryId = { id: number; label: string }
+
 /**
- * Canonical category → WooCommerce term id.
+ * Canonical category → WooCommerce term id, or several.
  *
- * Every id here sits under `components`. The shop also keeps a parallel
- * `all-used-items` tree (used graphics cards, processors, boards, supplies),
+ * Every id here but the peripherals sits under `components`. The shop also
+ * keeps a parallel `all-used-items` tree (used graphics cards, processors,
+ * boards, supplies),
  * deliberately excluded: a used card at half price would win every comparison
  * it appeared in, against new stock, with nothing on the row to say why.
  *
@@ -34,7 +37,7 @@ const API = `${BASE_URL}/wp-json/wc/store/v1/products`
  * Intel/AMD, desktop-RAM, NVMe and hard-disk sub-categories without listing
  * them (verified: processors=41 against intel 19 + amd 20).
  */
-const CATEGORY_IDS: Partial<Record<Category, { id: number; label: string }>> = {
+const CATEGORY_IDS: Partial<Record<Category, CategoryId | CategoryId[]>> = {
   gpu: { id: 95, label: 'GRAPHIC CARDS' },
   cpu: { id: 58, label: 'PROCESSORS' },
   motherboard: { id: 69, label: 'MOTHERBOARDS' },
@@ -46,6 +49,13 @@ const CATEGORY_IDS: Partial<Record<Category, { id: number; label: string }>> = {
   // failure. UPS units are not PC PSUs, so only 408 is taken.
   psu: { id: 408, label: 'POWER SUPPLY' },
   case: { id: 143, label: 'COMPUTER CASE' },
+  // The children, not "Gaming Peripherals" (24): that also holds headsets,
+  // speakers, webcams and capture cards.
+  peripherals: [
+    { id: 380, label: 'KEYBOARDS' },
+    { id: 377, label: 'MOUSE' },
+    { id: 390, label: 'GAME CONTROLLERS' },
+  ],
 }
 
 const PER_PAGE = 100
@@ -158,87 +168,87 @@ export const pcbuilders: Scraper = {
     const rows: ScrapedRow[] = []
 
     for (const category of wanted) {
-      const meta = CATEGORY_IDS[category]
-      if (!meta) continue
+      for (const meta of [CATEGORY_IDS[category] ?? []].flat()) {
 
-      const found: ScrapedRow[] = []
-      const maxPages = opts.maxPages ?? Infinity
-      let page = 1
+        const found: ScrapedRow[] = []
+        const maxPages = opts.maxPages ?? Infinity
+        let page = 1
 
-      // The Store API reports totals in headers the fetch helper does not
-      // surface, so pagination stops on a short page instead.
-      while (page <= maxPages) {
-        const url = `${API}?category=${meta.id}&per_page=${PER_PAGE}&page=${page}`
-        const res = await politeGet(url)
-        if (res.status !== 200) {
-          log(`  ${category}: HTTP ${res.status} on page ${page}, stopping`)
-          break
+        // The Store API reports totals in headers the fetch helper does not
+        // surface, so pagination stops on a short page instead.
+        while (page <= maxPages) {
+          const url = `${API}?category=${meta.id}&per_page=${PER_PAGE}&page=${page}`
+          const res = await politeGet(url)
+          if (res.status !== 200) {
+            log(`  ${category}: HTTP ${res.status} on page ${page}, stopping`)
+            break
+          }
+
+          let batch: StoreProduct[]
+          try {
+            const parsed: unknown = JSON.parse(res.body)
+            batch = Array.isArray(parsed) ? (parsed as StoreProduct[]) : []
+          } catch {
+            log(`  ${category}: page ${page} was not JSON, stopping`)
+            break
+          }
+
+          for (const product of batch) {
+            const title = product.name ? decodeEntities(product.name).trim() : ''
+            if (!title) continue
+            if (NOT_NEW.test(title)) continue
+
+            const priceLkr = toRupees(product.prices?.price, product.prices?.currency_minor_unit)
+            const listPriceLkr = toRupees(
+              product.prices?.regular_price,
+              product.prices?.currency_minor_unit,
+            )
+
+            // `is_in_stock` is true for backordered items too — over half this
+            // shop's graphics cards are "Available on backorder" while flagged in
+            // stock. Taking the flag at face value would have advertised same-day
+            // availability for parts that have to be ordered in.
+            const onBackorder =
+              product.is_on_backorder === true ||
+              /backorder/i.test(product.stock_availability?.text ?? '')
+
+            found.push({
+              shop: 'pcbuilders.lk',
+              sourceUrl: product.permalink,
+              rawTitle: title,
+              rawPriceText:
+                product.prices?.price != null
+                  ? `${product.prices.currency_code ?? 'LKR'} ${priceLkr ?? ''}`
+                  : null,
+              payload: {
+                category,
+                retailerCategory:
+                  product.categories
+                    ?.map((c) => (c.name ? decodeEntities(c.name) : c.slug))
+                    .filter(Boolean)
+                    .join(', ') || meta.label,
+                externalId: String(product.id),
+                priceLkr,
+                listPriceLkr,
+                inStock: product.is_in_stock === true && !onBackorder,
+                preOrder: onBackorder,
+                imageUrl: product.images?.[0]?.src ?? null,
+                sku: product.sku || null,
+                stockText: product.stock_availability?.text ?? null,
+                specs: toSpecs(product),
+              },
+            })
+          }
+
+          if (batch.length < PER_PAGE) break
+          page++
         }
 
-        let batch: StoreProduct[]
-        try {
-          const parsed: unknown = JSON.parse(res.body)
-          batch = Array.isArray(parsed) ? (parsed as StoreProduct[]) : []
-        } catch {
-          log(`  ${category}: page ${page} was not JSON, stopping`)
-          break
-        }
-
-        for (const product of batch) {
-          const title = product.name ? decodeEntities(product.name).trim() : ''
-          if (!title) continue
-          if (NOT_NEW.test(title)) continue
-
-          const priceLkr = toRupees(product.prices?.price, product.prices?.currency_minor_unit)
-          const listPriceLkr = toRupees(
-            product.prices?.regular_price,
-            product.prices?.currency_minor_unit,
-          )
-
-          // `is_in_stock` is true for backordered items too — over half this
-          // shop's graphics cards are "Available on backorder" while flagged in
-          // stock. Taking the flag at face value would have advertised same-day
-          // availability for parts that have to be ordered in.
-          const onBackorder =
-            product.is_on_backorder === true ||
-            /backorder/i.test(product.stock_availability?.text ?? '')
-
-          found.push({
-            shop: 'pcbuilders.lk',
-            sourceUrl: product.permalink,
-            rawTitle: title,
-            rawPriceText:
-              product.prices?.price != null
-                ? `${product.prices.currency_code ?? 'LKR'} ${priceLkr ?? ''}`
-                : null,
-            payload: {
-              category,
-              retailerCategory:
-                product.categories
-                  ?.map((c) => (c.name ? decodeEntities(c.name) : c.slug))
-                  .filter(Boolean)
-                  .join(', ') || meta.label,
-              externalId: String(product.id),
-              priceLkr,
-              listPriceLkr,
-              inStock: product.is_in_stock === true && !onBackorder,
-              preOrder: onBackorder,
-              imageUrl: product.images?.[0]?.src ?? null,
-              sku: product.sku || null,
-              stockText: product.stock_availability?.text ?? null,
-              specs: toSpecs(product),
-            },
-          })
-        }
-
-        if (batch.length < PER_PAGE) break
-        page++
+        const capped =
+          opts.maxProducts != null ? found.slice(0, opts.maxProducts) : found
+        rows.push(...capped)
+        log(`  ${category}: ${capped.length} products`)
       }
-
-      const capped =
-        opts.maxProducts != null ? found.slice(0, opts.maxProducts) : found
-      rows.push(...capped)
-      log(`  ${category}: ${capped.length} products`)
     }
 
     return rows

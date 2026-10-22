@@ -3,9 +3,8 @@ import Link from 'next/link'
 
 import { DealsList } from '../components/Deals'
 import { SiteFooter, SiteHeader } from '../components/SiteChrome'
-import { BUILD_SLOTS } from '@/compat/build'
 import { findDeals, toDealItems } from '@/lib/deals'
-import { CATEGORY_COPY, SITE_NAME, canonical, sentenceCase } from '@/lib/site'
+import { CATEGORIES, CATEGORY_COPY, SITE_NAME, canonical, sentenceCase } from '@/lib/site'
 import { loadDirectory, loadPriceIndex } from '@/queries/seo'
 
 /** Parts below their usual price. Rebuilt with the catalogue, at most every 30 minutes. */
@@ -27,7 +26,7 @@ export const metadata: Metadata = {
 export default async function DealsPage() {
   const [directory, priceIndex] = await Promise.all([loadDirectory(), loadPriceIndex()])
   const deals = toDealItems(findDeals(directory, priceIndex))
-  const labels = Object.fromEntries(BUILD_SLOTS.map((s) => [s, sentenceCase(CATEGORY_COPY[s].plural)]))
+  const labels = Object.fromEntries(CATEGORIES.map((s) => [s, sentenceCase(CATEGORY_COPY[s].plural)]))
 
   return (
     <>

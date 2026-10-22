@@ -191,7 +191,7 @@ All times UTC; Sri Lanka is UTC+5:30.
 Each caller passes its shop key into the reusable `scrape.yml`. Runs are
 staggered so the shops are never hit at once, and each has a `concurrency`
 group so two runs for the same shop never overlap. Every caller scrapes all
-seven categories.
+eight categories, `peripherals` included since 2026-10-22.
 
 gamestreet, chamacomputers and pcbuilders block GitHub's runners, so they have
 no schedule here: the desktop app runs them at the slot in `SHOP_SCHEDULE`

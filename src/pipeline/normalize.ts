@@ -176,6 +176,13 @@ function toNewPart(identity: Identity, specs: ObservedSpecs | undefined): NewPar
         // The largest board it takes; a case for ATX also takes mATX and ITX.
         formFactor: identity.formFactor,
       }
+    case 'peripherals':
+      return {
+        ...base,
+        category: 'peripherals',
+        peripheralType: identity.peripheralType,
+        wireless: identity.wireless,
+      }
   }
 }
 
@@ -299,7 +306,11 @@ export async function runNormalize(
     const category = String(payload.category ?? '') as Category
     const specs = payload.specs as ObservedSpecs | undefined
 
-    const extracted = extractIdentity(category, row.rawTitle)
+    const extracted = extractIdentity(
+      category,
+      row.rawTitle,
+      String(payload.retailerCategory ?? ''),
+    )
     // Listings that omit the memory size mint a capacity-less id ("rtx-5090"),
     // which would otherwise sit alongside "rtx-5090-32gb" as a separate product
     // and split that card's prices across two entries.

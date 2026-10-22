@@ -1,7 +1,6 @@
 import Link from 'next/link'
 
-import { BUILD_SLOTS } from '@/compat/build'
-import { CATEGORY_COPY, SITE_NAME, TRACKED_SHOPS } from '@/lib/site'
+import { CATEGORIES, CATEGORY_COPY, SITE_NAME, TRACKED_SHOPS } from '@/lib/site'
 import { getCatalogStats } from '@/queries/build'
 
 import { CaseIcon } from './PartIcons'
@@ -82,7 +81,7 @@ export function SiteFooter() {
         <nav aria-label="Browse by category">
           <h2 className="eyebrow mb-3">Browse prices in Sri Lanka</h2>
           <ul className="flex flex-wrap gap-x-5 gap-y-2">
-            {BUILD_SLOTS.map((slot) => (
+            {CATEGORIES.map((slot) => (
               <li key={slot}>
                 <Link
                   href={`/${slot}`}

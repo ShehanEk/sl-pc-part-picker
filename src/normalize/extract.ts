@@ -85,6 +85,15 @@ export type CaseIdentity = {
   formFactor: 'ATX' | 'mATX' | 'ITX' | null
 }
 
+export type PeripheralIdentity = {
+  category: 'peripherals'
+  partId: string
+  brand: string
+  model: string
+  peripheralType: 'keyboard' | 'mouse' | 'gamepad'
+  wireless: boolean
+}
+
 export type Identity =
   | GpuIdentity
   | PsuIdentity
@@ -93,6 +102,7 @@ export type Identity =
   | RamIdentity
   | StorageIdentity
   | CaseIdentity
+  | PeripheralIdentity
 
 const GPU_BOARD_PARTNERS = [
   'asus', 'msi', 'gigabyte', 'zotac', 'inno3d', 'pny', 'palit', 'galax',
@@ -703,10 +713,183 @@ export function extractCase(rawTitle: string): CaseIdentity | null {
   }
 }
 
+// Peripherals
+
+/**
+ * The only brands this category carries, as [title pattern, display name].
+ *
+ * Shops' keyboard and mouse shelves are mostly budget and unbranded lines; the
+ * category is for the names a buyer compares across shops, so anything else is
+ * dropped rather than listed. DualSense and DualShock stand in for Sony, whose
+ * name many listings leave out.
+ */
+const PERIPHERAL_BRANDS: [string, string][] = [
+  // "Logitech G" is the gaming line's name, not part of a model: "Logitech G
+  // Pro X" and "Logitech PRO X" are the same mouse.
+  ['logitech(?:\\s*g\\b)?', 'Logitech'],
+  ['razer', 'Razer'],
+  ['corsair', 'Corsair'],
+  ['steel\\s*series', 'SteelSeries'],
+  ['hyper\\s*x', 'HyperX'],
+  ['asus', 'ASUS'],
+  // Matched without being consumed, so "ROG Harpe" and "ASUS ROG Harpe" keep
+  // ROG in the model and land on one id.
+  ['(?=rog\\b)', 'ASUS'],
+  ['glorious', 'Glorious'],
+  ['(?:benq\\s*)?zowie', 'Zowie'],
+  ['cooler\\s*master', 'Cooler Master'],
+  ['msi', 'MSI'],
+  ['(?:microsoft\\s*)?xbox', 'Xbox'],
+  ['(?:sony\\s*)?(?:playstation|ps5|ps4)', 'PlayStation'],
+  ['(?:sony\\s*)?(?=dual\\s*(?:sense|shock))', 'PlayStation'],
+  ['8\\s*bit\\s*do', '8BitDo'],
+]
+
+/**
+ * The brand, but only where the title starts with it.
+ *
+ * Gamepads are sold "for PC / Xbox / PS4", and wheels "for Logitech G29", so a
+ * brand anywhere in the title would file a no-name controller under Xbox.
+ * Every real listing seen leads with the maker.
+ */
+function peripheralBrand(title: string): { name: string; length: number } | null {
+  for (const [pattern, name] of PERIPHERAL_BRANDS) {
+    const m = title.match(new RegExp(`^\\s*${pattern}\\b`, 'i'))
+    if (m) return { name, length: m[0].length }
+  }
+  return null
+}
+
+/**
+ * Shelf-mates that are not a keyboard, mouse or gamepad. Combos are left out
+ * too: a keyboard-and-mouse set is a third product, priced against neither.
+ */
+const NOT_A_PERIPHERAL = new RegExp(
+  [
+    'combo', 'keyboard\\s*(?:&|and|\\+|/)\\s*mouse', 'mouse\\s*(?:&|and|\\+|/)\\s*keyboard',
+    'mouse\\s*-?\\s*pad', 'mouse\\s*mat', 'desk\\s*(?:pad|mat)', 'mat',
+    'racing', 'steering', 'driving\\s*force', 'pedals?', 'shifter', 'grips?', 'bungee', 'keycaps?',
+    'wrist', 'skates?', 'feet', 'switches', 'headset', 'headphones?', 'webcam',
+    'microphone', 'stand', 'holder', 'mount', 'cover', 'skin', 'pouch',
+    'carry(?:ing)?\\s*case', 'charging\\s*(?:dock|station)', 'replacement', 'cable',
+  ]
+    .map((p) => `\\b${p}\\b`)
+    .join('|'),
+  'i',
+)
+
+/** A receiver or adapter sold on its own, not one bundled "with" a mouse. */
+const LONE_ACCESSORY = /^(?!.*\bwith\b).*\b(receiver|dongle|adapter)\b/i
+
+const PERIPHERAL_TYPES: [PeripheralIdentity['peripheralType'], RegExp][] = [
+  ['gamepad', /\b(gam(?:e|ing)\s*pad|controller|joystick|dual\s*(?:sense|shock))\b/i],
+  // Loose at the joins on purpose: nanotek's shelf is the slug
+  // "keyboardmouse-gamepad-controller", which must read as all three types
+  // (so no hint at all), not as gamepad alone.
+  ['keyboard', /\bkey(?:board|pad)s?/i],
+  ['mouse', /(?:\b|board)(?:mouse|mice)\b/i],
+]
+
+/** The one type a text names, or null for none or more than one. */
+function peripheralType(text: string): PeripheralIdentity['peripheralType'] | null {
+  const found = PERIPHERAL_TYPES.filter(([, re]) => re.test(text))
+  return found.length === 1 ? found[0][0] : null
+}
+
+const WIRELESS =
+  /\b(wireless|bluetooth|lightspeed|hyperspeed|slipstream|2\.4\s*g(?:hz)?|tri[\s-]*mode|dual[\s-]*mode|dual\s*(?:sense|shock))\b/i
+
+/** Product names that only come wireless. */
+const NAMED_RADIO = /\b(lightspeed|hyperspeed|slipstream|dual\s*(?:sense|shock))\b/i
+
+/** Whole words only: "black" must not take the front off "BlackWidow". */
+const PERIPHERAL_NOISE = new RegExp(
+  `(?<![a-z0-9])(?:${[
+    'gam(?:e|ing)\\s*pad', 'gaming', 'mouse', 'mice', 'keyboard', 'controller', 'wired',
+    // "mechani\w*" because shops also spell it "Mechanichal".
+    'bluetooth', 'usb(?:[\\s-]*c)?', 'a?rgb', 'lightsync', 'mechani\\w*', 'membrane', 'optical',
+    'ergonomic', 'ultra[\\s-]*light(?:weight)?', 'lightweight', 'backlit', 'e-?sports?',
+    'high[\\s-]*perf\\w*',
+    'black', 'white', 'pink', 'gr[ae]y', 'lilac', 'mercury', 'midnight', 'edition',
+    'red|blue|brown|green|yellow|orange|purple|silver', 'linear|tactile|clicky',
+    'switch', 'for', 'with', 'and', 'the', 'new', 'pc', 'mac', 'windows',
+    '\\d+(?:\\.\\d+)?\\s*k?\\s*dpi', '2\\.4\\s*g(?:hz)?', '\\d+\\s*%',
+    'microsoft', 'sony', 'playstation', 'ps5', 'ps4',
+  ].join('|')})(?![a-z0-9])`,
+  'gi',
+)
+
+const PERIPHERAL_NOUN: Record<PeripheralIdentity['peripheralType'], string> = {
+  keyboard: 'Keyboard',
+  mouse: 'Mouse',
+  gamepad: 'Controller',
+}
+
+/**
+ * Keyboards, mice and gamepads from the major brands.
+ *
+ * The type comes from the title, falling back to the shop's own sub-category
+ * (`retailerCategory`) for titles like "Razer Viper V3 Pro" that never say
+ * "mouse". Colour and switch variants share an id: they sell at one price, and
+ * splitting them would scatter a model's offers across several pages.
+ */
+export function extractPeripheral(
+  rawTitle: string,
+  retailerCategory = '',
+): PeripheralIdentity | null {
+  if (NOT_A_PERIPHERAL.test(rawTitle) || LONE_ACCESSORY.test(rawTitle)) return null
+
+  const brand = peripheralBrand(rawTitle)
+  if (!brand) return null
+
+  // The last segment of a path like "Mouse, Keyboard & Combo > Mouse" names
+  // this product, where the parent names its whole shelf. When the last one
+  // says nothing ("Peripherals / Mouse / Office Wireless"), the whole path can.
+  const shelf = retailerCategory.split(/[>/]/).at(-1) ?? ''
+  const type =
+    peripheralType(rawTitle) ?? peripheralType(shelf) ?? peripheralType(retailerCategory)
+  if (!type) return null
+
+  // Sales copy after a comma or a spaced dash ("…, 25K DPI sensor") is not
+  // the model name.
+  const name = stripAsides(rawTitle.slice(brand.length)).split(/,|\s[-–|]\s/)[0]
+  const modelTokens = name
+    .replace(PERIPHERAL_NOISE, ' ')
+    .replace(/[^a-z0-9+\-\s]/gi, ' ')
+    .split(/\s+/)
+    .map((t) => t.replace(/^-+|-+$/g, ''))
+    .filter((t) => t.length > 0)
+    // ASUS part codes: "P309 TUF M3" is the "TUF M3" another shop lists.
+    .filter((t) => !(brand.name === 'ASUS' && /^(p\d{3}|ra\d{2})$/i.test(t)))
+    .filter((t, i, all) => i === 0 || t.toLowerCase() !== all[i - 1].toLowerCase())
+    // "Wireless" stays in the model unless a named radio already says so. A
+    // Corsair "Katar Pro" is Rs 8,000 wired and Rs 18,000 wireless, so merging
+    // them would show the wired price for both. "G304 Lightspeed" needs no
+    // "Wireless" to tell it apart.
+    .filter((t) => !(/^wireless$/i.test(t) && NAMED_RADIO.test(rawTitle)))
+    // Five, because "Pro X Superlight 2" is not "Pro X Superlight".
+    .slice(0, 5)
+
+  const wireless = WIRELESS.test(rawTitle)
+  const model = modelTokens.some((t) => !/^wireless$/i.test(t))
+    ? modelTokens.join(' ')
+    : `${wireless ? 'Wireless ' : ''}${PERIPHERAL_NOUN[type]}`
+
+  return {
+    category: 'peripherals',
+    partId: slug(`${brand.name} ${model}`),
+    brand: brand.name,
+    model,
+    peripheralType: type,
+    wireless,
+  }
+}
+
 /** Extract using the category the retailer claimed, returning null if it disagrees. */
 export function extractIdentity(
   category: string,
   rawTitle: string,
+  retailerCategory?: string,
 ): Identity | null {
   if (category === 'gpu') return extractGpu(rawTitle)
   if (category === 'psu') return extractPsu(rawTitle)
@@ -715,5 +898,6 @@ export function extractIdentity(
   if (category === 'ram') return extractRam(rawTitle)
   if (category === 'storage') return extractStorage(rawTitle)
   if (category === 'case') return extractCase(rawTitle)
+  if (category === 'peripherals') return extractPeripheral(rawTitle, retailerCategory)
   return null
 }

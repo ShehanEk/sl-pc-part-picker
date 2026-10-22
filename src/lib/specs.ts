@@ -1,4 +1,5 @@
 import type { BuildPart } from '@/compat/build'
+import type { Category } from '@/lib/site'
 
 /**
  * Human-readable specs for a part, in the order a buyer reads them.
@@ -18,9 +19,12 @@ export function displayName(part: Pick<BuildPart, 'brand' | 'model'>): string {
     : `${part.brand} ${model}`
 }
 
-type SpecSource = BuildPart & {
+type SpecSource = Omit<BuildPart, 'category'> & {
+  category: Category
   vramGb?: number | null
   efficiencyRating?: string | null
+  peripheralType?: 'keyboard' | 'mouse' | 'gamepad' | null
+  wireless?: boolean | null
 }
 
 export function specLines(part: SpecSource): SpecLine[] {
@@ -73,6 +77,10 @@ export function specLines(part: SpecSource): SpecLine[] {
     case 'case':
       push('Largest board', part.formFactor)
       break
+    case 'peripherals':
+      push('Type', peripheralLabel(part.peripheralType))
+      push('Connection', part.wireless == null ? null : part.wireless ? 'Wireless' : 'Wired')
+      break
   }
 
   return out
@@ -99,6 +107,11 @@ function connectorLabel(c: BuildPart['powerConnector'] | undefined): string | nu
     default:
       return null
   }
+}
+
+/** Exported for the Type filter, so the filter and the spec row match. */
+export function peripheralLabel(t: SpecSource['peripheralType']): string | null {
+  return t ? `${t[0].toUpperCase()}${t.slice(1)}` : null
 }
 
 function storageLabel(s: BuildPart['storageInterface'] | undefined): string | null {

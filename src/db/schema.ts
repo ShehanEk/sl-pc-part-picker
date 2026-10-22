@@ -22,7 +22,12 @@ export const categoryEnum = pgEnum('category', [
   'ram',
   'storage',
   'case',
+  // Not a build slot: browsed and priced like the rest, but the builder and its
+  // compatibility checks never see it.
+  'peripherals',
 ])
+
+export const peripheralTypeEnum = pgEnum('peripheral_type', ['keyboard', 'mouse', 'gamepad'])
 
 /**
  * How a drive attaches. The distinction matters because an M.2 stick and a
@@ -98,6 +103,10 @@ export const parts = pgTable(
     ratedWatts: integer('rated_watts'),
     connectors: powerConnectorEnum('connectors').array(),
     efficiencyRating: text('efficiency_rating'),
+
+    // peripherals
+    peripheralType: peripheralTypeEnum('peripheral_type'),
+    wireless: boolean('wireless'),
 
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()

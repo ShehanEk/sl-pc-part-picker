@@ -5,8 +5,7 @@ import { CATEGORY_STYLE, CaseIcon } from './components/PartIcons'
 import { SearchBox } from './components/SearchBox'
 import { SiteFooter, SiteHeader } from './components/SiteChrome'
 
-import { BUILD_SLOTS, type BuildSlot } from '@/compat/build'
-import { CATEGORY_COPY, SITE_NAME, TRACKED_SHOPS, canonical, rupees, sentenceCase } from '@/lib/site'
+import { CATEGORIES, type Category, CATEGORY_COPY, SITE_NAME, TRACKED_SHOPS, canonical, rupees, sentenceCase } from '@/lib/site'
 import { findDeals, toDealItems } from '@/lib/deals'
 import { loadDirectory, loadPriceIndex, type SeoPart } from '@/queries/seo'
 
@@ -39,18 +38,18 @@ export const metadata: Metadata = {
 }
 
 /** Example searches, each one checked to return in-stock parts. */
-const EXAMPLES: { q: string; slot: BuildSlot }[] = [
+const EXAMPLES: { q: string; slot: Category }[] = [
   { q: 'RTX 5070', slot: 'gpu' },
   { q: 'Ryzen 7', slot: 'cpu' },
   { q: 'DDR5 32GB', slot: 'ram' },
 ]
 
-type Gap = { part: SeoPart; slot: BuildSlot; best: number; worst: number; at: string; shops: number }
+type Gap = { part: SeoPart; slot: Category; best: number; worst: number; at: string; shops: number }
 
 /** The parts whose cheapest and dearest in-stock shop are furthest apart. */
-function biggestGaps(directory: Record<BuildSlot, SeoPart[]>, count: number): Gap[] {
+function biggestGaps(directory: Record<Category, SeoPart[]>, count: number): Gap[] {
   const gaps: Gap[] = []
-  for (const slot of BUILD_SLOTS) {
+  for (const slot of CATEGORIES) {
     for (const part of directory[slot]) {
       const buyable = part.offers.filter((o) => o.inStock && !o.stale)
       if (buyable.length < 2) continue
@@ -71,7 +70,7 @@ function biggestGaps(directory: Record<BuildSlot, SeoPart[]>, count: number): Ga
 
 export default async function Home() {
   const [directory, priceIndex] = await Promise.all([loadDirectory(), loadPriceIndex()])
-  const totalParts = BUILD_SLOTS.reduce((n, slot) => n + directory[slot].length, 0)
+  const totalParts = CATEGORIES.reduce((n, slot) => n + directory[slot].length, 0)
   const gaps = biggestGaps(directory, 4)
   const deals = toDealItems(findDeals(directory, priceIndex))
 
@@ -158,7 +157,7 @@ export default async function Home() {
             </span>
           </div>
           <ul className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(150px,1fr))]">
-            {BUILD_SLOTS.map((slot) => {
+            {CATEGORIES.map((slot) => {
               const { Icon, tint, ink } = CATEGORY_STYLE[slot]
               const inStock = directory[slot].filter((p) => p.bestLkr !== null)
               const from = inStock.length ? Math.min(...inStock.map((p) => p.bestLkr!)) : null

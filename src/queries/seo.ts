@@ -3,7 +3,8 @@ import { asc, sql } from 'drizzle-orm'
 
 import { getDb } from '@/db'
 import { listings, parts, priceHistory } from '@/db/schema'
-import { BUILD_SLOTS, type BuildPart, type BuildSlot } from '@/compat/build'
+import type { BuildPart } from '@/compat/build'
+import { CATEGORIES, type Category } from '@/lib/site'
 
 /**
  * The catalogue as the indexable pages need it.
@@ -31,7 +32,11 @@ export type SeoOffer = {
   stale: boolean
 }
 
-export type SeoPart = BuildPart & {
+/** A build part widened to every category, since peripherals have pages too. */
+export type SeoPart = Omit<BuildPart, 'category'> & {
+  category: Category
+  peripheralType: 'keyboard' | 'mouse' | 'gamepad' | null
+  wireless: boolean | null
   vramGb: number | null
   efficiencyRating: string | null
   offers: SeoOffer[]
@@ -43,7 +48,7 @@ export type SeoPart = BuildPart & {
   updatedOn: string
 }
 
-export type Directory = Record<BuildSlot, SeoPart[]>
+export type Directory = Record<Category, SeoPart[]>
 
 export const loadDirectory = unstable_cache(_loadDirectory, ['seo-directory'], {
   revalidate: CACHE_SECONDS,
@@ -75,11 +80,10 @@ async function _loadDirectory(): Promise<Directory> {
     else byPart.set(l.partId, [offer])
   }
 
-  const out = Object.fromEntries(BUILD_SLOTS.map((s) => [s, [] as SeoPart[]])) as Directory
+  const out = Object.fromEntries(CATEGORIES.map((s) => [s, [] as SeoPart[]])) as Directory
 
   for (const p of allParts) {
-    const slot = p.category as BuildSlot
-    if (!BUILD_SLOTS.includes(slot)) continue
+    const slot = p.category
 
     const offers = byPart.get(p.partId)
     if (!offers || offers.length === 0) continue
@@ -120,6 +124,8 @@ async function _loadDirectory(): Promise<Directory> {
       connectors: p.connectors,
       vramGb: p.vramGb,
       efficiencyRating: p.efficiencyRating,
+      peripheralType: p.peripheralType,
+      wireless: p.wireless,
       offers,
       bestLkr: buyable.length ? Math.min(...buyable.map((o) => o.priceLkr)) : null,
       lowLkr: Math.min(...prices),
@@ -129,7 +135,7 @@ async function _loadDirectory(): Promise<Directory> {
     })
   }
 
-  for (const slot of BUILD_SLOTS) {
+  for (const slot of CATEGORIES) {
     out[slot].sort(
       (a, b) =>
         Number(b.inStockShops > 0) - Number(a.inStockShops > 0) ||
@@ -180,10 +186,10 @@ async function _loadPriceIndex(days = 90): Promise<Record<string, PricePoint[]>>
 
 /** Flat list of every indexable part, for the sitemap. */
 export async function listIndexableParts(): Promise<
-  { category: BuildSlot; partId: string; updatedOn: string }[]
+  { category: Category; partId: string; updatedOn: string }[]
 > {
   const directory = await loadDirectory()
-  return BUILD_SLOTS.flatMap((slot) =>
+  return CATEGORIES.flatMap((slot) =>
     directory[slot].map((p) => ({
       category: slot,
       partId: p.partId,

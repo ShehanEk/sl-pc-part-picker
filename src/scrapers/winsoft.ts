@@ -30,7 +30,7 @@ const BASE_URL = 'https://www.winsoft.lk'
 const SITEMAP_URL = `${BASE_URL}/sitemap.xml`
 
 /** Canonical category → the shop's category slug, for listing discovery. */
-const CATEGORY_SLUGS: Record<Category, string | null> = {
+const CATEGORY_SLUGS: Record<Category, string | string[] | null> = {
   gpu: 'graphics-card',
   cpu: 'processors',
   motherboard: 'motherboards',
@@ -38,6 +38,7 @@ const CATEGORY_SLUGS: Record<Category, string | null> = {
   storage: 'storage',
   psu: 'power-supply',
   case: 'cases',
+  peripherals: ['mouse-keyboard-combo', 'controllers'],
 }
 
 /**
@@ -57,6 +58,9 @@ const CATEGORY_MAP: Record<string, Category> = {
   storage: 'storage',
   'power supply': 'psu',
   cases: 'case',
+  // Combos and the racing wheels in controllers are dropped by the extractor.
+  'mouse, keyboard & combo': 'peripherals',
+  controllers: 'peripherals',
 }
 
 /**
@@ -124,7 +128,7 @@ function toProps(product: JsonLdProduct): Record<string, string> {
 export const winsoft: Scraper = {
   shop: 'winsoft.lk',
   baseUrl: BASE_URL,
-  categories: Object.values(CATEGORY_MAP),
+  categories: [...new Set(Object.values(CATEGORY_MAP))],
 
   async scrape(opts: ScrapeOptions = {}) {
     const log = opts.log ?? (() => {})
@@ -135,9 +139,7 @@ export const winsoft: Scraper = {
     const discovered = new Set<string>()
 
     // 1. Category listings: current, capped at whatever fits on page one.
-    for (const category of wanted) {
-      const slug = CATEGORY_SLUGS[category]
-      if (!slug) continue
+    for (const slug of [...wanted].flatMap((c) => CATEGORY_SLUGS[c] ?? [])) {
       const res = await politeGet(`${BASE_URL}/category/${slug}`)
       if (res.status !== 200) {
         log(`  category/${slug}: HTTP ${res.status}, skipping`)

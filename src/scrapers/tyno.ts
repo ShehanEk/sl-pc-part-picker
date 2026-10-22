@@ -27,8 +27,8 @@ export type TynoPriceInfo = {
 export type TynoConfig = {
   shop: string
   baseUrl: string
-  /** Canonical category → the retailer's category slug. */
-  categorySlugs: Partial<Record<Category, string>>
+  /** Canonical category → the retailer's category slug, or several. */
+  categorySlugs: Partial<Record<Category, string | string[]>>
   /**
    * Selector for the product title. Theme-specific and easy to get wrong:
    * both themes put an unrelated <h1> (the cart total) above the product name,
@@ -203,19 +203,18 @@ export function createTynoScraper(config: TynoConfig): Scraper {
       const rows: ScrapedRow[] = []
 
       for (const category of wanted) {
-        const slug = config.categorySlugs[category]
-        if (!slug) continue
+        for (const slug of [config.categorySlugs[category] ?? []].flat()) {
+          const urls = await collectProductUrls(slug, opts.maxPages ?? 20, log)
+          const capped = opts.maxProducts ? urls.slice(0, opts.maxProducts) : urls
+          log(`  ${category} (${slug}): ${capped.length} products`)
 
-        const urls = await collectProductUrls(slug, opts.maxPages ?? 20, log)
-        const capped = opts.maxProducts ? urls.slice(0, opts.maxProducts) : urls
-        log(`  ${category} (${slug}): ${capped.length} products`)
-
-        for (const url of capped) {
-          try {
-            const row = await scrapeProduct(url, category, slug)
-            if (row) rows.push(row)
-          } catch (err) {
-            log(`  ! ${url}: ${err instanceof Error ? err.message : err}`)
+          for (const url of capped) {
+            try {
+              const row = await scrapeProduct(url, category, slug)
+              if (row) rows.push(row)
+            } catch (err) {
+              log(`  ! ${url}: ${err instanceof Error ? err.message : err}`)
+            }
           }
         }
       }

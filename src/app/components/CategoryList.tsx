@@ -3,8 +3,8 @@
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
 
-import type { BuildSlot } from '@/compat/build'
 import { matchesQuery } from '@/lib/search'
+import type { Category } from '@/lib/site'
 
 /**
  * The filterable list on a category page.
@@ -35,7 +35,7 @@ export type ListFacet = { label: string; order?: string[] }
 type Sort = 'price' | 'saving' | 'shops'
 
 /** Placeholder examples: words that really occur in each category's names and specs. */
-const FILTER_EXAMPLES: Record<BuildSlot, string> = {
+const FILTER_EXAMPLES: Record<Category, string> = {
   cpu: 'Ryzen 5 or 14600',
   motherboard: 'B650 or AM5',
   ram: 'DDR5 or 32GB',
@@ -43,6 +43,7 @@ const FILTER_EXAMPLES: Record<BuildSlot, string> = {
   storage: 'NVMe or 1TB',
   psu: '750W or Gold',
   case: 'ATX',
+  peripherals: 'G502 or DualSense',
 }
 
 const rs = (n: number) => `Rs ${Math.round(n).toLocaleString('en-LK')}`
@@ -54,7 +55,7 @@ export function CategoryList({
   shops,
   noun,
 }: {
-  slot: BuildSlot
+  slot: Category
   rows: ListRow[]
   facets: ListFacet[]
   shops: string[]

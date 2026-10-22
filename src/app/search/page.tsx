@@ -5,8 +5,7 @@ import { CATEGORY_STYLE } from '../components/PartIcons'
 import { SearchBox } from '../components/SearchBox'
 import { SiteFooter, SiteHeader } from '../components/SiteChrome'
 
-import { BUILD_SLOTS } from '@/compat/build'
-import { CATEGORY_COPY, canonical, rupees, sentenceCase } from '@/lib/site'
+import { CATEGORIES, CATEGORY_COPY, canonical, rupees, sentenceCase } from '@/lib/site'
 import { searchParts } from '@/lib/search'
 import { loadDirectory } from '@/queries/seo'
 
@@ -68,7 +67,7 @@ export default async function SearchPage({ searchParams }: Props) {
               Try fewer words, or a model number on its own. Or browse a category:
             </p>
             <ul className="flex flex-wrap gap-2">
-              {BUILD_SLOTS.map((slot) => (
+              {CATEGORIES.map((slot) => (
                 <li key={slot}>
                   <Link
                     href={`/${slot}`}

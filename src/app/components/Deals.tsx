@@ -3,13 +3,13 @@
 import Link from 'next/link'
 import { useState } from 'react'
 
-import type { BuildSlot } from '@/compat/build'
 
 import { CATEGORY_STYLE } from './PartIcons'
+import type { Category } from '@/lib/site'
 
 /** A deal reduced to what the list shows, so pages don't ship whole parts. */
 export type DealItem = {
-  slot: BuildSlot
+  slot: Category
   heading: string
   partId: string
   name: string
@@ -24,7 +24,7 @@ export type DealItem = {
 const rs = (n: number) => `Rs ${Math.round(n).toLocaleString('en-LK')}`
 
 /** `size` in px, or `className` for a size that changes with the breakpoint. */
-function Tile({ slot, size, className }: { slot: BuildSlot; size?: number; className?: string }) {
+function Tile({ slot, size, className }: { slot: Category; size?: number; className?: string }) {
   const { Icon, tint, ink } = CATEGORY_STYLE[slot]
   return (
     <span
@@ -101,8 +101,8 @@ function Row({ deal }: { deal: DealItem }) {
 
 /** The /deals list, with a chip per category that has deals. */
 export function DealsList({ deals, labels }: { deals: DealItem[]; labels: Record<string, string> }) {
-  const [slot, setSlot] = useState<BuildSlot | null>(null)
-  const counts = new Map<BuildSlot, number>()
+  const [slot, setSlot] = useState<Category | null>(null)
+  const counts = new Map<Category, number>()
   for (const d of deals) counts.set(d.slot, (counts.get(d.slot) ?? 0) + 1)
   const shown = slot ? deals.filter((d) => d.slot === slot) : deals
 

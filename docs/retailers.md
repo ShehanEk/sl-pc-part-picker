@@ -147,8 +147,9 @@ Intel/AMD, desktop-RAM, NVMe and hard-disk sub-categories need no separate call.
 | storage | 81 | STORAGE |
 | psu | 408 | POWER SUPPLY (was 76, "POWER SUPPLY & UPS", until the shop split off UPS units as 394) |
 | case | 143 | COMPUTER CASE |
+| peripherals | 380, 377, 390 | KEYBOARDS, MOUSE, GAME CONTROLLERS (not their parent 24, which also holds headsets and webcams) |
 
-All seven sit under `components`. The shop keeps a **parallel `all-used-items`
+All but the peripherals sit under `components`. The shop keeps a **parallel `all-used-items`
 tree** — used graphics cards, processors, boards, memory and supplies — which is
 deliberately excluded. A used card at half price would win every comparison it
 appeared in, against new stock, with nothing on the row to say why. The two

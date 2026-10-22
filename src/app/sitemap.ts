@@ -1,11 +1,10 @@
 import type { MetadataRoute } from 'next'
 
-import { BUILD_SLOTS } from '@/compat/build'
-import { canonical } from '@/lib/site'
+import { CATEGORIES, canonical } from '@/lib/site'
 import { listIndexableParts, loadDirectory } from '@/queries/seo'
 
 /**
- * Every indexable URL: the home page, the PC builder, seven category pages,
+ * Every indexable URL: the home page, the PC builder, eight category pages,
  * and one page per part.
  *
  * `lastModified` is the day that part's price was last confirmed rather than the
@@ -16,7 +15,7 @@ import { listIndexableParts, loadDirectory } from '@/queries/seo'
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [directory, parts] = await Promise.all([loadDirectory(), listIndexableParts()])
 
-  const newestIn = (slot: (typeof BUILD_SLOTS)[number]) =>
+  const newestIn = (slot: (typeof CATEGORIES)[number]) =>
     directory[slot].map((p) => p.updatedOn).sort().at(-1)
 
   return [
@@ -38,7 +37,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'daily',
       priority: 0.7,
     },
-    ...BUILD_SLOTS.map((slot) => ({
+    ...CATEGORIES.map((slot) => ({
       url: canonical(`/${slot}`),
       lastModified: new Date(newestIn(slot) ?? Date.now()),
       changeFrequency: 'daily' as const,

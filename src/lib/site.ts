@@ -1,4 +1,7 @@
-import type { BuildSlot } from '@/compat/build'
+import { BUILD_SLOTS } from '@/compat/build'
+import type { Category } from '@/scrapers/types'
+
+export type { Category }
 
 /**
  * Site identity, used by metadata, canonical URLs, the sitemap and JSON-LD.
@@ -21,6 +24,15 @@ export const SITE_NAME = 'PCPrice.lk'
 export const canonical = (path: string) => `${SITE_URL}${path}`
 
 /**
+ * Every category the site browses, in menu order: the build slots, then those
+ * the builder does not use. A category is also its URL: /gpu, /peripherals.
+ */
+export const CATEGORIES: Category[] = [...BUILD_SLOTS, 'peripherals']
+
+export const isCategory = (value: string): value is Category =>
+  (CATEGORIES as string[]).includes(value)
+
+/**
  * Per-category wording for the browse pages.
  *
  * `heading` leads the title and the H1, and is the noun a person actually
@@ -28,12 +40,12 @@ export const canonical = (path: string) => `${SITE_URL}${path}`
  * singular because the title reads "Graphics card prices"; `plural` is for
  * running text and breadcrumbs, where "power supplies" is the natural form.
  *
- * `blurb` gives each page a paragraph of its own rather than seven
- * near-identical ones, which is the difference between seven indexed pages and
- * one indexed page plus six treated as duplicates of it.
+ * `blurb` gives each page a paragraph of its own rather than eight
+ * near-identical ones, which is the difference between eight indexed pages and
+ * one indexed page plus seven treated as duplicates of it.
  */
 export const CATEGORY_COPY: Record<
-  BuildSlot,
+  Category,
   { heading: string; plural: string; singular: string; blurb: string }
 > = {
   gpu: {
@@ -84,6 +96,13 @@ export const CATEGORY_COPY: Record<
     singular: 'case',
     blurb:
       'PC cases in stock in Sri Lanka, with the largest motherboard size each one accepts and the cheapest local price.',
+  },
+  peripherals: {
+    heading: 'Keyboard, mouse and gamepad',
+    plural: 'keyboards, mice and gamepads',
+    singular: 'keyboard, mouse or gamepad',
+    blurb:
+      'Gaming keyboards, mice and controllers from the major brands, Logitech, Razer, Corsair, SteelSeries, HyperX, ASUS and more, with the cheapest local price for each and which shop has it.',
   },
 }
 

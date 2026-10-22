@@ -603,6 +603,61 @@ most visible spot, and real discounts that deep are rare.
 cheaper, so the copy never says "price cut". Bundles and bank-card offers are
 not captured.
 
+### Phones get their own order, not a squeezed desktop (2026-10-22)
+
+**Decision.** Three phone-only layouts, desktop unchanged:
+
+- **Part page:** the cheapest-in-stock box is rendered twice, above the price
+  table below `lg` and in the aside from `lg` up, each copy `display: none` at
+  the other size. On phones it had sat 3.7 screens down; it is now on the
+  first.
+- **Deals:** below `sm` the icon sits beside the name and the price takes one
+  line, so a row is ~150px instead of ~240px.
+- **Category filters:** below `lg`, a bar pinned to the bottom of the open
+  panel shows how many parts match and jumps to them.
+
+**Why render the box twice.** It is the only piece of the aside that moves.
+Reordering the whole aside would push the builder card and the spec table above
+the prices; `display: contents` to reorder its children is still unreliable for
+the accessibility tree. Two copies, one always hidden, is plain and robust.
+
+**Cost.** The box's markup is in the HTML twice. The hidden copy is not in the
+accessibility tree, and the text is a dozen words.
+
+### Keyboards, mice and gamepads: one category, major brands only (2026-10-22)
+
+**Decision.** One category, `peripherals`, at `/peripherals`, with Type
+(keyboard, mouse, gamepad) and Connection filters. It is a category, not a
+build slot: no "Add to build", no builder pitch, and the compatibility checks
+never see it. Only titles that *start with* one of Logitech, Razer, Corsair,
+SteelSeries, HyperX, ASUS, Glorious, Zowie, Cooler Master, MSI, Xbox,
+PlayStation or 8BitDo are kept. Combos, pads, racing wheels and other
+accessories are dropped.
+
+**Why one page.** It fits the existing category page unchanged. Three pages
+would each rank for their own search, but triple the copy, icons and shop
+mappings.
+
+**Why major brands only.** The shelves are mostly budget and no-name lines that
+one shop stocks, so there is nothing to compare. The brand must lead the title
+because controllers are sold "for PC / Xbox / PS4".
+
+**Why "Wireless" stays in a model name.** A Corsair Katar Pro is Rs 8,000 wired
+and Rs 18,000 wireless. The word is dropped only when a named radio
+(Lightspeed, HyperSpeed, DualSense) already marks the wireless model. This
+splits some ids that should merge, which is a dedup nuisance; merging two
+products is a wrong price.
+
+**How the site holds it.** `CATEGORIES` in `src/lib/site.ts` is the browse
+list (the build slots plus `peripherals`); `BUILD_SLOTS` stays the builder's.
+Scraper mappings now take a list, because five of the six shops split these
+across two or three categories.
+
+**Cost.** nanotek files all three on one shelf, so its titles that never say
+"mouse" or "keyboard" ("Logitech MX Master 4") are dropped rather than guessed.
+Connection is read from the title, so a wireless product the title does not
+call wireless shows as Wired.
+
 ### Tests are `node:test`, not a framework
 
 **Decision.** 46 tests run via `tsx --test`. No Jest, no Vitest.

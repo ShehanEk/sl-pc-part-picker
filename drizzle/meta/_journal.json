@@ -43,6 +43,13 @@
       "when": 1792300122536,
       "tag": "0005_price_history_stock_backfill",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792670033386,
+      "tag": "0006_peripherals",
+      "breakpoints": true
     }
   ]
 }

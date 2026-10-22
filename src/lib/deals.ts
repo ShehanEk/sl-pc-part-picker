@@ -1,6 +1,5 @@
 import type { DealItem } from '@/app/components/Deals'
-import { BUILD_SLOTS, type BuildSlot } from '@/compat/build'
-import { CATEGORY_COPY } from '@/lib/site'
+import { CATEGORIES, type Category, CATEGORY_COPY } from '@/lib/site'
 import { displayName } from '@/lib/specs'
 import type { Directory, PricePoint, SeoPart } from '@/queries/seo'
 
@@ -31,7 +30,7 @@ const WINDOW_DAYS = 30
 const MIN_DAYS = 7
 
 export type Deal = {
-  slot: BuildSlot
+  slot: Category
   part: SeoPart
   priceLkr: number
   shop: string
@@ -58,7 +57,7 @@ export function findDeals(
   const from = new Date(now.getTime() - WINDOW_DAYS * 86_400_000).toISOString().slice(0, 10)
 
   const deals: Deal[] = []
-  for (const slot of BUILD_SLOTS) {
+  for (const slot of CATEGORIES) {
     for (const part of directory[slot]) {
       // Offers are sorted buyable-first then cheapest.
       const best = part.offers.find((o) => o.inStock && !o.stale)

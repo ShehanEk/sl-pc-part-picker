@@ -17,7 +17,7 @@ import type { Category, ScrapeOptions, ScrapedRow, Scraper } from './types'
 // the shop two hits per page.
 const BASE_URL = 'https://www.chamacomputers.lk'
 
-const CATEGORY_PATHS: Partial<Record<Category, string>> = {
+const CATEGORY_PATHS: Partial<Record<Category, string | string[]>> = {
   gpu: 'graphics cards',
   psu: 'power supply',
   cpu: 'processors',
@@ -25,6 +25,8 @@ const CATEGORY_PATHS: Partial<Record<Category, string>> = {
   ram: 'memory',
   storage: 'ssd',
   case: 'pc cases',
+  // There is no peripherals parent: /products/peripherals lists nothing.
+  peripherals: ['keyboards', 'mouse', 'controllers'],
 }
 
 type ChamaProduct = {
@@ -95,57 +97,57 @@ export const chamacomputers: Scraper = {
     const rows: ScrapedRow[] = []
 
     for (const category of wanted) {
-      const path = CATEGORY_PATHS[category]
-      if (!path) continue
+      for (const path of [CATEGORY_PATHS[category] ?? []].flat()) {
 
-      const seen = new Set<number>()
-      const maxPages = opts.maxPages ?? 30
+        const seen = new Set<number>()
+        const maxPages = opts.maxPages ?? 30
 
-      for (let page = 1; page <= maxPages; page++) {
-        const url =
-          page === 1
-            ? `${BASE_URL}/products/${encodeURIComponent(path)}`
-            : `${BASE_URL}/products/${encodeURIComponent(path)}?page=${page}`
+        for (let page = 1; page <= maxPages; page++) {
+          const url =
+            page === 1
+              ? `${BASE_URL}/products/${encodeURIComponent(path)}`
+              : `${BASE_URL}/products/${encodeURIComponent(path)}?page=${page}`
 
-        const res = await politeGet(url)
-        if (res.status !== 200) {
-          // Said out loud: a silent break here left CI's nightly failure with
-          // nothing in the log to say whether it was a block or a redesign.
-          log(`  ${category}: HTTP ${res.status} on page ${page}, stopping`)
-          break
+          const res = await politeGet(url)
+          if (res.status !== 200) {
+            // Said out loud: a silent break here left CI's nightly failure with
+            // nothing in the log to say whether it was a block or a redesign.
+            log(`  ${category}: HTTP ${res.status} on page ${page}, stopping`)
+            break
+          }
+
+          const products = extractProducts(res.body).filter((p) => !seen.has(p.id))
+          if (products.length === 0) break // no new products → past the last page
+
+          for (const p of products) {
+            seen.add(p.id)
+            rows.push({
+              shop: 'chamacomputers.lk',
+              sourceUrl: `${BASE_URL}/products/${encodeURIComponent(path)}/${encodeURIComponent(
+                p.name.toLowerCase(),
+              )}`,
+              rawTitle: p.name,
+              rawPriceText: p.price != null ? String(p.price) : null,
+              payload: {
+                category,
+                retailerCategory: p.category?.name ?? path,
+                externalId: String(p.id),
+                priceLkr: p.price ?? null,
+                listPriceLkr: p.undiscountedPrice ?? null,
+                inStock: p.instock ?? null,
+                preOrder: p.preOrder ?? null,
+                imageUrl: p.image ?? null,
+                quantity: p.quantity ?? null,
+                discount: p.discount ?? null,
+              },
+            })
+          }
+
+          if (opts.maxProducts && seen.size >= opts.maxProducts) break
         }
 
-        const products = extractProducts(res.body).filter((p) => !seen.has(p.id))
-        if (products.length === 0) break // no new products → past the last page
-
-        for (const p of products) {
-          seen.add(p.id)
-          rows.push({
-            shop: 'chamacomputers.lk',
-            sourceUrl: `${BASE_URL}/products/${encodeURIComponent(path)}/${encodeURIComponent(
-              p.name.toLowerCase(),
-            )}`,
-            rawTitle: p.name,
-            rawPriceText: p.price != null ? String(p.price) : null,
-            payload: {
-              category,
-              retailerCategory: p.category?.name ?? path,
-              externalId: String(p.id),
-              priceLkr: p.price ?? null,
-              listPriceLkr: p.undiscountedPrice ?? null,
-              inStock: p.instock ?? null,
-              preOrder: p.preOrder ?? null,
-              imageUrl: p.image ?? null,
-              quantity: p.quantity ?? null,
-              discount: p.discount ?? null,
-            },
-          })
-        }
-
-        if (opts.maxProducts && seen.size >= opts.maxProducts) break
+        log(`  ${category} (${path}): ${seen.size} products`)
       }
-
-      log(`  ${category} (${path}): ${seen.size} products`)
     }
 
     return rows

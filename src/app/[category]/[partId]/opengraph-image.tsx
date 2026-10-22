@@ -1,6 +1,5 @@
-import type { BuildSlot } from '@/compat/build'
 import { BLUE, CategoryChip, INK, LABEL, MONO, MUTED, OG_SIZE, ogImage } from '@/lib/og'
-import { CATEGORY_COPY, rupees } from '@/lib/site'
+import { type Category, CATEGORY_COPY, rupees } from '@/lib/site'
 import { displayName } from '@/lib/specs'
 import { loadDirectory } from '@/queries/seo'
 
@@ -27,7 +26,7 @@ export default async function Image({
   params: Promise<{ category: string; partId: string }>
 }) {
   const { category, partId } = await params
-  const slot = category as BuildSlot
+  const slot = category as Category
   const part = (await loadDirectory())[slot]?.find((p) => p.partId === partId)
   if (!part) return new Response('Not found', { status: 404 })
 

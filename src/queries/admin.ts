@@ -1,8 +1,7 @@
 import { sql } from 'drizzle-orm'
 
 import { getDb } from '@/db'
-import { BUILD_SLOTS, type BuildSlot } from '@/compat/build'
-import { SHOP_SCHEDULE, hoursSinceExpectedRun } from '@/lib/site'
+import { CATEGORIES, type Category, SHOP_SCHEDULE, hoursSinceExpectedRun } from '@/lib/site'
 
 /**
  * Sync-health reads for the desktop app's monitor (desktop/src/main/admin-queries.ts).
@@ -108,7 +107,7 @@ export async function getShopSync(): Promise<ShopSync[]> {
 }
 
 export type CategorySummary = {
-  category: BuildSlot
+  category: Category
   parts: number
   listings: number
   inStock: number
@@ -170,7 +169,7 @@ export async function getCatalogSummary(): Promise<{
   ).rows as Record<string, number>[]
 
   return {
-    categories: BUILD_SLOTS.map((category) => {
+    categories: CATEGORIES.map((category) => {
       const row = byCategory.get(category)
       return {
         category,
