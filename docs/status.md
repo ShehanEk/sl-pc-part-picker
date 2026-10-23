@@ -72,10 +72,6 @@ Last updated 23 October 2026.
   capacity picked on the page, so titles never say which kit or drive a price
   is for. Supporting it means reading each variation from the Store API (one
   request per capacity).
-- **mytechpoint.lk not added.** Every automated request gets Cloudflare's
-  "Just a moment" challenge, though robots.txt allows crawlers. Getting past it
-  would mean defeating bot detection. It needs the shop to allow our crawler
-  or send a feed.
 - **redlinetech pagination.** Its robots.txt now allows `/category/*?page=`
   (found 2026-10-22), so the 12-per-category cap in `tyno.ts` could be lifted.
   Re-check robots.txt before switching it on.

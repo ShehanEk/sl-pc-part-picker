@@ -171,9 +171,7 @@ These are real and listed so they don't have to be rediscovered.
   app scrapes them nightly. If the app is not running, those three go stale;
   the desktop app's dashboard shows how far behind they are.
 - **gamestreet.lk answers the GitHub runner with 403** while working fine
-  locally. Not worked around: spoofing a browser user-agent would be evading an
-  access control. The options are to ask the shop, retest later, or drop to
-  three shops.
+  locally, so the desktop app scrapes it instead.
 - **PSU connector coverage is 5 units.** Most `gpu-connector` checks therefore
   answer `unknown` rather than `pass`. That is the honest result, but it makes
   the check quiet.

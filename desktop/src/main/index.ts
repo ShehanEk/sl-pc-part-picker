@@ -21,8 +21,7 @@ import * as secrets from './secrets'
  *
  * Runs the scrape pipeline from this machine rather than from GitHub's runners,
  * which is the whole reason it exists: gamestreet.lk answers CI with 403 and
- * answers a residential connection normally, and spoofing a browser user-agent
- * was rejected as evading an access control.
+ * answers a residential connection normally.
  */
 
 const DIST = __dirname

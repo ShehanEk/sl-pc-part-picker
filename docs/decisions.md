@@ -488,15 +488,6 @@ and documented as partial.
 **Why.** The cheap workaround exists and was not taken. If fuller coverage
 matters, the route is to ask the shop for permission or a feed.
 
-### No user-agent spoofing
-
-**Decision.** Requests identify as `SLPCPartsTrackerBot/0.1` with a link to the
-repo. When gamestreet.lk began answering the GitHub runner with 403, spoofing a
-browser was declined.
-
-**Why.** A 403 is an access control. Evading it converts a compliance record the
-project can defend into one it cannot, over one of four data sources.
-
 ### Requests are serialised per host with a 1.5s floor
 
 **Bug that shaped it.** GitHub Actions substitutes an unset repository variable
@@ -708,9 +699,8 @@ prices without anything visibly breaking.
 **Decision.** tecroot.lk is the seventh shop, read through the WooCommerce
 Store API flow now shared with pcbuilders.lk (`woocommerce.ts`). mytechpoint.lk
 is not added: every automated request gets Cloudflare's JavaScript challenge,
-and getting past it would mean defeating bot detection, which this project does
-not do (see "No user-agent spoofing"). It can be added if the shop allows our
-crawler or sends a feed.
+and getting past it would mean defeating bot detection. Asking the shop to
+allow our crawler or send a feed was considered and not pursued: it stays out.
 
 **Bundles.** tecroot sells most consoles with a game. A console listed as a
 bundle ("bundle", or "+ game") gets its own id, so a bundle price is never

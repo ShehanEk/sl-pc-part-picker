@@ -32,8 +32,7 @@ category pagination is off limits. That is a deliberate compliance choice, not a
 scraper bug — see [decisions.md](decisions.md#robotstxt-is-respected-even-where-it-costs-coverage).
 
 **gamestreet.lk currently 403s the GitHub Actions runner** while working from a
-local machine. Its data is therefore only as fresh as the last local run. Not
-worked around; see [decisions.md](decisions.md#no-user-agent-spoofing).
+local machine. Its data is therefore only as fresh as the last local run.
 
 ## Categories
 
