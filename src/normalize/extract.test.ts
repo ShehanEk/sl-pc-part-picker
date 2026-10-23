@@ -123,3 +123,18 @@ test('laptops: slash-separated specs and odd dashes', () => {
   assert.equal(vivo?.storageGb, 512)
   assert.equal(extractLaptop('ASUS ROG STRIX G16 G615JPR‑S5035WS | i9-14900HX | 16GB | 1TB')?.makerCode, 'G615JPR-S5035WS')
 })
+
+test('consoles: dashes, brackets, bundles and Steam Machine', () => {
+  assert.equal(extractConsole('Nintendo Switch – OLED Model')?.partId, 'nintendo-switch-oled')
+  assert.equal(
+    extractConsole('PlayStation 5 Console – Ghost of Yotei Gold Limited Edition Bundle (Slim)')?.partId,
+    'playstation-5-slim-bundle',
+  )
+  assert.equal(extractConsole('Nintendo Switch 2 + Mario Kart World Bundle')?.partId, 'nintendo-switch-2-bundle')
+  assert.equal(extractConsole('Steam Deck Steam Machine')?.partId, 'steam-machine')
+  assert.equal(extractConsole('MSI Claw A8 BZ2EM')?.partId, 'claw-a8')
+})
+
+test('peripherals: a "Controllers" shelf types a controller with no type in its name', () => {
+  assert.equal(extractPeripheral('Razer Wolverine V3 Pro 8K PC', 'Accessories, Controllers, PC')?.peripheralType, 'gamepad')
+})

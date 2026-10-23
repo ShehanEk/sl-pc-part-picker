@@ -22,7 +22,7 @@ Last updated 23 October 2026.
   graphics, processor, memory and storage; consoles by type and platform. Plus
   stock, brand and shop everywhere.
 - **Keyboards, mice and gamepads** at `/peripherals` (22 October 2026): major
-  brands only, from all six shops. Not part of the PC builder.
+  brands only. Not part of the PC builder.
 - **Laptops** at `/laptops` and **game consoles and handhelds** at `/consoles`
   (23 October 2026). Laptops are listed only with a maker code or a full
   config, so most come from chamacomputers, gamestreet and pcbuilders.
@@ -32,6 +32,9 @@ Last updated 23 October 2026.
   the Product image Google reads from structured data).
 - **Favicon:** a processor with "Rs" on it. Regenerate with
   `node scripts/favicon.mjs`.
+- **tecroot.lk** (23 October 2026), the seventh shop: graphics cards,
+  processors, boards, power supplies, cases, peripherals and consoles. Runs on
+  GitHub at 23:30 Sri Lanka time.
 - **Desktop app:** "PCPrice Sync", the sync monitor and the scraper for the
   three shops GitHub's runners cannot reach. The web admin was removed.
 
@@ -65,6 +68,14 @@ Last updated 23 October 2026.
   cache entry, 0.77 MB on 23 October 2026. Next.js will not store an entry
   over 2 MB, and then keeps serving the stale one. Split it like the directory
   if it nears 1.5 MB.
+- **tecroot RAM and storage.** Sold as one product per range with the
+  capacity picked on the page, so titles never say which kit or drive a price
+  is for. Supporting it means reading each variation from the Store API (one
+  request per capacity).
+- **mytechpoint.lk not added.** Every automated request gets Cloudflare's
+  "Just a moment" challenge, though robots.txt allows crawlers. Getting past it
+  would mean defeating bot detection. It needs the shop to allow our crawler
+  or send a feed.
 - **redlinetech pagination.** Its robots.txt now allows `/category/*?page=`
   (found 2026-10-22), so the 12-per-category cap in `tyno.ts` could be lifted.
   Re-check robots.txt before switching it on.

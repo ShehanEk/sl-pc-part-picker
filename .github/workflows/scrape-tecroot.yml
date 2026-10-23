@@ -1,0 +1,21 @@
+name: scrape tecroot.lk
+
+# 0 18 * * * UTC = 23:30 Sri Lanka time, ahead of winsoft and well ahead of the
+# 21:30 normalize run. Staggered against the rest so the shops are never hit at
+# once.
+on:
+  schedule:
+    - cron: '0 18 * * *'
+  workflow_dispatch:
+
+jobs:
+  scrape:
+    uses: ./.github/workflows/scrape.yml
+    with:
+      shop: tecroot.lk
+      # No ram or storage: see src/scrapers/tecroot.ts. Listed anyway would only
+      # be skipped, since the scraper has no mapping for them.
+      categories: gpu,psu,cpu,motherboard,case,peripherals,consoles
+      # ~20 Store API requests at the 1.5s floor, about a minute.
+      timeout_minutes: 15
+    secrets: inherit

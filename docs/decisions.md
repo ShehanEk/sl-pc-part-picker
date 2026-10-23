@@ -703,6 +703,19 @@ prices without anything visibly breaking.
 
 **Cost.** Twenty small queries per refresh instead of two.
 
+### tecroot.lk added; mytechpoint.lk not, behind Cloudflare (2026-10-23)
+
+**Decision.** tecroot.lk is the seventh shop, read through the WooCommerce
+Store API flow now shared with pcbuilders.lk (`woocommerce.ts`). mytechpoint.lk
+is not added: every automated request gets Cloudflare's JavaScript challenge,
+and getting past it would mean defeating bot detection, which this project does
+not do (see "No user-agent spoofing"). It can be added if the shop allows our
+crawler or sends a feed.
+
+**Bundles.** tecroot sells most consoles with a game. A console listed as a
+bundle ("bundle", or "+ game") gets its own id, so a bundle price is never
+compared against the console alone.
+
 ### Tests are `node:test`, not a framework
 
 **Decision.** 46 tests run via `tsx --test`. No Jest, no Vitest.

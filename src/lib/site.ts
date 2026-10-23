@@ -138,6 +138,7 @@ export const TRACKED_SHOPS = [
   'chamacomputers.lk',
   'pcbuilders.lk',
   'winsoft.lk',
+  'tecroot.lk',
 ] as const
 
 /**
@@ -154,6 +155,7 @@ export const TRACKED_SHOPS = [
  * this slot instead.
  */
 export const SHOP_SCHEDULE: Record<string, { cronUtc: string; localLabel: string; ci: boolean }> = {
+  'tecroot.lk': { cronUtc: '0 18 * * *', localLabel: '23:30', ci: true },
   'winsoft.lk': { cronUtc: '30 18 * * *', localLabel: '00:00', ci: true },
   'nanotek.lk': { cronUtc: '0 19 * * *', localLabel: '00:30', ci: true },
   'redlinetech.lk': { cronUtc: '30 19 * * *', localLabel: '01:00', ci: true },

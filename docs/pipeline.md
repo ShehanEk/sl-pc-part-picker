@@ -47,9 +47,9 @@ type ScrapedRow = {
 }
 ```
 
-All six sites are reachable with plain `fetch` — no headless browser. Four are
-parsed from HTML; pcbuilders.lk is read from a JSON API and winsoft.lk from
-JSON-LD on each product page. Per-site mechanics, selectors and gotchas are in
+All seven sites are reachable with plain `fetch` — no headless browser. Four are
+parsed from HTML; pcbuilders.lk and tecroot.lk are read from the WooCommerce
+Store API and winsoft.lk from JSON-LD on each product page. Per-site mechanics, selectors and gotchas are in
 [retailers.md](retailers.md).
 
 **Politeness.** Every request goes through `src/lib/http.ts`, which serialises

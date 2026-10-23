@@ -5,7 +5,7 @@
 A buyer in Sri Lanka cannot use PCPartPicker to buy a PC. It knows every part
 ever made and none of the local prices, so a compatible build on it is often a
 build nobody here stocks. This project inverts that: a small catalogue of only
-what six Sri Lankan retailers actually have, with the compatibility checking that
+what seven Sri Lankan retailers actually have, with the compatibility checking that
 makes the catalogue usable.
 
 Two things follow from that premise and shape everything below.
@@ -24,13 +24,14 @@ rather than a dead motherboard.
 
 ```mermaid
 flowchart TB
-  subgraph shops["Six retailer sites"]
+  subgraph shops["Seven retailer sites"]
     S1["gamestreet.lk"]
     S2["chamacomputers.lk"]
     S3["nanotek.lk"]
     S4["redlinetech.lk"]
     S5["pcbuilders.lk"]
     S6["winsoft.lk"]
+    S7["tecroot.lk"]
   end
 
   subgraph ci["GitHub Actions — nightly, staggered"]
@@ -72,7 +73,7 @@ without touching what a visitor sees.
 
 | Path | Responsibility |
 |---|---|
-| `src/scrapers/` | One module per retailer. `pcbuilders.ts` reads a JSON API; the rest parse HTML. Emits `ScrapedRow` and nothing more — no part matching, no spec parsing. `tyno.ts` is a shared fetch flow for the two Tyno storefronts; their parsers stay separate. |
+| `src/scrapers/` | One module per retailer. pcbuilders and tecroot read the WooCommerce Store API through the shared `woocommerce.ts`; the rest parse HTML. Emits `ScrapedRow` and nothing more — no part matching, no spec parsing. `tyno.ts` is a shared fetch flow for the two Tyno storefronts; their parsers stay separate. |
 | `src/lib/http.ts` | The only HTTP client. Serialises requests per host, 1.5s floor, bounded retries. |
 | `src/pipeline/scrape.ts` | Runs a scraper, sanity-checks the result, lands rows in `raw_listings`. |
 | `src/normalize/extract.ts` | Deterministic title → part identity for all ten categories. Returns `null` freely. Peripherals, laptops and consoles keep only the major brands listed in the file; laptops also need a maker code or a full config. |

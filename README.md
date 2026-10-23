@@ -4,7 +4,7 @@ Pick a PC part, see which Sri Lankan shop stocks it and at what price, and build
 a whole machine out of parts that actually work together — mixing shops freely.
 
 The premise is narrowness. PCPartPicker knows every part in the world and none
-of the prices here; this knows only what six Sri Lankan retailers have on the
+of the prices here; this knows only what seven Sri Lankan retailers have on the
 shelf, which is the only catalogue a buyer in Sri Lanka can act on.
 
 **Live:** [pcprice.lk](https://pcprice.lk) · **Repo:** [ShehanEk/sl-pc-part-picker](https://github.com/ShehanEk/sl-pc-part-picker)
@@ -50,7 +50,7 @@ npm run scrape -- all
 npm run normalize
 ```
 
-A full scrape of all six shops takes upwards of an hour, dominated by
+A full scrape of all seven shops takes upwards of an hour, dominated by
 nanotek.lk (three requests per product, serialised, with a 1.5s floor per host —
 that gap is deliberate). For a quick smoke test:
 

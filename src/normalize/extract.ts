@@ -808,7 +808,7 @@ const NOT_A_PERIPHERAL = new RegExp(
 const LONE_ACCESSORY = /^(?!.*\bwith\b).*\b(receiver|dongle|adapter)\b/i
 
 const PERIPHERAL_TYPES: [PeripheralIdentity['peripheralType'], RegExp][] = [
-  ['gamepad', /\b(gam(?:e|ing)\s*pad|controller|joystick|dual\s*(?:sense|shock))\b/i],
+  ['gamepad', /\b(gam(?:e|ing)\s*pad|controllers?|joystick|dual\s*(?:sense|shock))\b/i],
   // Loose at the joins on purpose: nanotek's shelf is the slug
   // "keyboardmouse-gamepad-controller", which must read as all three types
   // (so no hint at all), not as gamepad alone.
@@ -1180,10 +1180,15 @@ function consoleModel(t: string): ConsoleMatch | null {
     const parts = [`Xbox Series ${m[1].toUpperCase()}`, /\bdigital\b/i.test(t) && 'Digital', capacity(t)]
     return { brand: 'Microsoft', model: parts.filter(Boolean).join(' '), consoleType: 'console', platform: 'Xbox' }
   }
-  m = t.match(/\bswitch\s*(2|oled|lite)?\b/i)
+  m = t.match(/\bswitch\s*[-–]?\s*(2|oled|lite)?\b/i)
   if (m && /\bnintendo\b/i.test(t)) {
     const variant = m[1] ? (m[1] === '2' ? '2' : m[1].toUpperCase() === 'OLED' ? 'OLED' : 'Lite') : null
     return { brand: 'Nintendo', model: ['Nintendo Switch', variant].filter(Boolean).join(' '), consoleType: 'handheld', platform: 'Nintendo' }
+  }
+  // Valve's console, not a Steam Deck, though tecroot lists it as "Steam Deck
+  // Steam Machine".
+  if (/\bsteam\s*machine\b/i.test(t)) {
+    return { brand: 'Valve', model: 'Steam Machine', consoleType: 'console', platform: 'SteamOS' }
   }
   if (/\bsteam\s*deck\b/i.test(t)) {
     const parts = ['Steam Deck', /\boled\b/i.test(t) && 'OLED', capacity(t)]
@@ -1197,7 +1202,7 @@ function consoleModel(t: string): ConsoleMatch | null {
   if (m) {
     return { brand: 'Lenovo', model: ['Legion Go', m[1]?.toUpperCase()].filter(Boolean).join(' '), consoleType: 'handheld', platform: 'Windows' }
   }
-  m = t.match(/\bclaw\b\s*-?\s*(a1m|\d\s*ai\+?)?/i)
+  m = t.match(/\bclaw\b\s*-?\s*(a\d+m?|\d\s*ai\+?)?/i)
   if (m && /\bmsi\b/i.test(t)) {
     return { brand: 'MSI', model: ['Claw', m[1]?.toUpperCase().replace(/\s+/g, ' ')].filter(Boolean).join(' '), consoleType: 'handheld', platform: 'Windows' }
   }
@@ -1212,8 +1217,12 @@ function consoleModel(t: string): ConsoleMatch | null {
  */
 export function extractConsole(rawTitle: string): ConsoleIdentity | null {
   if (NOT_A_CONSOLE.test(rawTitle)) return null
-  const found = consoleModel(stripAsides(rawTitle))
+  // Brackets are kept, not stripped as elsewhere: "(Slim)" names the model.
+  const found = consoleModel(rawTitle.replace(/[()[\]]/g, ' '))
   if (!found) return null
+  // A console sold with a game is its own product. Merged with the plain
+  // console, a bundle's price would be compared against one without the game.
+  if (/\bbundle\b|\s\+\s/i.test(rawTitle)) found.model += ' Bundle'
   return { category: 'consoles', partId: slug(found.model), ...found }
 }
 

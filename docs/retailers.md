@@ -16,7 +16,7 @@ Last inspected: 2026-08-23. pcbuilders.lk added 2026-08-25, winsoft.lk 2026-08-2
 | redlinetech.lk | Tyno storefront | No — loaded by XHR | 3 | **Disallows every query-string URL** |
 | pcbuilders.lk | WordPress + WooCommerce | **Yes**, as JSON from the Store API | ~0 (100 products per request) | Allows all but `/cart/`, `/checkout/`, `/my-account/`, add-to-cart |
 | winsoft.lk | Laravel | **Yes**, as JSON-LD on the product page | 1 | **Disallows every query string AND path pagination** |
-| winsoft.lk | Laravel | **Yes**, as JSON-LD on the product page | 1 | **Disallows every query string AND path pagination** |
+| tecroot.lk | WordPress + WooCommerce | **Yes**, as JSON from the Store API | ~0 (100 products per request) | Disallows only filter, sort and price-range query strings |
 
 None needs a headless browser. All are reachable with plain `fetch`.
 
@@ -279,3 +279,31 @@ drives and, actually observed, a DVD rewriter.
   laptops, monitors and printers, discarded on their category. Its keyboards
   and mice are scraped since 2026-10-22, but they are Armaggeddon and Alcatroz,
   so the brand rule drops them.
+
+## tecroot.lk
+
+Added 2026-10-23. Same platform as pcbuilders.lk, read through the same
+WooCommerce Store API flow (`src/scrapers/woocommerce.ts`). Mostly a games and
+accessories shop; the PC parts sit under **Accessories**.
+
+| Canonical | Term id | Shop's category |
+|---|---|---|
+| gpu | 3236 | Graphics Cards |
+| cpu | 6230 | Processors |
+| motherboard | 6229 | Motherboards |
+| psu | 6153 | Power Supply Units |
+| case | 6131 | Casings |
+| peripherals | 1919, 1920, 321 | Keyboards, Mice, Controllers |
+| consoles | 227 | Gaming Consoles (with retro mini-consoles and PS4s, which drop) |
+
+- **Names leave the brand out.** "Pro B760M-P DDR4" is an MSI board; the
+  brand is in the `Brands` attribute, and the scraper puts it in front of the
+  title. Items with no brand attribute ("MX Master", "Apex Pro") drop.
+- **No RAM or storage.** Desktop memory sits under Memory Cards and Storage
+  Devices, and both are variable products: one listing per range with the
+  capacity chosen on the page, so the title never names a capacity.
+- **Store API categories page at 100.** `/products/categories?per_page=100`
+  needs a second page to list them all.
+- **Consoles are often bundles.** A console sold with a game gets its own id
+  ("PlayStation 5 Slim Bundle"), so a bundle price never stands in for the
+  console alone.

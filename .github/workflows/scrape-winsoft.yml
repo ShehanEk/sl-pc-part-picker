@@ -13,7 +13,7 @@ jobs:
     uses: ./.github/workflows/scrape.yml
     with:
       shop: winsoft.lk
-      # All seven. Narrowing them would not shorten the run: discovery comes
+      # All of them. Narrowing them would not shorten the run: discovery comes
       # from the sitemap, which does not say what a product is, so every page
       # gets read either way.
       categories: gpu,psu,cpu,motherboard,ram,storage,case,peripherals,laptops,consoles

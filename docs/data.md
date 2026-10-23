@@ -8,7 +8,7 @@ All figures below are from the live database as of the last full run
 
 ## Retailers
 
-Six Sri Lankan retailers. All are scraped with plain `fetch`; none needs a
+Seven Sri Lankan retailers. All are scraped with plain `fetch`; none needs a
 headless browser.
 
 | Shop | Platform | Categories mapped | Listings | In stock | Notes |
@@ -19,6 +19,7 @@ headless browser.
 | [gamestreet.lk](https://www.gamestreet.lk) | Plain PHP | 7 | 212 | 212 * | Cheapest to scrape — one request per category, no pagination |
 | [winsoft.lk](https://www.winsoft.lk) | Laravel | 7 | 92 | 87 | **Coverage capped by robots.txt**; bundle-only parts excluded |
 | [redlinetech.lk](https://www.redlinetech.lk) | Tyno storefront | 7 | 44 | 43 | **Coverage capped by robots.txt** — first 12 products per category only |
+| [tecroot.lk](https://www.tecroot.lk) | WordPress + WooCommerce | 7 | new | new | Added 2026-10-23. Games and accessories shop; no RAM or storage (see retailers.md) |
 
 \* **gamestreet's stock comes from its product pages** (since 2026-10-18).
 Its category listings carry no stock indicator, so each product costs one more
