@@ -44,12 +44,17 @@ Last updated 23 October 2026.
 |---|---|---|
 | Domain `pcprice.lk` | LK Domain Registry, Standard package, expires 2027-10-19 | Nameservers on Vercel |
 | `www` → apex | Vercel → Domains | Permanent (308) |
-| Nightly cache clearing | GitHub Actions secret `REVALIDATE_SECRET`, variable `SITE_URL`; Vercel `REVALIDATE_SECRET` (Production) | Working; endpoint tested |
+| Nightly cache clearing | GitHub Actions secret `REVALIDATE_SECRET`, variable `SITE_URL`; Vercel `REVALIDATE_SECRET` (Production) | Working; since 29 Oct the only routine refresh (caches keep a day) |
 | Google Analytics | Property `G-GXGFL8QEKV`, enhanced measurement on | Live, production only |
 | Google Search Console | Domain property, TXT record in Vercel DNS | Verified; sitemap read successfully |
 
 ## Open items
 
+- **Neon blocked until 1 November 2026.** The project used 5.63 GB of the free
+  plan's 5 GB monthly data transfer, and from 25 October every query gets
+  HTTP 402. Pages still serve 24 October prices; `/search` returns 500; nightly
+  runs fail. The usage resets on 1 November. Cause and fix: decisions,
+  "Caches keep a day". Check the first November runs succeed.
 - **Wrong RTX 5060 Ti listing.** gamestreet.lk's 8GB card was filed under
   `rtx-5060-ti-16gb` before the "8GBB" fix. Its `listings` row goes stale within
   7 days, or delete it: `delete from listings where part_id = 'rtx-5060-ti-16gb'

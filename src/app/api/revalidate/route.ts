@@ -4,10 +4,8 @@ import { timingSafeEqual } from 'node:crypto'
 /**
  * Lets the nightly pipeline clear the read caches when it finishes.
  *
- * Closes a gap the architecture doc has carried since the query layer was
- * written: all ten cached reads share the tag `catalog` with a 30-minute
- * revalidate, and nothing ever invalidated it, so fresh prices sat behind a
- * stale cache for up to half an hour after every run.
+ * The cached reads share the tag `catalog` and otherwise keep for a day, so
+ * this nightly call is what puts new prices on the site.
  *
  * This is the repo's first route handler — everything else in the app is a page
  * or a Server Action. It exists because GitHub Actions has no other way in.

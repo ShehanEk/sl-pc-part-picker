@@ -18,7 +18,7 @@ import { loadDirectory, type SeoPart } from '@/queries/seo'
  * there is nothing in the HTML about graphics cards until someone clicks.
  */
 
-export const revalidate = 1800
+export const revalidate = 86400
 export const dynamicParams = false
 
 export function generateStaticParams() {

@@ -12,7 +12,7 @@ import { loadCatalogue } from '@/queries/build'
  * and the builder is one click away in the header for the ones building a
  * whole machine.
  */
-export const revalidate = 1800
+export const revalidate = 86400
 
 export const metadata: Metadata = {
   title: 'PC builder: build a PC from parts in stock in Sri Lanka',

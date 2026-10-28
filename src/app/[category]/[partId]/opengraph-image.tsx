@@ -11,7 +11,7 @@ import { loadDirectory } from '@/queries/seo'
  * to every deploy for images nobody asks for.
  */
 
-export const revalidate = 1800
+export const revalidate = 86400
 export const alt = 'The cheapest price in Sri Lanka, compared across local shops'
 export const size = OG_SIZE
 export const contentType = 'image/png'

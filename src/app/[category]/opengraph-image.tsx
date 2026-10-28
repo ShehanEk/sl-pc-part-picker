@@ -4,7 +4,7 @@ import { loadDirectory } from '@/queries/seo'
 
 /** The share image for a category page: how many are in stock, and from what. */
 
-export const revalidate = 1800
+export const revalidate = 86400
 export const dynamicParams = false
 export const alt = 'Prices in Sri Lanka, compared across local shops'
 export const size = OG_SIZE

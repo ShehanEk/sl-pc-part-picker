@@ -48,7 +48,7 @@ flowchart TB
 
   subgraph app["Next.js on Vercel"]
     Q["query layer + unstable_cache"]
-    PAGE["home, category and part pages — static, 30m revalidate"]
+    PAGE["home, category and part pages — static, refreshed nightly"]
     CFG["PC builder at /build — client"]
   end
 
@@ -84,7 +84,7 @@ without touching what a visitor sees.
 | `src/pipeline/normalize.ts` | Resolves raw rows to parts, writes `listings` and `price_history`. |
 | `src/compat/rules.ts` | Pairwise checks. Pure. `pass` / `fail` / `warn` / `unknown`. |
 | `src/compat/build.ts` | Build-level evaluation, candidate ranking, next-slot suggestion. Pure. |
-| `src/queries/build.ts` | Loads the whole catalogue for the PC builder, cached 30 min. |
+| `src/queries/build.ts` | Loads the whole catalogue for the PC builder, cached until the nightly refresh. |
 | `src/lib/search.ts` | Part search over the cached directory, by word. No index. |
 | `src/app/` | The public site: home (`/`), category pages, part pages, `/deals`, search (`/search`), the PC builder (`/build`) and `/privacy`. |
 | `src/lib/site.ts` | Site identity and per-category copy. `CATEGORIES` is every browsable category (the build slots plus `peripherals`, `laptops` and `consoles`); the builder uses `BUILD_SLOTS` from `src/compat/build.ts`. |
@@ -124,7 +124,7 @@ real collision. See [decisions](decisions.md#part-identity).
 
 ## Rendering and caching
 
-The builder page (`/build`) is **statically prerendered with a 30-minute revalidate**. The entire
+The builder page (`/build`) is **statically prerendered and refreshed nightly**. The entire
 catalogue (1,046 parts with their offers) is serialised into the payload and
 handed to the client, and the builder filters it in the browser. The home,
 category and part pages are prerendered the same way; only `/search` renders
@@ -137,10 +137,11 @@ for data the browser already has. The compatibility rules are pure functions, so
 they run identically on either side. The build itself lives in React state and
 never touches the URL or the server.
 
-Query results are wrapped in `unstable_cache` with `revalidate: 1800` and the
-tag `'catalog'`. The nightly normalize workflow clears that tag through
-`/api/revalidate` when it finishes, so new prices show within a minute rather
-than up to 30 minutes later.
+Query results are wrapped in `unstable_cache` with the tag `'catalog'` and a
+one-day `revalidate` as a backstop. The nightly normalize workflow clears the
+tag through `/api/revalidate` when it finishes, and that is the only routine
+refresh: prices change once a night, and refreshing every 30 minutes re-read
+the whole catalogue up to 48 times a day (see decisions).
 
 Share images: home and the ten category images are made at build. The 1,350
 part images are drawn on first request and cached, because prerendering them

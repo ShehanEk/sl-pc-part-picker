@@ -225,7 +225,7 @@ warning, not an error: it degrades the run rather than breaking it.
 | A part appears twice at different prices | `part_id` is too fine — a distinguishing field is missing or spelled differently | [decisions.md](decisions.md#part-identity) |
 | Two different parts share one entry | `part_id` is too coarse | same |
 | Many "no match" lines for one category | An extractor stopped recognising a title pattern | `src/normalize/extract.ts` |
-| Site shows stale prices after a run | Nothing invalidates the `catalog` cache tag; up to 30 minutes | `src/queries/build.ts` |
+| Site shows stale prices after a run | The `catalog` tag was not cleared: check the normalize run's revalidate step and `SITE_URL`. Without it prices wait up to a day | `src/app/api/revalidate/route.ts` |
 
 ## Invariants worth preserving
 

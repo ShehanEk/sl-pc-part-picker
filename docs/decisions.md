@@ -706,6 +706,23 @@ allow our crawler or send a feed was considered and not pursued: it stays out.
 bundle ("bundle", or "+ game") gets its own id, so a bundle price is never
 compared against the console alone.
 
+### Caches keep a day; the nightly run is the refresh (2026-10-29)
+
+**Decision.** Pages and `unstable_cache` reads revalidate after 24 hours, not
+30 minutes. The nightly normalize run clears the `catalog` tag, which is what
+puts new prices on the site.
+
+**Why.** On 25 October Neon blocked the project for exceeding the free plan's
+5 GB monthly data transfer (5.63 GB by then). Each 30-minute refresh re-read
+the whole catalogue, about 5 MB, up to 48 times a day, which matches the
+~225 MB a day used. Prices only change once a night, so those refreshes bought
+nothing. Compute (17 of 100 CU-hours) and storage were nowhere near their
+limits.
+
+**Cost.** If the nightly revalidate call fails, prices can lag by up to a day.
+Every deploy still re-reads the catalogue, so many deploys in a day add
+transfer.
+
 ### Tests are `node:test`, not a framework
 
 **Decision.** 46 tests run via `tsx --test`. No Jest, no Vitest.

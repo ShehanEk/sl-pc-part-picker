@@ -7,9 +7,9 @@ import { findDeals, toDealItems } from '@/lib/deals'
 import { CATEGORIES, CATEGORY_COPY, SITE_NAME, canonical, sentenceCase } from '@/lib/site'
 import { loadDirectory, loadPriceIndex } from '@/queries/seo'
 
-/** Parts below their usual price. Rebuilt with the catalogue, at most every 30 minutes. */
+/** Parts below their usual price. Rebuilt with the catalogue after each nightly run. */
 
-export const revalidate = 1800
+export const revalidate = 86400
 
 export const metadata: Metadata = {
   title: 'PC part deals in Sri Lanka',
