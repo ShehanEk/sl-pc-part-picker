@@ -46,6 +46,7 @@ Last updated 23 October 2026.
 | `www` → apex | Vercel → Domains | Permanent (308) |
 | Nightly cache clearing | GitHub Actions secret `REVALIDATE_SECRET`, variable `SITE_URL`; Vercel `REVALIDATE_SECRET` (Production) | Working; since 29 Oct the only routine refresh (caches keep a day) |
 | Google Analytics | Property `G-GXGFL8QEKV`, enhanced measurement on | Live, production only |
+| Microsoft Clarity | Project `z5ys6q8vkp` | Added 31 Oct; records from the first deploy after the Neon reset |
 | Google Search Console | Domain property, TXT record in Vercel DNS | Verified; sitemap read successfully |
 
 ## Open items

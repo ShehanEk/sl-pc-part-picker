@@ -123,6 +123,17 @@ tracking: clicks out to shops are the number that shows the site's value.
 **Cost.** Without consent, visitors who expect to be asked (EU visitors, and
 Sri Lanka's PDPA) are not. Revisit if the audience or the law makes it matter.
 
+### Microsoft Clarity for session replay (2026-10-31)
+
+**Decision.** Clarity (project `z5ys6q8vkp`) next to GA, production only, as
+Microsoft's inline snippet rather than the `@microsoft/clarity` package.
+`/privacy` names it. Still no consent popup, as above.
+
+**Why.** Free with no session cap, unlike PostHog, LogRocket or Hotjar's free
+tiers, and adds recordings, heatmaps and dead or rage clicks that GA lacks. The
+npm package injects the same script; it earns its place only if sessions get
+tagged from code.
+
 ---
 
 ## Pipeline

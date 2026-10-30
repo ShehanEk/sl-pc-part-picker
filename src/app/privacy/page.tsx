@@ -5,7 +5,7 @@ import { SiteFooter, SiteHeader } from '../components/SiteChrome'
 import { SITE_NAME, canonical } from '@/lib/site'
 
 /**
- * Google Analytics' terms require a notice of its cookies. There is no consent
+ * Google Analytics' and Microsoft Clarity's terms require a notice of their cookies. There is no consent
  * popup by choice, so this page is that notice. Keep it true to what the site
  * actually does: if analytics or storage change, change this page with them.
  */
@@ -40,7 +40,7 @@ export default function PrivacyPage() {
           <h1 className="m-0 text-[clamp(30px,3.6vw,40px)] font-semibold tracking-[-0.035em]">
             Privacy
           </h1>
-          <p className="m-0 text-[14px] text-ink-3">Last updated 20 October 2026</p>
+          <p className="m-0 text-[14px] text-ink-3">Last updated 31 October 2026</p>
         </div>
 
         <div className="glass flex flex-col gap-5 px-6 py-6 sm:px-7">
@@ -61,6 +61,19 @@ export default function PrivacyPage() {
           <p className={p}>
             Google Analytics sets cookies to tell one visit from another. It does not store your IP
             address, and we can&apos;t see who you are.
+          </p>
+          <p className={p}>
+            We also use Microsoft Clarity, which records how you scroll, click and move around a
+            page, so we can see where the site is confusing. Anything you type is hidden from the
+            recording. Clarity sets its own cookies, and Microsoft&apos;s{' '}
+            <a
+              href="https://privacy.microsoft.com/privacystatement"
+              className="text-accent underline underline-offset-2"
+              rel="noopener"
+            >
+              privacy statement
+            </a>{' '}
+            applies to that data.
           </p>
 
           <h2 className={h2}>What we don&apos;t do</h2>
@@ -83,7 +96,8 @@ export default function PrivacyPage() {
 
           <h2 className={h2}>Opting out</h2>
           <p className={p}>
-            You can block cookies in your browser settings, or install Google&apos;s{' '}
+            You can block cookies in your browser settings, or use a tracker blocker to stop both
+            tools. For Google Analytics, there is also Google&apos;s{' '}
             <a
               href="https://tools.google.com/dlpage/gaoptout"
               className="text-accent underline underline-offset-2"
