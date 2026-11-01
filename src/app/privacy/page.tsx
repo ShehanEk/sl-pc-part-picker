@@ -40,7 +40,7 @@ export default function PrivacyPage() {
           <h1 className="m-0 text-[clamp(30px,3.6vw,40px)] font-semibold tracking-[-0.035em]">
             Privacy
           </h1>
-          <p className="m-0 text-[14px] text-ink-3">Last updated 31 October 2026</p>
+          <p className="m-0 text-[14px] text-ink-3">Last updated 2 November 2026</p>
         </div>
 
         <div className="glass flex flex-col gap-5 px-6 py-6 sm:px-7">
@@ -76,9 +76,31 @@ export default function PrivacyPage() {
             applies to that data.
           </p>
 
+          <h2 className={h2}>Ads</h2>
+          <p className={p}>
+            The site shows ads from Google AdSense, which pay for the servers. Google uses cookies
+            to pick ads and to count how often they are seen, and may use your browsing on other
+            sites to personalise them. You can turn that off in Google&apos;s{' '}
+            <a
+              href="https://adssettings.google.com/"
+              className="text-accent underline underline-offset-2"
+              rel="noopener"
+            >
+              ads settings
+            </a>
+            . Google&apos;s{' '}
+            <a
+              href="https://policies.google.com/technologies/partner-sites"
+              className="text-accent underline underline-offset-2"
+              rel="noopener"
+            >
+              partner sites policy
+            </a>{' '}
+            describes what it collects.
+          </p>
+
           <h2 className={h2}>What we don&apos;t do</h2>
           <ul className={ul}>
-            <li>No ads, and no advertising cookies.</li>
             <li>We never sell or share data with the shops we list.</li>
           </ul>
 

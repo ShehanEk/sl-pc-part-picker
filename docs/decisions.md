@@ -803,6 +803,17 @@ removes the sidebar-to-list round trip.
 **Kept.** The build store, the compatibility rules, per-shop pinning and the
 `Details` link to each part's page are unchanged.
 
+### Google AdSense, Auto ads (2026-11-02)
+
+**Decision.** The AdSense script loads in `Analytics.tsx` on production only,
+with `public/ads.txt` beside it. Verification is by the script, not the meta
+tag, because the script is needed to serve ads anyway. Ad placement is Auto
+ads, set in AdSense, so no ad slots live in the code. `/privacy` gained an Ads
+section; the "no ads" line is gone.
+
+**Still to do in AdSense.** The EU/UK consent message under Privacy &
+messaging, which AdSense requires regardless of audience.
+
 ### Tests are `node:test`, not a framework
 
 **Decision.** 46 tests run via `tsx --test`. No Jest, no Vitest.

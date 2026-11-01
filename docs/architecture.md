@@ -91,7 +91,7 @@ without touching what a visitor sees.
 | `src/app/components/CategoryList.tsx` | A category's list with its filters, sort and text filter, all in the browser. The text filter reuses `matchesQuery` from `src/lib/search.ts`. Which spec filters a category shows is the `FACETS` map in `src/app/[category]/page.tsx`. |
 | `src/lib/deals.ts` | Finds parts below their usual price from the cached directory and price index. Pure; no query of its own. Feeds `/deals` and the home page strip, rendered by `src/app/components/Deals.tsx`. |
 | `src/lib/og.tsx` + `opengraph-image.tsx` files | Share images (1200 × 630) for home, each category and each part, drawn by `next/og` with the site fonts in `assets/fonts/`. |
-| `src/app/components/Analytics.tsx` | Google Analytics 4 and Microsoft Clarity, loaded only when `VERCEL_ENV` is `production`. |
+| `src/app/components/Analytics.tsx` | Google Analytics 4, Microsoft Clarity and AdSense (Auto ads; `public/ads.txt` pairs with it), loaded only when `VERCEL_ENV` is `production`. |
 | `src/app/api/revalidate/route.ts` | Clears the `catalog` cache tag. Called by the nightly normalize workflow with a bearer token. |
 | `next.config.ts` | Security headers on every response, and the permanent redirect from `sl-pc-part-picker.vercel.app` to `pcprice.lk`. |
 | `scripts/favicon.mjs` | Generates the favicon, SVG icon and Apple icon from one SVG. |
