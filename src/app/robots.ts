@@ -10,10 +10,14 @@ import { canonical } from '@/lib/site'
  * `/api` is disallowed to keep it out of search results, not to protect it — a
  * robots file is a request. What actually protects the revalidate handler is
  * its bearer token.
+ *
+ * `/search` is disallowed to save cost: it renders on every request over the
+ * whole catalogue, and its pages are noindex anyway, so a crawler following
+ * search links bought nothing but function time.
  */
 export default function robots(): MetadataRoute.Robots {
   return {
-    rules: { userAgent: '*', allow: '/', disallow: ['/api'] },
+    rules: { userAgent: '*', allow: '/', disallow: ['/api', '/search'] },
     sitemap: canonical('/sitemap.xml'),
     host: canonical('/').replace(/\/$/, ''),
   }

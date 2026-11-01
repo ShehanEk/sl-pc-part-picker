@@ -77,7 +77,7 @@ export async function loadDirectory(): Promise<Directory> {
  * being served, so prices would have stopped updating without an error on the
  * page. Ten entries keep each well under it.
  */
-const loadCategory = unstable_cache(_loadCategory, ['seo-category'], {
+export const loadCategory = unstable_cache(_loadCategory, ['seo-category'], {
   revalidate: CACHE_SECONDS,
   tags: ['catalog'],
 })

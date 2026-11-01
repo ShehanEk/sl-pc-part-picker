@@ -1,6 +1,6 @@
 import { LABEL, MONO, OG_SIZE, BLUE, CategoryTile, ogImage } from '@/lib/og'
 import { CATEGORIES, type Category, CATEGORY_COPY, TRACKED_SHOPS, rupees } from '@/lib/site'
-import { loadDirectory } from '@/queries/seo'
+import { loadCategory } from '@/queries/seo'
 
 /** The share image for a category page: how many are in stock, and from what. */
 
@@ -40,7 +40,7 @@ function Stat({ label, value, color }: { label: string; value: string; color?: s
 export default async function Image({ params }: { params: Promise<{ category: string }> }) {
   const slot = (await params).category as Category
   const copy = CATEGORY_COPY[slot]
-  const inStock = (await loadDirectory())[slot].filter((p) => p.bestLkr !== null)
+  const inStock = (await loadCategory(slot)).filter((p) => p.bestLkr !== null)
   const cheapest = inStock.length ? Math.min(...inStock.map((p) => p.bestLkr!)) : null
 
   return ogImage({

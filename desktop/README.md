@@ -60,7 +60,8 @@ Two Electron details it depends on, both found by testing it:
 
 ## How it decides what to sync
 
-Not a cron. Every five minutes it asks, per shop: *has a row landed since this
+Not a cron. Every 15 minutes within 9 hours of a sync slot (and always on
+launch, wake or "Check now") it asks, per shop: *has a row landed since this
 shop's own last scheduled slot?* If yes, the slot was served and the app leaves
 it alone. If not:
 

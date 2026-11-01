@@ -55,7 +55,32 @@ const MIN_GAP_HOURS = 12
 /** A shop with no known schedule is only chased once it is properly stale. */
 const UNSCHEDULED_STALE_HOURS = 26
 
-const TICK_MS = 5 * 60 * 1000
+/**
+ * How long after a shop's slot ticks keep reading the database. Covers the CI
+ * grace above, GitHub starting runs up to ~3 hours late, and a 90-minute scrape
+ * failing after that. Outside it nothing can have become due, so a tick skips
+ * the database entirely and Neon can suspend instead of being woken every few
+ * minutes all day. Launch, wake from sleep and "Check now" always check, which
+ * is what covers catch-up after the machine was off through a slot.
+ */
+const ACTIVE_HOURS = 9
+
+/**
+ * 15 minutes, not 5: Neon suspends after 5 idle minutes, so a 5-minute tick
+ * kept it awake for the whole window. A scheduled sync starts up to 15 minutes
+ * after it becomes due, which costs nothing anyone sees.
+ */
+const TICK_MS = 15 * 60 * 1000
+
+/** Whether any shop's slot was recent enough for a sync to be due now. */
+export function inActiveWindow(
+  schedule: Record<string, { cronUtc: string }>,
+  now = new Date(),
+): boolean {
+  return Object.values(schedule).some(
+    (s) => hoursSinceExpectedRun(s.cronUtc, now) <= ACTIVE_HOURS,
+  )
+}
 
 export type SchedulerDeps = {
   runner: RunnerHost
@@ -148,11 +173,11 @@ export class Scheduler {
     this.startedAt = Date.now()
     // A minute's grace after launch: starting a 90-minute scrape while someone
     // is still logging in is not what they opened the app for.
-    setTimeout(() => void this.tick(), 60_000)
+    setTimeout(() => void this.tick({ force: true }), 60_000)
     this.timer = setInterval(() => void this.tick(), TICK_MS)
 
     // Waking from sleep is the single most likely moment for work to be due.
-    powerMonitor.on('resume', () => void this.tick())
+    powerMonitor.on('resume', () => void this.tick({ force: true }))
   }
 
   /** When the next scheduled check fires, for the window's status line. */
@@ -169,9 +194,11 @@ export class Scheduler {
     this.timer = null
   }
 
-  async tick(): Promise<void> {
+  /** `force` checks even outside the active window: launch, wake, "Check now". */
+  async tick({ force = false }: { force?: boolean } = {}): Promise<void> {
     if (this.ticking || this.deps.isPaused()) return
     if (this.deps.runner.busy) return
+    if (!force && !inActiveWindow(this.deps.queries.SHOP_SCHEDULE)) return
 
     // A 90-minute scrape is not something to start on battery, unless the user
     // has said otherwise. Manual runs are always allowed: this only governs the

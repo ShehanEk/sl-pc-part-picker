@@ -7,7 +7,7 @@ import { CATEGORY_STYLE } from '@/app/components/PartIcons'
 import { SiteFooter, SiteHeader } from '@/app/components/SiteChrome'
 import { CATEGORIES, isBuildSlot, isCategory, type Category, CATEGORY_COPY, SITE_NAME, TRACKED_SHOPS, canonical, rupees, sentenceCase } from '@/lib/site'
 import { consoleTypeLabel, cpuFamily, peripheralLabel, sizeLabel, specSummary } from '@/lib/specs'
-import { loadDirectory, type SeoPart } from '@/queries/seo'
+import { loadCategory, type SeoPart } from '@/queries/seo'
 
 /**
  * One browse page per category — /gpu, /cpu, /psu and so on.
@@ -38,7 +38,7 @@ export async function generateMetadata({
   if (!slot) return {}
 
   const copy = CATEGORY_COPY[slot]
-  const items = (await loadDirectory())[slot]
+  const items = await loadCategory(slot)
   const inStock = items.filter((p) => p.inStockShops > 0)
   const cheapest = inStock.length ? Math.min(...inStock.map((p) => p.bestLkr!)) : null
 
@@ -146,7 +146,7 @@ export default async function CategoryPage({
 
   const copy = CATEGORY_COPY[slot]
   const { Icon, tint, ink } = CATEGORY_STYLE[slot]
-  const items = (await loadDirectory())[slot]
+  const items = await loadCategory(slot)
   const inStock = items.filter((p) => p.inStockShops > 0)
   const listed = new Set(items.flatMap((p) => p.offers.map((o) => o.shop)))
   const shops = TRACKED_SHOPS.filter((s) => listed.has(s))

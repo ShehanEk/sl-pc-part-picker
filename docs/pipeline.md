@@ -94,6 +94,7 @@ exits non-zero if any failed.
 ## Stage 2 — Land raw
 
 `raw_listings` is append-only and never mutated except to stamp `normalized_at`.
+Normalized rows are kept for 30 days, then pruned by normalize.
 This is what makes the rest reprocessable: a normalization bug is fixed and
 re-run against the rows already on disk, without touching a retailer.
 
@@ -232,7 +233,8 @@ warning, not an error: it degrades the run rather than breaking it.
 ## Invariants worth preserving
 
 - Scrapers never resolve parts. Normalizers never fetch from a retailer.
-- `raw_listings` is never edited.
+- `raw_listings` is never edited. Normalized rows older than 30 days are deleted
+  at the end of each normalize run; pending rows are never touched.
 - The same title always produces the same `part_id`.
 - Every model-decided match is logged.
 - A curated spec beats a scraped one; a scraped one beats an inferred one;

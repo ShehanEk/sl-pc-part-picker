@@ -762,6 +762,28 @@ need. Prices reach the site through `/api/revalidate`, not deploys.
 
 **Cost.** A site change is not live until someone deploys it.
 
+### Cost review: five wasteful patterns removed (2026-11-01)
+
+**Decision.**
+1. `robots.ts` disallows `/search`. It renders per request over the whole
+   catalogue and its pages are noindex, so crawling it was pure cost.
+2. Category pages, part pages and their share images load only their own
+   category (`loadCategory`), not all ten (~5 MB) per render.
+3. The desktop app reads Neon only within 9 hours of a sync slot, ticks every
+   15 minutes rather than 5, and refreshes its window on focus (at most once a
+   minute) rather than polling every 60 seconds. Launch, wake and "Check now"
+   always check.
+4. Normalize deletes normalized `raw_listings` rows older than 30 days.
+
+**Why.** The desktop polling kept Neon awake around the clock (65 hours active
+in October); the full-directory loads made every re-render after a cache clear
+parse the whole catalogue; raw rows grew by ~5,000 a run with full payloads.
+
+**Not done.** A longer cache for part share images: they are cleared with the
+`catalog` tag regardless, and a separate untagged cache would add Neon reads.
+A replay (`--redo`) only reaches the last 30 days of raw rows, which is all
+it ever needed: it writes today's listings and price point either way.
+
 ### Tests are `node:test`, not a framework
 
 **Decision.** 46 tests run via `tsx --test`. No Jest, no Vitest.

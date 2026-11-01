@@ -558,7 +558,34 @@ export async function runNormalize(
     }
   }
 
+  const pruned = await pruneRawListings()
+  if (pruned > 0) log(`pruned ${pruned} raw rows normalized over ${RAW_KEEP_DAYS} days ago`)
+
   return result
+}
+
+/**
+ * How long a normalized raw row is kept. Long enough to replay a fix against
+ * the last few weeks of runs; older rows add nothing, because a replay writes
+ * today's listings and today's price point either way.
+ */
+const RAW_KEEP_DAYS = 30
+
+/**
+ * Deletes normalized raw rows past RAW_KEEP_DAYS. Each run lands ~5,000 rows
+ * with their full payload, so without this the table grows without limit and
+ * every scan of it (the desktop app's shop summary) gets slower. Pending rows
+ * are never touched. Safe to re-run: the second run finds nothing.
+ */
+async function pruneRawListings(): Promise<number> {
+  const deleted = await getDb()
+    .delete(rawListings)
+    .where(
+      sql`${rawListings.normalizedAt} is not null
+          and ${rawListings.scrapedAt} < now() - make_interval(days => ${RAW_KEEP_DAYS})`,
+    )
+    .returning({ id: rawListings.id })
+  return deleted.length
 }
 
 /** Listings whose shop stopped carrying them are stale; used by the query layer. */

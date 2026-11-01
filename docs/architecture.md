@@ -109,7 +109,8 @@ Four tables (`src/db/schema.ts`):
   (`rtx-5070-12gb`, `ryzen-5-5600`). Category-specific columns are nullable;
   which apply is decided by `category`. This is the compatibility model.
 - **`raw_listings`** — every scraped row, verbatim, never mutated except to
-  stamp `normalized_at`. This is what makes ingest reprocessable.
+  stamp `normalized_at`. This is what makes ingest reprocessable. Normalized
+  rows are pruned after 30 days.
 - **`listings`** — one row per `(part_id, shop)`, overwritten each run. Current
   price and stock.
 - **`price_history`** — append-only, one row per `(part_id, shop, day)`, with

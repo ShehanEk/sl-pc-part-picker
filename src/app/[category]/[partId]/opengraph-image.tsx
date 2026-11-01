@@ -1,7 +1,7 @@
 import { BLUE, CategoryChip, INK, LABEL, MONO, MUTED, OG_SIZE, ogImage } from '@/lib/og'
-import { type Category, CATEGORY_COPY, rupees } from '@/lib/site'
+import { CATEGORY_COPY, isCategory, rupees } from '@/lib/site'
 import { displayName } from '@/lib/specs'
-import { loadDirectory } from '@/queries/seo'
+import { loadCategory } from '@/queries/seo'
 
 /**
  * The share image for a part page: the cheapest shop and its price.
@@ -26,8 +26,9 @@ export default async function Image({
   params: Promise<{ category: string; partId: string }>
 }) {
   const { category, partId } = await params
-  const slot = category as Category
-  const part = (await loadDirectory())[slot]?.find((p) => p.partId === partId)
+  if (!isCategory(category)) return new Response('Not found', { status: 404 })
+  const slot = category
+  const part = (await loadCategory(slot)).find((p) => p.partId === partId)
   if (!part) return new Response('Not found', { status: 404 })
 
   const name = displayName(part)

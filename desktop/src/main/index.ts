@@ -185,7 +185,10 @@ async function execute(spec: JobSpec, trigger: 'schedule' | 'manual'): Promise<v
   await pushStatus()
 }
 
+let lastStatusAt = 0
+
 async function pushStatus() {
+  lastStatusAt = Date.now()
   if (!hasCredentials()) {
     send('status', { configured: false })
     return
@@ -242,7 +245,7 @@ function updateTray() {
       {
         label: 'Check for due syncs now',
         enabled: !busy,
-        click: () => void scheduler.tick(),
+        click: () => void scheduler.tick({ force: true }),
       },
       {
         label: paused ? 'Resume scheduled syncs' : 'Pause scheduled syncs',
@@ -293,6 +296,13 @@ function showWindow() {
     win = null
   })
   win.once('ready-to-show', () => void pushStatus())
+
+  // Refreshed when looked at, not on a timer. A 60-second poll ran three
+  // whole-table summaries a minute for as long as the window stayed open,
+  // which kept Neon awake all day. Jobs and ticks still push when they finish.
+  win.on('focus', () => {
+    if (Date.now() - lastStatusAt > 60_000) void pushStatus()
+  })
 }
 
 /**
@@ -369,11 +379,6 @@ app.whenReady().then(() => {
   if (!START_HIDDEN) showWindow()
   if (hasCredentials()) scheduler.start()
 
-  // Keep the status line's "next check" and the shop ages current while the
-  // window is open, without waiting for a job to finish.
-  setInterval(() => {
-    if (win) void pushStatus()
-  }, 60_000)
 })
 
 app.on('second-instance', () => showWindow())
@@ -447,7 +452,7 @@ function registerIpc() {
   })
 
   ipcMain.handle('checkNow', async () => {
-    void scheduler.tick()
+    void scheduler.tick({ force: true })
     return { ok: true }
   })
 

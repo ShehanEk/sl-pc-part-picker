@@ -7,7 +7,7 @@ import { CATEGORY_STYLE } from '@/app/components/PartIcons'
 import { SiteFooter, SiteHeader } from '@/app/components/SiteChrome'
 import { CATEGORIES, CATEGORY_COPY, isBuildSlot, isCategory, type Category, SITE_NAME, canonical, rupees, sentenceCase } from '@/lib/site'
 import { displayName, fitNote, specLines, specPhrase } from '@/lib/specs'
-import { loadDirectory, loadPriceIndex, type PricePoint } from '@/queries/seo'
+import { loadCategory, loadDirectory, loadPriceIndex, type PricePoint } from '@/queries/seo'
 
 /**
  * A page per part — /gpu/rtx-5070-12gb.
@@ -45,7 +45,7 @@ function asSlot(value: string): Category | null {
 async function find(categoryParam: string, partId: string) {
   const slot = asSlot(categoryParam)
   if (!slot) return null
-  const part = (await loadDirectory())[slot].find((p) => p.partId === partId)
+  const part = (await loadCategory(slot)).find((p) => p.partId === partId)
   return part ? { slot, part } : null
 }
 
@@ -127,13 +127,13 @@ export default async function PartPage({
   const best = buyable[0] ?? null
   const dearest = buyable.length > 1 ? Math.max(...buyable.map((o) => o.priceLkr)) : null
 
-  const [directory, priceIndex] = await Promise.all([loadDirectory(), loadPriceIndex()])
+  const [inCategory, priceIndex] = await Promise.all([loadCategory(slot), loadPriceIndex()])
   const series = priceIndex[part.partId] ?? []
   const seriesLow = series.length ? Math.min(...series.map((p) => p.lowestLkr)) : null
   const seriesHigh = series.length ? Math.max(...series.map((p) => p.lowestLkr)) : null
 
   // Neighbours by price, for people who landed here and want the alternative.
-  const siblings = directory[slot].filter((p) => p.partId !== part.partId)
+  const siblings = inCategory.filter((p) => p.partId !== part.partId)
   const anchor = part.bestLkr ?? part.lowLkr
   const related = siblings
     .map((p) => ({ p, delta: Math.abs((p.bestLkr ?? p.lowLkr) - anchor) }))
