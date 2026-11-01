@@ -444,19 +444,27 @@ export function Configurator({ catalogue }: { catalogue: Catalogue }) {
 
                         <button
                           type="button"
-                          onClick={() => choose(activeSlot, part)}
+                          // More than one shop: the buyer picks which, rather
+                          // than being handed the cheapest. One shop: nothing
+                          // to decide, so pick it.
+                          onClick={() =>
+                            part.offers.length > 1
+                              ? setExpandedShops(open ? null : part.partId)
+                              : choose(activeSlot, part)
+                          }
                           aria-label={`Pick ${part.model}`}
+                          aria-expanded={part.offers.length > 1 ? open : undefined}
                           className={`${PICK_BUTTON} min-h-11 min-w-[72px]`}
                         >
-                          {selected ? 'Keep' : 'Pick'}
+                          {open ? 'Close' : selected ? 'Keep' : 'Pick'}
                         </button>
                       </div>
 
                       {open && (
                         <div className="bg-[var(--sunken)] px-4 pb-4 pt-1 sm:px-5">
-                          <div className="eyebrow py-2">Pick a shop</div>
+                          <div className="eyebrow py-2">Pick a shop · cheapest first</div>
                           <div className="flex flex-col gap-1.5">
-                            {part.offers.map((offer) => {
+                            {part.offers.map((offer, i) => {
                               const picked =
                                 build[activeSlot]?.partId === part.partId &&
                                 build[activeSlot]?.shop === offer.shop
@@ -465,7 +473,7 @@ export function Configurator({ catalogue }: { catalogue: Catalogue }) {
                                   key={offer.shop}
                                   type="button"
                                   onClick={() => choose(activeSlot, part, offer.shop)}
-                                  className={`flex min-h-11 items-center justify-between gap-4 rounded-[10px] border px-3.5 py-2.5 text-left text-[12.5px] transition ${
+                                  className={`flex min-h-11 items-center justify-between gap-4 rounded-[10px] border px-3.5 py-2.5 text-left text-[13px] transition ${
                                     picked
                                       ? 'border-[var(--accent-soft-border)] bg-[var(--accent-soft)]'
                                       : 'border-transparent bg-white/70 hover:border-[var(--glass-border)]'
@@ -473,6 +481,11 @@ export function Configurator({ catalogue }: { catalogue: Catalogue }) {
                                 >
                                   <span className="truncate">
                                     {offer.shop}
+                                    {i === 0 && offer.inStock && (
+                                      <span className="ml-2 rounded-full bg-[var(--accent)] px-2 py-[2px] text-[10px] font-semibold text-white">
+                                        Cheapest
+                                      </span>
+                                    )}
                                     {!offer.inStock && (
                                       <span className="ml-2 text-ink-4">out of stock</span>
                                     )}
