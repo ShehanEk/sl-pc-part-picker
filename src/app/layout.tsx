@@ -49,6 +49,10 @@ export const metadata: Metadata = {
     googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1 },
   },
   category: "shopping",
+  // Proves the site to AdSense on every page, including the home page it
+  // checks, without loading the ad script there (that stays on part pages and
+  // /build, see AdSense.tsx).
+  other: { "google-adsense-account": "ca-pub-5779314604498621" },
 };
 
 export const viewport: Viewport = {
