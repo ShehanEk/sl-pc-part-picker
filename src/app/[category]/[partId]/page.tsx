@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 
 import { AddToBuild } from '@/app/components/AddToBuild'
 import { CATEGORY_STYLE } from '@/app/components/PartIcons'
+import { AdSense } from '@/app/components/AdSense'
 import { SiteFooter, SiteHeader } from '@/app/components/SiteChrome'
 import { CATEGORIES, CATEGORY_COPY, isBuildSlot, isCategory, type Category, SITE_NAME, canonical, rupees, sentenceCase } from '@/lib/site'
 import { displayName, fitNote, specLines, specPhrase } from '@/lib/specs'
@@ -518,6 +519,7 @@ export default async function PartPage({
       </main>
 
       <SiteFooter />
+      <AdSense />
     </>
   )
 }

@@ -805,8 +805,9 @@ removes the sidebar-to-list round trip.
 
 ### Google AdSense, Auto ads (2026-11-02)
 
-**Decision.** The AdSense script loads in `Analytics.tsx` on production only,
-with `public/ads.txt` beside it. Verification is by the script, not the meta
+**Decision.** The AdSense script (`AdSense.tsx`) loads on part pages and
+`/build` only, production only, with `public/ads.txt` beside it. Home,
+category, deals and search pages never load it, so they carry no ads. Verification is by the script, not the meta
 tag, because the script is needed to serve ads anyway. Ad placement is Auto
 ads, set in AdSense, so no ad slots live in the code. `/privacy` gained an Ads
 section; the "no ads" line is gone.

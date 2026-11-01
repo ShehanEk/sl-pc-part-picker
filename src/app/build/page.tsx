@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 
+import { AdSense } from '../components/AdSense'
 import { Configurator } from '../components/Configurator'
 import { SiteFooter, SiteHeader } from '../components/SiteChrome'
 
@@ -45,6 +46,7 @@ export default async function BuildPage() {
       <Configurator catalogue={catalogue} />
 
       <SiteFooter />
+      <AdSense />
     </>
   )
 }
