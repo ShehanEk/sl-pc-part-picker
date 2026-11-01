@@ -432,6 +432,18 @@ export function suggestNextSlot(build: Build): Suggestion | null {
 }
 
 /**
+ * The slot the guided builder moves to after `after` is dealt with: the next
+ * empty one in build order, wrapping round to any left empty earlier (a buyer
+ * who skipped the graphics card comes back to it after the case). `null` when
+ * every slot is filled, which is when the builder shows the finished build.
+ */
+export function nextEmptySlot(build: Build, after: BuildSlot): BuildSlot | null {
+  const from = BUILD_SLOTS.indexOf(after)
+  const order = [...BUILD_SLOTS.slice(from + 1), ...BUILD_SLOTS.slice(0, from)]
+  return order.find((s) => !build[s]) ?? null
+}
+
+/**
  * What the app cannot check, stated plainly.
  *
  * Physical fit is the most common way a real build fails, and none of it is

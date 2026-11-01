@@ -5,6 +5,7 @@ import {
   BUILD_SLOTS,
   buildPowerDraw,
   evaluateBuild,
+  nextEmptySlot,
   rankCandidates,
   suggestNextSlot,
   type Build,
@@ -226,5 +227,28 @@ describe('suggestNextSlot', () => {
       BUILD_SLOTS.map((s) => [s, { partId: s, category: s, brand: 'x', model: 'x' }]),
     ) as Build
     assert.equal(suggestNextSlot(full), null)
+  })
+})
+
+describe('nextEmptySlot', () => {
+  it('moves to the next empty slot in build order', () => {
+    assert.equal(nextEmptySlot({ cpu: cpu() }, 'cpu'), 'motherboard')
+    assert.equal(nextEmptySlot({ cpu: cpu(), motherboard: board() }, 'motherboard'), 'ram')
+  })
+
+  it('wraps round to a slot skipped earlier', () => {
+    // Everything but the graphics card, which was skipped; after the case it
+    // comes back to the card rather than declaring the build done.
+    const build = Object.fromEntries(
+      BUILD_SLOTS.filter((s) => s !== 'gpu').map((s) => [s, { partId: s, category: s, brand: 'x', model: 'x' }]),
+    ) as Build
+    assert.equal(nextEmptySlot(build, 'case'), 'gpu')
+  })
+
+  it('returns null when every slot is filled', () => {
+    const full = Object.fromEntries(
+      BUILD_SLOTS.map((s) => [s, { partId: s, category: s, brand: 'x', model: 'x' }]),
+    ) as Build
+    assert.equal(nextEmptySlot(full, 'cpu'), null)
   })
 })

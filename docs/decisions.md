@@ -784,6 +784,25 @@ parse the whole catalogue; raw rows grew by ~5,000 a run with full payloads.
 A replay (`--redo`) only reaches the last 30 days of raw rows, which is all
 it ever needed: it writes today's listings and price point either way.
 
+### PC builder: one part per step (2026-11-02)
+
+**Decision.** `/build` is a guided flow: one slot at a time in build order
+(processor → board → memory → card → drive → PSU → case), a `Pick` button on
+every row, automatic advance to the next empty slot, `Skip this part for now`
+on each step, and a finished-build view with a buy link per part. On phones the
+running total is pinned at the bottom; on desktop the step list doubles as the
+build summary. Design: the "PC builder redesign" row on the Claude Design
+canvas.
+
+**Why.** Clarity replays of mobile `/build` sessions (2026-11-01) showed
+repeated dead taps on the processor slot: the tap changed a list a screen and
+a half below, so nothing visible happened. Three of four mobile sessions left
+with nothing chosen. A step at a time makes every tap's result visible and
+removes the sidebar-to-list round trip.
+
+**Kept.** The build store, the compatibility rules, per-shop pinning and the
+`Details` link to each part's page are unchanged.
+
 ### Tests are `node:test`, not a framework
 
 **Decision.** 46 tests run via `tsx --test`. No Jest, no Vitest.
