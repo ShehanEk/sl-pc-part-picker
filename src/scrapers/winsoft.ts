@@ -102,7 +102,11 @@ export function productPaths(html: string): string[] {
 }
 
 export function parseProduct(html: string): JsonLdProduct | null {
-  const blocks = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)]
+  // Attributes are matched loosely: a `nonce` appeared before `type` on
+  // 2026-11-01, and the exact-tag pattern then found nothing on any page.
+  const blocks = [
+    ...html.matchAll(/<script\b[^>]*\btype="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g),
+  ]
   for (const block of blocks) {
     try {
       const parsed: unknown = JSON.parse(block[1])
