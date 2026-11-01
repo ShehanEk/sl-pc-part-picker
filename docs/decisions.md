@@ -750,6 +750,18 @@ the runs halves that. GitHub Actions is free either way (public repo).
 every other day. In months with 31 days, cron runs on the 31st and again on
 the 1st.
 
+### No automatic deployments (2026-11-01)
+
+**Decision.** `vercel.json` sets `git.deploymentEnabled: false`, so pushes no
+longer build. Deploy by hand: Vercel dashboard → Deployments → Redeploy, or
+`vercel --prod`.
+
+**Why.** Every build re-reads the whole catalogue from Neon and uses Vercel
+build minutes, and most pushes are docs or scraper changes the site does not
+need. Prices reach the site through `/api/revalidate`, not deploys.
+
+**Cost.** A site change is not live until someone deploys it.
+
 ### Tests are `node:test`, not a framework
 
 **Decision.** 46 tests run via `tsx --test`. No Jest, no Vitest.
