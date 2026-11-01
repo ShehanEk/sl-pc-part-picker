@@ -734,6 +734,22 @@ limits.
 Every deploy still re-reads the catalogue, so many deploys in a day add
 transfer.
 
+### Sync every other day; caches keep two days (2026-11-01)
+
+**Decision.** Scrapes and normalize run every other night (cron day field
+`*/2`, so UTC days 1, 3, 5…), and pages and `unstable_cache` reads revalidate
+after 48 hours. Supersedes the timings in "Caches keep a day" above; the
+nightly revalidate is still the refresh. `hoursSinceExpectedRun` reads the day
+step, so the desktop app and its monitor treat an off night as on schedule.
+
+**Why.** To cut running costs. Each run clears the cache, and the site then
+re-reads the catalogue from Neon and re-renders its pages on Vercel. Halving
+the runs halves that. GitHub Actions is free either way (public repo).
+
+**Cost.** Prices can be up to two days old, and price history gets a point
+every other day. In months with 31 days, cron runs on the 31st and again on
+the 1st.
+
 ### Tests are `node:test`, not a framework
 
 **Decision.** 46 tests run via `tsx --test`. No Jest, no Vitest.

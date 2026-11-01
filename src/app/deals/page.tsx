@@ -9,7 +9,7 @@ import { loadDirectory, loadPriceIndex } from '@/queries/seo'
 
 /** Parts below their usual price. Rebuilt with the catalogue after each nightly run. */
 
-export const revalidate = 86400
+export const revalidate = 172800
 
 export const metadata: Metadata = {
   title: 'PC part deals in Sri Lanka',

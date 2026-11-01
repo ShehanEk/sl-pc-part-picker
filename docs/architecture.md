@@ -34,7 +34,7 @@ flowchart TB
     S7["tecroot.lk"]
   end
 
-  subgraph ci["GitHub Actions — nightly, staggered"]
+  subgraph ci["GitHub Actions — every other night, staggered"]
     SC["scrape job x3"]
     NO["normalize job"]
   end
@@ -138,10 +138,10 @@ they run identically on either side. The build itself lives in React state and
 never touches the URL or the server.
 
 Query results are wrapped in `unstable_cache` with the tag `'catalog'` and a
-one-day `revalidate` as a backstop. The nightly normalize workflow clears the
-tag through `/api/revalidate` when it finishes, and that is the only routine
-refresh: prices change once a night, and refreshing every 30 minutes re-read
-the whole catalogue up to 48 times a day (see decisions).
+two-day `revalidate` as a backstop. The normalize workflow, every other night,
+clears the tag through `/api/revalidate` when it finishes, and that is the only
+routine refresh: prices change only when the pipeline runs, and refreshing every
+30 minutes re-read the whole catalogue up to 48 times a day (see decisions).
 
 Share images: home and the ten category images are made at build. The 1,350
 part images are drawn on first request and cached, because prerendering them

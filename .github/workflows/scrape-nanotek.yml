@@ -1,10 +1,10 @@
 name: scrape nanotek.lk
 
-# 0 19 * * * UTC = 00:30 Sri Lanka time. Staggered against the other retailers so the
+# 0 19 */2 * * UTC (every other day) = 00:30 Sri Lanka time. Staggered against the other retailers so the
 # scrapers never run all at once.
 on:
   schedule:
-    - cron: '0 19 * * *'
+    - cron: '0 19 */2 * *'
   workflow_dispatch:
 
 jobs:

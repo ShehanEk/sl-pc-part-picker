@@ -155,22 +155,30 @@ export const TRACKED_SHOPS = [
  * this slot instead.
  */
 export const SHOP_SCHEDULE: Record<string, { cronUtc: string; localLabel: string; ci: boolean }> = {
-  'tecroot.lk': { cronUtc: '0 18 * * *', localLabel: '23:30', ci: true },
-  'winsoft.lk': { cronUtc: '30 18 * * *', localLabel: '00:00', ci: true },
-  'nanotek.lk': { cronUtc: '0 19 * * *', localLabel: '00:30', ci: true },
-  'redlinetech.lk': { cronUtc: '30 19 * * *', localLabel: '01:00', ci: true },
-  'gamestreet.lk': { cronUtc: '0 20 * * *', localLabel: '01:30', ci: false },
-  'chamacomputers.lk': { cronUtc: '30 20 * * *', localLabel: '02:00', ci: false },
-  'pcbuilders.lk': { cronUtc: '0 21 * * *', localLabel: '02:30', ci: false },
+  'tecroot.lk': { cronUtc: '0 18 */2 * *', localLabel: '23:30', ci: true },
+  'winsoft.lk': { cronUtc: '30 18 */2 * *', localLabel: '00:00', ci: true },
+  'nanotek.lk': { cronUtc: '0 19 */2 * *', localLabel: '00:30', ci: true },
+  'redlinetech.lk': { cronUtc: '30 19 */2 * *', localLabel: '01:00', ci: true },
+  'gamestreet.lk': { cronUtc: '0 20 */2 * *', localLabel: '01:30', ci: false },
+  'chamacomputers.lk': { cronUtc: '30 20 */2 * *', localLabel: '02:00', ci: false },
+  'pcbuilders.lk': { cronUtc: '0 21 */2 * *', localLabel: '02:30', ci: false },
 }
 
-/** Hours since a shop's expected daily run, given "HH" from its cron. */
+/**
+ * Hours since a shop's last expected run, from its cron's minute, hour and
+ * day-of-month step ("*" or "*\/2"). Every other day since 2026-11-01 to halve
+ * the database reads and page rebuilds each run causes.
+ */
 export function hoursSinceExpectedRun(cronUtc: string, now = new Date()): number {
-  const [minute, hour] = cronUtc.split(' ').map(Number)
+  const [minute, hour, day] = cronUtc.split(' ')
+  const step = day.startsWith('*/') ? Number(day.slice(2)) : 1
   const expected = new Date(now)
-  expected.setUTCHours(hour, minute, 0, 0)
-  // Today's slot has not come round yet, so measure from yesterday's.
-  if (expected > now) expected.setUTCDate(expected.getUTCDate() - 1)
+  expected.setUTCHours(Number(hour), Number(minute), 0, 0)
+  // Walk back to the latest slot: today's may not have come round yet, and
+  // with a step, today may not be a run day (cron runs days 1, 3, 5…).
+  while (expected > now || (expected.getUTCDate() - 1) % step !== 0) {
+    expected.setUTCDate(expected.getUTCDate() - 1)
+  }
   return (now.getTime() - expected.getTime()) / 3_600_000
 }
 

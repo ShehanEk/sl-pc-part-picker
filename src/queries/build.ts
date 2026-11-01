@@ -17,7 +17,7 @@ import { BUILD_SLOTS, type BuildPart, type BuildSlot } from '@/compat/build'
  */
 
 const STALE_AFTER_DAYS = 7
-const CACHE_SECONDS = 86_400
+const CACHE_SECONDS = 172_800
 
 export type ShopOffer = {
   shop: string

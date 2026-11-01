@@ -1,11 +1,11 @@
 name: scrape tecroot.lk
 
-# 0 18 * * * UTC = 23:30 Sri Lanka time, ahead of winsoft and well ahead of the
+# 0 18 */2 * * UTC (every other day) = 23:30 Sri Lanka time, ahead of winsoft and well ahead of the
 # 21:30 normalize run. Staggered against the rest so the shops are never hit at
 # once.
 on:
   schedule:
-    - cron: '0 18 * * *'
+    - cron: '0 18 */2 * *'
   workflow_dispatch:
 
 jobs:

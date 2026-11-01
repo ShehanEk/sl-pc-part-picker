@@ -38,7 +38,7 @@ export const STALE_AFTER_DAYS = 7
  * shorter than the data's actual update rate, so it is conservative rather than
  * clever.
  */
-const CACHE_SECONDS = 86_400
+const CACHE_SECONDS = 172_800
 
 const freshOnly = gte(
   listings.scrapedAt,

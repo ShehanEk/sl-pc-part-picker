@@ -176,17 +176,19 @@ curated catalog: <N>/<N> entries applied
 
 ## Schedule
 
-All times UTC; Sri Lanka is UTC+5:30.
+All times UTC; Sri Lanka is UTC+5:30. Every other night since 2026-11-01: the
+cron day field is `*/2` (UTC days 1, 3, 5…), and the desktop app follows the same
+days.
 
 | Workflow | Cron | Local time | Timeout |
 |---|---|---|---|
-| `scrape-winsoft.yml` | `30 18 * * *` | 00:00 | 30 min |
-| `scrape-nanotek.yml` | `0 19 * * *` | 00:30 | 90 min |
-| `scrape-redlinetech.yml` | `30 19 * * *` | 01:00 | 45 min |
+| `scrape-winsoft.yml` | `30 18 */2 * *` | 00:00 | 30 min |
+| `scrape-nanotek.yml` | `0 19 */2 * *` | 00:30 | 90 min |
+| `scrape-redlinetech.yml` | `30 19 */2 * *` | 01:00 | 45 min |
 | `scrape-gamestreet.yml` | manual only | desktop app, 01:30 | 20 min |
 | `scrape-chamacomputers.yml` | manual only | desktop app, 02:00 | 30 min |
 | `scrape-pcbuilders.yml` | manual only | desktop app, 02:30 | 20 min |
-| `normalize.yml` | `30 21 * * *` | 03:00 | 30 min |
+| `normalize.yml` | `30 21 */2 * *` | 03:00 | 30 min |
 
 Each caller passes its shop key into the reusable `scrape.yml`. Runs are
 staggered so the shops are never hit at once, and each has a `concurrency`

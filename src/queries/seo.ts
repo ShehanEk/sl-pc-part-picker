@@ -18,12 +18,12 @@ import { CATEGORIES, type Category } from '@/lib/site'
  */
 
 /**
- * A day. Prices only change when the nightly pipeline runs, and that run clears
- * the `catalog` tag through /api/revalidate, so this is a backstop rather than
- * the refresh. At 30 minutes each refresh re-read the whole catalogue (~5 MB)
+ * Two days. Prices only change when the pipeline runs (every other night since
+ * 2026-11-01), and that run clears the `catalog` tag through /api/revalidate,
+ * so this is a backstop rather than the refresh. At 30 minutes each refresh re-read the whole catalogue (~5 MB)
  * up to 48 times a day, which used up Neon's 5 GB free transfer by 25 October.
  */
-const CACHE_SECONDS = 86_400
+const CACHE_SECONDS = 172_800
 
 /** How old a listing may be before its price is presented as last-seen. */
 export const STALE_AFTER_DAYS = 7

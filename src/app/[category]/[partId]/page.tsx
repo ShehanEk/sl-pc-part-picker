@@ -21,7 +21,7 @@ import { loadDirectory, loadPriceIndex, type PricePoint } from '@/queries/seo'
  * price, the shops and the specs are all in the initial HTML.
  */
 
-export const revalidate = 86400
+export const revalidate = 172800
 export const dynamicParams = false
 
 /**

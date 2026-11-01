@@ -18,7 +18,7 @@ import { DealCard } from './components/Deals'
  * the best price, not a whole machine, so the builder moved to /build and is
  * one click away in the header.
  */
-export const revalidate = 86400
+export const revalidate = 172800
 
 export const metadata: Metadata = {
   title: {
