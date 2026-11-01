@@ -11,7 +11,6 @@ import {
   nextEmptySlot,
   rankCandidates,
   suggestNextSlot,
-  type Build,
   type BuildSlot,
 } from '@/compat/build'
 import type { CheckStatus } from '@/compat/rules'
@@ -69,6 +68,9 @@ type View = BuildSlot | 'summary' | null
 
 export type Catalogue = Record<BuildSlot, PartOffer[]>
 
+/** The build with each part's offers still attached, so the summary can link to the chosen shop. */
+type OfferBuild = Partial<Record<BuildSlot, PartOffer>>
+
 /** Re-point a catalogue part at a specific seller, if that seller still has it. */
 function withShop(part: PartOffer, shop: string | null): PartOffer {
   if (!shop) return part
@@ -92,8 +94,8 @@ export function Configurator({ catalogue }: { catalogue: Catalogue }) {
    * A part that has since sold out everywhere is gone from the catalogue and
    * drops out here quietly, which beats restoring a build we cannot price.
    */
-  const build = useMemo<Build>(() => {
-    const next: Build = {}
+  const build = useMemo<OfferBuild>(() => {
+    const next: OfferBuild = {}
     for (const slot of BUILD_SLOTS) {
       const choice = stored[slot]
       if (!choice) continue
@@ -572,7 +574,7 @@ function Summary({
   onChange,
   onStartOver,
 }: {
-  build: Build
+  build: OfferBuild
   report: ReturnType<typeof evaluateBuild>
   shopsLine: string
   onChange: (slot: BuildSlot) => void
