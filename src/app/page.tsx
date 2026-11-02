@@ -7,9 +7,11 @@ import { SiteFooter, SiteHeader } from './components/SiteChrome'
 
 import { CATEGORIES, type Category, CATEGORY_COPY, SITE_NAME, TRACKED_SHOPS, canonical, rupees, sentenceCase } from '@/lib/site'
 import { findDeals, toDealItems } from '@/lib/deals'
-import { loadDirectory, loadPriceIndex, type SeoPart } from '@/queries/seo'
+import { shopStats } from '@/lib/shop-stats'
+import { loadDirectory, loadPriceIndex } from '@/queries/seo'
 
 import { DealCard } from './components/Deals'
+import { ShopProfiles } from './components/ShopProfiles'
 
 /**
  * Home: pick a category, pick the part, see who sells it cheapest.
@@ -44,34 +46,9 @@ const EXAMPLES: { q: string; slot: Category }[] = [
   { q: 'DDR5 32GB', slot: 'ram' },
 ]
 
-type Gap = { part: SeoPart; slot: Category; best: number; worst: number; at: string; shops: number }
-
-/** The parts whose cheapest and dearest in-stock shop are furthest apart. */
-function biggestGaps(directory: Record<Category, SeoPart[]>, count: number): Gap[] {
-  const gaps: Gap[] = []
-  for (const slot of CATEGORIES) {
-    for (const part of directory[slot]) {
-      const buyable = part.offers.filter((o) => o.inStock && !o.stale)
-      if (buyable.length < 2) continue
-      const prices = buyable.map((o) => o.priceLkr)
-      const best = Math.min(...prices)
-      gaps.push({
-        part,
-        slot,
-        best,
-        worst: Math.max(...prices),
-        at: buyable.find((o) => o.priceLkr === best)!.shop,
-        shops: buyable.length,
-      })
-    }
-  }
-  return gaps.sort((a, b) => b.worst - b.best - (a.worst - a.best)).slice(0, count)
-}
-
 export default async function Home() {
   const [directory, priceIndex] = await Promise.all([loadDirectory(), loadPriceIndex()])
   const totalParts = CATEGORIES.reduce((n, slot) => n + directory[slot].length, 0)
-  const gaps = biggestGaps(directory, 4)
   const deals = toDealItems(findDeals(directory, priceIndex))
 
   const jsonLd = {
@@ -211,58 +188,7 @@ export default async function Home() {
           </section>
         )}
 
-        {gaps.length > 0 && (
-          <section aria-labelledby="gaps" className="flex flex-col gap-4 pb-14">
-            <div className="flex flex-col gap-1.5">
-              <h2 id="gaps" className="text-[22px] font-semibold tracking-[-0.02em]">
-                Same part. Very different price.
-              </h2>
-              <p className="m-0 text-[15px] text-ink-2">
-                Cheapest against dearest, among shops that have it in stock today. Graphics cards
-                are compared by chip, so the brand of card can differ between shops.
-              </p>
-            </div>
-            <ul className="grid gap-3 sm:grid-cols-[repeat(auto-fill,minmax(260px,1fr))]">
-              {gaps.map((g) => {
-                const { Icon, tint, ink } = CATEGORY_STYLE[g.slot]
-                return (
-                  <li key={g.part.partId}>
-                    <Link
-                      href={`/${g.slot}/${g.part.partId}`}
-                      className="glass flex h-full flex-col gap-3.5 p-5 transition hover:-translate-y-0.5"
-                    >
-                      <span className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="flex items-center gap-2.5 text-[16px] font-semibold tracking-[-0.01em]">
-                          <span
-                            className="grid h-[30px] w-[30px] flex-none place-items-center rounded-[9px]"
-                            style={{ background: tint, color: ink }}
-                          >
-                            <Icon className="h-[18px] w-[18px]" />
-                          </span>
-                          {g.part.model}
-                        </span>
-                        <span className="mono rounded-full border border-[var(--accent-soft-border)] bg-[var(--accent-soft)] px-2.5 py-1 text-[11.5px] font-medium text-[var(--accent-strong)]">
-                          {rupees(g.worst - g.best)} apart
-                        </span>
-                      </span>
-                      <span className="flex flex-col gap-0.5">
-                        <span className="eyebrow text-[11px]">Cheapest</span>
-                        <span className="mono text-[22px] font-medium tracking-[-0.02em] text-accent">
-                          {rupees(g.best)}
-                        </span>
-                        <span className="text-[13px] text-ink-2">at {g.at}</span>
-                      </span>
-                      <span className="mt-auto border-t border-[var(--hairline)] flex items-center justify-between gap-2 pt-3 text-[12.5px] text-ink-3">
-                        <span className="mono">Dearest {rupees(g.worst)}</span>
-                        <span>{g.shops} shops in stock</span>
-                      </span>
-                    </Link>
-                  </li>
-                )
-              })}
-            </ul>
-          </section>
-        )}
+        <ShopProfiles stats={shopStats(Object.values(directory).flat(), TRACKED_SHOPS)} />
 
         <section
           aria-labelledby="builder"
@@ -291,19 +217,6 @@ export default async function Home() {
               <path d="M5 12h14M13 6l6 6-6 6" />
             </svg>
           </Link>
-        </section>
-
-        <section aria-labelledby="shops" className="flex flex-col gap-3.5 pb-6">
-          <h2 id="shops" className="eyebrow text-[11px]">
-            Shops we check every night
-          </h2>
-          <ul className="mono flex flex-wrap gap-2 text-[13px] text-ink-2">
-            {TRACKED_SHOPS.map((shop) => (
-              <li key={shop} className="rounded-full border border-[var(--glass-border)] bg-white/90 px-3.5 py-2">
-                {shop}
-              </li>
-            ))}
-          </ul>
         </section>
       </main>
 

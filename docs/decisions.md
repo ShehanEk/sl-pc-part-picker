@@ -815,6 +815,21 @@ section; the "no ads" line is gone.
 **Still to do in AdSense.** The EU/UK consent message under Privacy &
 messaging, which AdSense requires regardless of audience.
 
+### Shop profiles on the home page (2026-11-02)
+
+**Decision.** A swipeable row of shop cards replaces "Same part. Very different
+price." and "Shops we check every night". Each card has the shop's links and
+branches, three numbers from our own listings, and up to 5 review notes in
+`src/lib/shops.ts`, refreshed by hand every 3 months (`docs/shop-reviews.md`).
+No auto-rotate, no new table, no recurring AI cost.
+
+**Deliberate risk.** Google's terms restrict content derived from its reviews.
+Reading them by hand each quarter and publishing only our own short summary, a
+count and a link back was chosen knowingly. The Places API was rejected because
+it returns about 5 reviews per place.
+
+**Tone.** A shop is never rated poor. A bad pattern becomes a prompt to the buyer.
+
 ### Tests are `node:test`, not a framework
 
 **Decision.** 46 tests run via `tsx --test`. No Jest, no Vitest.

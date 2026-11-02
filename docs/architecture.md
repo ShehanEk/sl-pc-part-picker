@@ -92,6 +92,7 @@ without touching what a visitor sees.
 | `src/lib/deals.ts` | Finds parts below their usual price from the cached directory and price index. Pure; no query of its own. Feeds `/deals` and the home page strip, rendered by `src/app/components/Deals.tsx`. |
 | `src/lib/og.tsx` + `opengraph-image.tsx` files | Share images (1200 × 630) for home, each category and each part, drawn by `next/og` with the site fonts in `assets/fonts/`. |
 | `src/app/components/Analytics.tsx` | Google Analytics 4 and Microsoft Clarity, loaded only when `VERCEL_ENV` is `production`. |
+| `src/app/components/ShopProfiles.tsx` | Home page shop cards. Facts and review notes come from `src/lib/shops.ts` (hand-kept, see `docs/shop-reviews.md`), numbers from `src/lib/shop-stats.ts`. |
 | `src/app/components/AdSense.tsx` | AdSense Auto ads, production only, rendered by part pages and `/build` alone. `public/ads.txt` pairs with it. |
 | `src/app/api/revalidate/route.ts` | Clears the `catalog` cache tag. Called by the nightly normalize workflow with a bearer token. |
 | `next.config.ts` | Security headers on every response, and the permanent redirect from `sl-pc-part-picker.vercel.app` to `pcprice.lk`. |
