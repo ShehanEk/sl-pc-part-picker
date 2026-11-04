@@ -183,14 +183,19 @@ export default async function PartPage({
             part.inStockShops > 0
               ? 'https://schema.org/InStock'
               : 'https://schema.org/OutOfStock',
-          offers: part.offers.map((o) => ({
+          // The same offers the low and high prices come from. A stale listing
+          // is not claimed as in stock: we can no longer confirm it. validFrom
+          // is the closest schema.org has to "price last checked on".
+          offers: quoted.map((o) => ({
             '@type': 'Offer',
             price: o.priceLkr,
             priceCurrency: 'LKR',
+            validFrom: o.seenOn,
             url: o.url,
-            availability: o.inStock
-              ? 'https://schema.org/InStock'
-              : 'https://schema.org/OutOfStock',
+            availability:
+              o.inStock && !o.stale
+                ? 'https://schema.org/InStock'
+                : 'https://schema.org/OutOfStock',
             seller: { '@type': 'Organization', name: o.shop },
           })),
         },

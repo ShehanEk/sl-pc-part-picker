@@ -53,16 +53,29 @@ export default async function Home() {
 
   const jsonLd = {
     '@context': 'https://schema.org',
-    '@type': 'WebSite',
-    name: SITE_NAME,
-    url: canonical('/'),
-    inLanguage: 'en-LK',
-    description: 'PC part prices from Sri Lankan shops, compared side by side.',
-    potentialAction: {
-      '@type': 'SearchAction',
-      target: { '@type': 'EntryPoint', urlTemplate: `${canonical('/search')}?q={search_term_string}` },
-      'query-input': 'required name=search_term_string',
-    },
+    '@graph': [
+      {
+        '@type': 'Organization',
+        '@id': canonical('/#organization'),
+        name: SITE_NAME,
+        url: canonical('/'),
+        logo: canonical('/apple-icon.png'),
+        description: `Compares PC part prices from ${TRACKED_SHOPS.length} Sri Lankan shops. It does not sell anything itself.`,
+      },
+      {
+        '@type': 'WebSite',
+        name: SITE_NAME,
+        url: canonical('/'),
+        inLanguage: 'en-LK',
+        description: 'PC part prices from Sri Lankan shops, compared side by side.',
+        publisher: { '@id': canonical('/#organization') },
+        potentialAction: {
+          '@type': 'SearchAction',
+          target: { '@type': 'EntryPoint', urlTemplate: `${canonical('/search')}?q={search_term_string}` },
+          'query-input': 'required name=search_term_string',
+        },
+      },
+    ],
   }
 
   return (
