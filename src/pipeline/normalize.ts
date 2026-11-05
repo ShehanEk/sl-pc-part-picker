@@ -8,6 +8,7 @@ import { listings, parts, priceHistory, rawListings } from '@/db/schema'
 import type { NewPart } from '@/db/schema'
 import { aiAvailable, matchTitleToPart, type Candidate } from '@/normalize/ai'
 import { extractIdentity, type Identity } from '@/normalize/extract'
+import { resolveStock } from '@/pipeline/stock'
 import type { Category } from '@/scrapers/types'
 
 /**
@@ -306,6 +307,16 @@ export async function runNormalize(
     }
   }
 
+  const stockKey = (partId: string, shop: string) => `${partId}\u0000${shop}`
+  const lastKnownStock = new Map(
+    (
+      await db
+        .select({ partId: listings.partId, shop: listings.shop, inStock: listings.inStock })
+        .from(listings)
+    ).map((l) => [stockKey(l.partId, l.shop), l.inStock]),
+  )
+  const stockRows = new Map<string, { total: number; unknown: number }>()
+
   const newParts = new Map<string, NewPart>()
   const patches = new Map<string, SpecPatch>()
   const resolved: {
@@ -399,14 +410,27 @@ export async function runNormalize(
       continue
     }
 
+    const counts = stockRows.get(row.shop) ?? { total: 0, unknown: 0 }
+    counts.total++
+    if (typeof payload.inStock !== 'boolean') counts.unknown++
+    stockRows.set(row.shop, counts)
+
     resolved.push({
       rawId: row.id,
       partId,
       shop: row.shop,
       priceLkr: price,
       url: row.sourceUrl,
-      inStock: payload.inStock !== false,
+      inStock: resolveStock(payload.inStock, lastKnownStock.get(stockKey(partId, row.shop))),
     })
+  }
+
+  // A shop reporting nothing has usually changed its page, as winsoft.lk did on
+  // 2026-11-03. Listings keep their last known status, so say so loudly.
+  for (const [shop, { total, unknown }] of stockRows) {
+    if (total >= 10 && unknown === total) {
+      log(`  WARNING: ${shop} reported no stock status on any of ${total} rows, check its scraper`)
+    }
   }
 
   log(

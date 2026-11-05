@@ -253,8 +253,8 @@ The way to more is to ask the shop for a feed, not to fetch `?page=2`.
 
 Each `/product/<slug>` carries one `application/ld+json` `Product` block with
 `name`, `sku`, `category`, `offers.price` and an `additionalProperty` spec table
-(Brand, GPU Chipset, GPU VRAM, Motherboard Chipset, Socket Type). Nothing is
-scraped out of markup.
+(Brand, GPU Chipset, GPU VRAM, Motherboard Chipset, Socket Type). Only the stock
+label is read from markup.
 
 Category comes from the JSON-LD `category`, which is sometimes a path
 ("Storage > SSD"); the first segment is mapped. **External Storage** is
@@ -266,11 +266,13 @@ drives and, actually observed, a DVD rewriter.
 - **`offers.availability` is hardcoded to `OutOfStock`.** Every product page
   says it, including ones the page itself renders as "In Stock" with a working
   Add to Cart. Believing it would have marked the entire shop out of stock,
-  which drops it out of the configurator altogether. The `additionalProperty`
-  row named `Availability` is the field that actually varies — but its casing
-  does not ("In Stock", "in stock", "In stock"), so compare case-insensitively.
-- **The Add to Cart button is not a stock signal.** It renders even on the one
-  product whose spec table says Out of Stock.
+  which drops it out of the configurator altogether.
+- **Stock comes from the visible label.** The `additionalProperty` row named
+  `Availability` was the reliable field until the shop removed it on 2026-11-03.
+  Since then stock is read from `span.ty-stock-msg` inside
+  `.ty-product-page-price-message`, the only markup this scraper reads.
+- **The Add to Cart button is not a stock signal.** It renders on out-of-stock
+  products too.
 - **Some parts are not sold on their own**, marked two different ways:
   "(SYSTEM ONLY)" and "(Not Sold Separately)". Both are bundled-with-a-build
   prices. Matching only the first let a "Crucial 32GB DDR5 5600MHz Desktop RAM

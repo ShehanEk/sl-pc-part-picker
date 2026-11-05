@@ -121,6 +121,24 @@ export function parseProduct(html: string): JsonLdProduct | null {
   return null
 }
 
+/**
+ * Whether the product page says it is in stock, or null if it no longer says.
+ *
+ * This reads the label the buyer sees, the one piece of markup in this scraper.
+ * `offers.availability` in the JSON-LD is hardcoded to OutOfStock on every page,
+ * including ones in stock with a working Add to Cart. The spec table's
+ * Availability row was reliable until the shop removed it on 2026-11-03.
+ *
+ * Tied to the product's own price block so a label on another product's card
+ * can never be read as this one's.
+ */
+export function pageStock(html: string): boolean | null {
+  const label = html.match(
+    /class="ty-product-page-price-message"[^>]*>\s*<span\b[^>]*class="ty-stock-msg"[^>]*>([^<]*)</,
+  )?.[1]
+  return label?.trim() ? /^in\s*stock$/i.test(label.trim()) : null
+}
+
 export function toCanonicalCategory(raw: JsonLdProduct['category']): Category | null {
   const first = Array.isArray(raw) ? raw[0] : raw
   if (!first) return null
@@ -216,17 +234,7 @@ export const winsoft: Scraper = {
       const priceRaw = product.offers?.price
       const priceLkr = priceRaw != null && priceRaw !== '' ? Number(priceRaw) : null
 
-      // `offers.availability` is hardcoded to OutOfStock on every product page
-      // on this site, including ones the page itself renders as in stock with a
-      // working Add to Cart. Believing it would have marked the whole shop out
-      // of stock, which drops it out of the configurator entirely. The spec
-      // table's own Availability row is the field that actually varies — its
-      // casing does not, so the comparison is case-insensitive. Unstated stays
-      // null rather than becoming a claim either way.
-      const availability = props.Availability ?? ''
-      const inStock = availability
-        ? /^\s*in\s*stock\s*$/i.test(availability)
-        : null
+      const inStock = pageStock(res.body)
 
       const image = product.image?.[0]
 
