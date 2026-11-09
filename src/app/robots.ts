@@ -14,10 +14,22 @@ import { canonical } from '@/lib/site'
  * `/search` is disallowed to save cost: it renders on every request over the
  * whole catalogue, and its pages are noindex anyway, so a crawler following
  * search links bought nothing but function time.
+ *
+ * Googlebot also skips `opengraph-image` routes. Search Console showed ~1,100
+ * of them crawled and not indexed while ~1,100 real part pages waited in
+ * "Discovered - currently not indexed": they were spending crawl budget the
+ * part pages need. The rule is Googlebot-only so link previews on Facebook,
+ * WhatsApp and X keep working. A named group replaces `*` for that bot, so it
+ * repeats the shared disallows.
  */
+const DISALLOW = ['/api', '/search']
+
 export default function robots(): MetadataRoute.Robots {
   return {
-    rules: { userAgent: '*', allow: '/', disallow: ['/api', '/search'] },
+    rules: [
+      { userAgent: 'Googlebot', allow: '/', disallow: [...DISALLOW, '/*/opengraph-image'] },
+      { userAgent: '*', allow: '/', disallow: DISALLOW },
+    ],
     sitemap: canonical('/sitemap.xml'),
     host: canonical('/').replace(/\/$/, ''),
   }
