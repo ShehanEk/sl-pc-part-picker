@@ -5,10 +5,11 @@ import { notFound } from 'next/navigation'
 import { AddToBuild } from '@/app/components/AddToBuild'
 import { CATEGORY_STYLE } from '@/app/components/PartIcons'
 import { AdSense } from '@/app/components/AdSense'
+import { PriceChart } from '@/app/components/PriceChart'
 import { SiteFooter, SiteHeader } from '@/app/components/SiteChrome'
 import { CATEGORIES, CATEGORY_COPY, isBuildSlot, isCategory, type Category, SITE_NAME, canonical, rupees, sentenceCase } from '@/lib/site'
 import { displayName, fitNote, specLines, specPhrase } from '@/lib/specs'
-import { loadCategory, loadDirectory, loadPriceIndex, type PricePoint } from '@/queries/seo'
+import { loadCategory, loadDirectory, loadPriceIndex } from '@/queries/seo'
 
 /**
  * A page per part — /gpu/rtx-5070-12gb.
@@ -529,48 +530,3 @@ export default async function PartPage({
   )
 }
 
-/**
- * The lowest in-stock price per day. Rendered server-side as plain SVG so it is in
- * the HTML and costs no JavaScript; it lengthens on its own as the nightly runs
- * accumulate.
- */
-function PriceChart({ points }: { points: PricePoint[] }) {
-  const w = 600
-  const h = 140
-  const pad = 12
-  const values = points.map((p) => p.lowestLkr)
-  const min = Math.min(...values)
-  const max = Math.max(...values)
-  const span = max - min || 1
-  const step = w / (points.length - 1)
-  const y = (v: number) => pad + (1 - (v - min) / span) * (h - pad * 2)
-  const line = values
-    .map((v, i) => `${i === 0 ? 'M' : 'L'}${(i * step).toFixed(1)} ${y(v).toFixed(1)}`)
-    .join(' ')
-  const first = points[0]
-  const last = points.at(-1)!
-
-
-  return (
-    <figure className="m-0 flex flex-col gap-2">
-      <svg
-        viewBox={`0 0 ${w} ${h}`}
-        preserveAspectRatio="none"
-        className="block h-[140px] w-full"
-        role="img"
-        aria-label={`Lowest in-stock price from ${first.day} to ${last.day}: ${rupees(first.lowestLkr)} to ${rupees(last.lowestLkr)}, ranging ${rupees(min)} to ${rupees(max)}.`}
-      >
-        <path d={`${line} L${w} ${h} L0 ${h} Z`} fill="var(--accent-soft)" />
-        <path d={line} fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
-      </svg>
-      <figcaption className="mono flex justify-between gap-2 text-[12px] text-ink-3">
-        <span>
-          {first.day.slice(5)} · {rupees(first.lowestLkr)}
-        </span>
-        <span className="font-medium text-ink">
-          {last.day.slice(5)} · {rupees(last.lowestLkr)}
-        </span>
-      </figcaption>
-    </figure>
-  )
-}
