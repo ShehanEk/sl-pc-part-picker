@@ -104,11 +104,20 @@ export function SiteFooter() {
 
         <p className="mt-5 max-w-[70ch] text-[12px] leading-relaxed text-ink-4">
           {SITE_NAME} tracks prices at {TRACKED_SHOPS.join(', ')} and checks that the parts you
-          pick work together. Prices are scraped daily and shown in Sri Lankan rupees; confirm
-          with the shop before buying, as stock and prices change between our checks.{' '}
-          <Link href="/privacy" className="text-ink-3 underline underline-offset-2 hover:text-accent">
-            Privacy
-          </Link>
+          pick work together. Prices are checked every other night and shown in Sri Lankan rupees;
+          confirm with the shop before buying, as stock and prices change between our checks.{' '}
+          {[
+            ['/about', 'About'],
+            ['/contact', 'Contact'],
+            ['/privacy', 'Privacy'],
+          ].map(([href, label], i) => (
+            <span key={href}>
+              {i > 0 && ' · '}
+              <Link href={href} className="text-ink-3 underline underline-offset-2 hover:text-accent">
+                {label}
+              </Link>
+            </span>
+          ))}
         </p>
       </div>
     </footer>
