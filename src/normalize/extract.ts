@@ -94,7 +94,20 @@ export type PeripheralIdentity = {
   wireless: boolean
 }
 
+export type CoolingIdentity = {
+  category: 'cooling'
+  partId: string
+  brand: string
+  model: string
+  coolingType: 'air' | 'aio' | 'fan' | 'paste' | 'lighting'
+  /** Canonical sockets the title names; empty when it names none. */
+  coolerSockets: string[]
+  /** AIO radiator length, when the title says it. */
+  radiatorMm: number | null
+}
+
 export type Identity =
+  | CoolingIdentity
   | GpuIdentity
   | PsuIdentity
   | CpuIdentity
@@ -911,6 +924,177 @@ export function extractPeripheral(
   }
 }
 
+// Cooling and lighting
+
+/**
+ * Brands this category carries, as [title pattern, display name]. Like
+ * peripherals, it is the names a buyer compares across shops; unbranded fans
+ * and strips are dropped rather than listed under a made-up name.
+ */
+const COOLING_BRANDS: [string, string][] = [
+  ['deep\\s*cool', 'DeepCool'],
+  ['thermalright', 'Thermalright'],
+  ['cooler\\s*master', 'Cooler Master'],
+  ['corsair', 'Corsair'],
+  ['arctic', 'Arctic'],
+  ['noctua', 'Noctua'],
+  ['nzxt', 'NZXT'],
+  ['lian\\s*li', 'Lian Li'],
+  ['be\\s*quiet!?', 'be quiet!'],
+  ['id[\\s-]*cooling', 'ID-Cooling'],
+  ['thermaltake', 'Thermaltake'],
+  ['thermal\\s*grizzly', 'Thermal Grizzly'],
+  ['antec', 'Antec'],
+  ['montech', 'Montech'],
+  ['phanteks', 'Phanteks'],
+  ['fractal(?:\\s*design)?', 'Fractal Design'],
+  ['ekwb|ek[\\s-]', 'EK'],
+  ['gelid', 'Gelid'],
+  ['asus', 'ASUS'],
+  ['(?=rog\\b)', 'ASUS'],
+  ['msi', 'MSI'],
+  ['gigabyte|aorus', 'Gigabyte'],
+  ['darkflash', 'Darkflash'],
+  ['1st\\s*player', '1stPlayer'],
+  ['gamdias', 'Gamdias'],
+  ['xigmatek', 'Xigmatek'],
+  ['jonsbo', 'Jonsbo'],
+  ['valkyrie', 'Valkyrie'],
+  ['aigo', 'Aigo'],
+]
+
+function coolingBrand(title: string): { name: string; length: number } | null {
+  for (const [pattern, name] of COOLING_BRANDS) {
+    const m = title.match(new RegExp(`^\\s*(?:${pattern})\\b`, 'i'))
+    if (m) return { name, length: m[0].length }
+  }
+  return null
+}
+
+/**
+ * Shelf-mates that are not PC cooling or case lighting: laptop pads, drive and
+ * graphics-card coolers, phone and console coolers, cables, lamps and screens,
+ * mounting hardware, and parts the shop only sells inside a system.
+ */
+const NOT_PC_COOLING = new RegExp(
+  [
+    'laptops?', 'notebooks?', 'cooling\\s*pad', 'cooler\\s*pad', 'cooling\\s*stand', 'u\\s*pal',
+    'm\\.?2', 'ssd', 'nvme', 'vga', 'gpu', 'graphics\\s*card', 'ram\\s*cooler', 'memory\\s*cooler',
+    'phone', 'mobile', 'magnetic', 'ps5', 'ps4', 'playstation', 'xbox', 'console', 'switch',
+    'extension', 'splitter', 'adapter', 'desk\\s*lamp', 'lamp', 'monitor\\s*light', 'light\\s*bar',
+    'mini\\s*(?:led|lcd)\\s*display', 'bracket', 'mounting\\s*kit', 'backplate', 'screws?',
+    'dust\\s*filter', 'fan\\s*grill', 'system\\s*only', 'not\\s*sold\\s*separately',
+  ]
+    .map((p) => `\\b${p}\\b`)
+    .join('|'),
+  'i',
+)
+
+/** A cable sold on its own, rather than mentioned in a fan's listing. */
+const LONE_CABLE = /\bcables?\b/i
+const MENTIONS_FAN_OR_COOLER = /\b(fans?|cooler|cooling)\b/i
+
+/**
+ * Types in the order they are tested. Order matters: an air cooler's title
+ * says "fan" ("single fan CPU cooler"), and an AIO's says "cooler", so the
+ * narrower types go first.
+ */
+const COOLING_TYPES: [CoolingIdentity['coolingType'], RegExp][] = [
+  ['paste', /\b(thermal\s*(?:paste|compound|grease|pads?|putty)|paste|kryonaut|duronaut|conductonaut|mx-?\d)\b/i],
+  ['aio', /\b(aio|all[\s-]*in[\s-]*one|liquid|water[\s-]*cool\w*|radiator)\b/i],
+  ['air', /\b(cpu\s*(?:air\s*)?cooler|air\s*cooler|tower\s*cooler|heat\s*sink|heatsink|cooler)\b/i],
+  ['fan', /\b(fans?|\d{2,3}\s*mm\s*fan)\b/i],
+  ['lighting', /\b(led\s*strips?|strips?|light(?:ing)?|a?rgb\s*(?:controller|hub)|controller|hub)\b/i],
+]
+
+function coolingType(text: string): CoolingIdentity['coolingType'] | null {
+  return COOLING_TYPES.find(([, re]) => re.test(text))?.[0] ?? null
+}
+
+/** The shop's shelf names, where the title alone says nothing. */
+function coolingTypeFromShelf(shelf: string): CoolingIdentity['coolingType'] | null {
+  if (/liquid/i.test(shelf)) return 'aio'
+  if (/paste/i.test(shelf)) return 'paste'
+  if (/fan/i.test(shelf)) return 'fan'
+  if (/led|strip|argb|lighting|rgb\s*hub/i.test(shelf)) return 'lighting'
+  // "COOLER", "AIR COOLERS" and chamacomputers' "coolers" shelf, which also
+  // holds fans and AIOs; their titles say so and are matched above.
+  if (/cooler/i.test(shelf)) return 'air'
+  return null
+}
+
+/** Sockets a cooler title names, canonical and de-duplicated. */
+export function coolerSockets(title: string): string[] {
+  const found = new Set<string>()
+  for (const m of title.matchAll(/\bAM([45])\b/gi)) found.add(`AM${m[1]}`)
+  for (const m of title.matchAll(/\b(?:LGA[\s-]*|intel\s*)(1700|1851|1200|115[0156x])\b/gi)) {
+    found.add(m[1].startsWith('115') ? 'LGA115X' : `LGA${m[1]}`)
+  }
+  return [...found].sort()
+}
+
+const COOLING_NOISE = new RegExp(
+  `(?<![a-z0-9])(?:${[
+    'cpu', 'air', 'liquid', 'water', 'aio', 'all[\\s-]*in[\\s-]*one', 'cooler', 'cooling', 'cooled',
+    'tower', 'single', 'dual', 'heat\\s*sink', 'heatsink', 'radiator', 'case', 'fans?', 'pwm', 'a-?rgb',
+    'rgb', 'led', 'gaming', 'black', 'white', 'pink', 'gr[ae]y', 'edition', 'with', 'for',
+    'and', 'the', 'new', 'pc', 'intel', 'amd', 'am[45]', 'lga[\\s-]*\\d{4}', 'lga[\\s-]*115x',
+    'socket', 'support', 'thermal', 'performance', 'high', 'silent', 'quiet',
+  ].join('|')})(?![a-z0-9])`,
+  'gi',
+)
+
+/**
+ * CPU coolers, case fans, thermal paste and RGB lighting from known brands.
+ *
+ * The type comes from the title, then the shop's shelf (`retailerCategory`).
+ * Sockets come only from the title; a title that names none leaves them empty,
+ * which the builder reports as unknown rather than guessed. Colour variants
+ * share an id, as with peripherals.
+ */
+export function extractCooling(rawTitle: string, retailerCategory = ''): CoolingIdentity | null {
+  if (NOT_PC_COOLING.test(rawTitle)) return null
+  if (LONE_CABLE.test(rawTitle) && !MENTIONS_FAN_OR_COOLER.test(rawTitle)) return null
+
+  const brand = coolingBrand(rawTitle)
+  if (!brand) return null
+
+  // Typed without the brand: "Cooler Master" would otherwise read as a cooler.
+  const rest = rawTitle.slice(brand.length)
+  const shelf = retailerCategory.split(/[>/]/).at(-1) ?? ''
+  const type = coolingType(rest) ?? coolingTypeFromShelf(shelf)
+  if (!type) return null
+  // A plain USB hub on gamestreet's "USB & RGB hubs" shelf is not lighting.
+  if (type === 'lighting' && /\bhub\b/i.test(rest) && !/rgb/i.test(rest)) return null
+
+  const radiator =
+    type === 'aio' ? rest.match(/\b(120|140|240|280|360|420)\s*(?:mm)?\b/i) : null
+
+  const name = stripAsides(rest).split(/,|\s[-–|]\s/)[0]
+  const modelTokens = name
+    .replace(COOLING_NOISE, ' ')
+    // "240mm" is part of an AIO's name ("Liquid Freezer III 240"); keep the number.
+    .replace(/\b(\d{2,3})\s*mm\b/gi, '$1')
+    .replace(/[^a-z0-9+\-\s]/gi, ' ')
+    .split(/\s+/)
+    .map((t) => t.replace(/^-+|-+$/g, ''))
+    .filter((t) => t.length > 0)
+    .filter((t, i, all) => i === 0 || t.toLowerCase() !== all[i - 1].toLowerCase())
+    .slice(0, 5)
+  if (modelTokens.length === 0) return null
+
+  const model = modelTokens.join(' ')
+  return {
+    category: 'cooling',
+    partId: slug(`${brand.name} ${model}`),
+    brand: brand.name,
+    model,
+    coolingType: type,
+    coolerSockets: type === 'air' || type === 'aio' ? coolerSockets(rawTitle) : [],
+    radiatorMm: radiator ? Number(radiator[1]) : null,
+  }
+}
+
 // Laptops
 
 /**
@@ -1243,5 +1427,6 @@ export function extractIdentity(
   if (category === 'peripherals') return extractPeripheral(rawTitle, retailerCategory)
   if (category === 'laptops') return extractLaptop(rawTitle, specs)
   if (category === 'consoles') return extractConsole(rawTitle)
+  if (category === 'cooling') return extractCooling(rawTitle, retailerCategory)
   return null
 }

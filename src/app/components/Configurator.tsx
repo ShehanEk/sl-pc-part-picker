@@ -8,6 +8,8 @@ import {
   BUILD_SLOTS,
   SLOT_LABEL,
   evaluateBuild,
+  isBuildComplete,
+  isOptionalSlot,
   nextEmptySlot,
   rankCandidates,
   suggestNextSlot,
@@ -114,7 +116,8 @@ export function Configurator({ catalogue }: { catalogue: Catalogue }) {
   const report = useMemo(() => evaluateBuild(build), [build])
   const suggestion = useMemo(() => suggestNextSlot(build), [build])
   const filled = report.filled.length
-  const complete = filled === BUILD_SLOTS.length
+  // The cooler is optional: a build with every other part is complete.
+  const complete = isBuildComplete(build)
 
   const resolved: BuildSlot | 'summary' = view ?? (complete ? 'summary' : (suggestion?.slot ?? 'cpu'))
   const activeSlot: BuildSlot = resolved === 'summary' ? 'cpu' : resolved
@@ -141,8 +144,13 @@ export function Configurator({ catalogue }: { catalogue: Catalogue }) {
     if (sort === 'price') sorted.sort((a, b) => (a.part.priceLkr ?? 0) - (b.part.priceLkr ?? 0))
     if (sort === 'name') sorted.sort((a, b) => a.part.model.localeCompare(b.part.model))
     if (sort === 'shops') sorted.sort((a, b) => b.part.offers.length - a.part.offers.length)
+    // Coolers whose sockets are confirmed come before ones the shop doesn't
+    // list sockets for. Stable, so each group keeps the chosen order.
+    if (activeSlot === 'cooling') {
+      sorted.sort((a, b) => Number(a.status !== 'pass') - Number(b.status !== 'pass'))
+    }
     return sorted
-  }, [fitting, query, sort])
+  }, [fitting, query, sort, activeSlot])
 
   /**
    * Every step change scrolls the panel to the top. On a phone the list the
@@ -273,7 +281,11 @@ export function Configurator({ catalogue }: { catalogue: Catalogue }) {
                 </span>
                 <span className="mono text-[12px] text-ink-3">{filled} picked</span>
               </div>
-              <div className="mt-2 grid grid-cols-7 gap-1" aria-hidden>
+              <div
+                className="mt-2 grid gap-1"
+                style={{ gridTemplateColumns: `repeat(${BUILD_SLOTS.length}, minmax(0, 1fr))` }}
+                aria-hidden
+              >
                 {BUILD_SLOTS.map((slot) => (
                   <span
                     key={slot}
@@ -293,6 +305,7 @@ export function Configurator({ catalogue }: { catalogue: Catalogue }) {
             <div className="mb-4">
               <span className="eyebrow hidden lg:block">
                 Step {stepNumber} of {BUILD_SLOTS.length}
+                {isOptionalSlot(activeSlot) ? ' · optional' : ''}
               </span>
               <h2 className="m-0 text-[26px] font-semibold leading-[1.1] tracking-[-0.03em] lg:mt-1.5 lg:text-[30px]">
                 {build[activeSlot] ? `Change the ${SLOT_LABEL[activeSlot]}` : `Pick a ${SLOT_LABEL[activeSlot]}`}
@@ -314,6 +327,12 @@ export function Configurator({ catalogue }: { catalogue: Catalogue }) {
                     Showing the <strong className="font-semibold text-ink">{fitting.length}</strong>{' '}
                     that fit what you&apos;ve picked. {blocked} hidden — {firstBlocked}
                   </>
+                ) : activeSlot === 'cooling' ? (
+                  build.cpu?.socket ? (
+                    `Your ${build.cpu.model} uses ${build.cpu.socket}. Most processors that come with a cooler can skip this.`
+                  ) : (
+                    'Optional. Most processors that come with a cooler can skip this.'
+                  )
                 ) : suggestion?.slot === activeSlot ? (
                   suggestion.message
                 ) : (
@@ -380,6 +399,8 @@ export function Configurator({ catalogue }: { catalogue: Catalogue }) {
                     part.ratedWatts ? `${part.ratedWatts}W` : null,
                     part.storageInterface,
                     activeSlot === 'case' ? part.formFactor : null,
+                    part.coolerSockets?.length ? part.coolerSockets.join(', ') : null,
+                    part.radiatorMm ? `${part.radiatorMm}mm` : null,
                   ]
                     .filter(Boolean)
                     .slice(0, 3)
@@ -528,7 +549,11 @@ export function Configurator({ catalogue }: { catalogue: Catalogue }) {
                 onClick={() => skip(activeSlot)}
                 className="min-h-11 text-[14px] font-semibold text-accent underline-offset-2 hover:underline"
               >
-                {build[activeSlot] ? 'Keep it, next →' : 'Skip this part for now →'}
+                {build[activeSlot]
+                  ? 'Keep it, next →'
+                  : isOptionalSlot(activeSlot)
+                    ? 'Skip: use the cooler in the box →'
+                    : 'Skip this part for now →'}
               </button>
             </div>
 
@@ -581,9 +606,9 @@ function Summary({
   onStartOver: () => void
 }) {
   const filled = report.filled.length
-  const complete = filled === BUILD_SLOTS.length
+  const complete = isBuildComplete(build)
   const worst = report.checks.find((c) => c.status === 'fail')
-  const firstEmpty = BUILD_SLOTS.find((s) => !build[s])
+  const firstEmpty = BUILD_SLOTS.find((s) => !build[s] && !isOptionalSlot(s))
 
   return (
     <>
@@ -655,7 +680,9 @@ function Summary({
                       </span>
                     </>
                   ) : (
-                    <span className="mt-[2px] block text-[14px] text-ink-3">Not picked</span>
+                    <span className="mt-[2px] block text-[14px] text-ink-3">
+                      {isOptionalSlot(slot) ? 'Optional · not picked' : 'Not picked'}
+                    </span>
                   )}
                 </div>
                 <button

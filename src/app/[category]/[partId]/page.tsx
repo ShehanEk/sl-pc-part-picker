@@ -8,7 +8,7 @@ import { AdSense } from '@/app/components/AdSense'
 import { PriceChart } from '@/app/components/PriceChart'
 import { SiteFooter, SiteHeader } from '@/app/components/SiteChrome'
 import { CATEGORIES, CATEGORY_COPY, isBuildSlot, isCategory, type Category, SITE_NAME, canonical, rupees, sentenceCase } from '@/lib/site'
-import { displayName, fitNote, specLines, specPhrase } from '@/lib/specs'
+import { displayName, fitNote, isCpuCooler, specLines, specPhrase } from '@/lib/specs'
 import { loadCategory, loadDirectory, loadPriceIndex } from '@/queries/seo'
 
 /**
@@ -114,8 +114,10 @@ export default async function PartPage({
   const { slot, part } = found
   const copy = CATEGORY_COPY[slot]
   const { Icon, tint, ink, strong } = CATEGORY_STYLE[slot]
-  // Peripherals, laptops and consoles have pages but no place in a build.
-  const buildSlot = isBuildSlot(slot) ? slot : null
+  // Peripherals, laptops and consoles have pages but no place in a build, and
+  // in cooling only CPU coolers do: fans, paste and lighting are browse-only.
+  const buildSlot =
+    isBuildSlot(slot) && (slot !== 'cooling' || isCpuCooler(part.coolingType)) ? slot : null
   const name = displayName(part)
   const path = `/${slot}/${part.partId}`
   const specs = specLines(part)

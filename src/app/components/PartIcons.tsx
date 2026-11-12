@@ -126,6 +126,22 @@ export function PeripheralsIcon(props: IconProps) {
   )
 }
 
+/** Cooling: a 120 mm case fan, square frame, round shroud and five blades. */
+const FAN_BLADE = 'M12 10.2C11.2 7.8 12.2 5.4 14.6 4.9C15.6 7 14.6 9.4 12 10.2Z'
+
+export function CoolingIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <rect x="2.4" y="2.4" width="19.2" height="19.2" rx="2.6" />
+      <circle cx="12" cy="12" r="7.6" />
+      <circle cx="12" cy="12" r="1.8" />
+      {[0, 72, 144, 216, 288].map((deg) => (
+        <path key={deg} d={FAN_BLADE} transform={deg ? `rotate(${deg} 12 12)` : undefined} />
+      ))}
+    </Icon>
+  )
+}
+
 /** Laptop: an open lid on its base. */
 export function LaptopIcon(props: IconProps) {
   return (
@@ -172,4 +188,6 @@ export const CATEGORY_STYLE: Record<
   // Slate: the wheel is full, so laptops stand apart by being nearly grey.
   laptops: { Icon: LaptopIcon, tint: 'oklch(0.95 0.012 250)', ink: 'oklch(0.45 0.06 250)', strong: 'oklch(0.4 0.06 250)' },
   consoles: { Icon: ConsoleIcon, tint: 'oklch(0.95 0.04 45)', ink: 'oklch(0.57 0.15 45)', strong: 'oklch(0.48 0.14 45)' },
+  // Violet: the gap between processors and RAM.
+  cooling: { Icon: CoolingIcon, tint: 'oklch(0.95 0.035 290)', ink: 'oklch(0.52 0.16 290)', strong: 'oklch(0.47 0.15 290)' },
 }

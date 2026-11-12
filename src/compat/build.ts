@@ -2,6 +2,7 @@ import {
   ASSUMED_CPU_WATTS,
   PSU_HEADROOM_MULTIPLIER,
   checkCpuSocket,
+  checkCoolerSocket,
   checkCaseFitsBoard,
   checkGpuPowerConnector,
   checkRamFits,
@@ -11,6 +12,7 @@ import {
   type CheckResult,
   type CheckStatus,
   type Case,
+  type Cooler,
   type Cpu,
   type Gpu,
   type Motherboard,
@@ -33,7 +35,15 @@ import {
  * only defensible way to tell someone their parts will work.
  */
 
-export type BuildSlot = 'cpu' | 'motherboard' | 'ram' | 'gpu' | 'storage' | 'psu' | 'case'
+export type BuildSlot =
+  | 'cpu'
+  | 'motherboard'
+  | 'ram'
+  | 'gpu'
+  | 'storage'
+  | 'psu'
+  | 'case'
+  | 'cooling'
 
 export const BUILD_SLOTS: BuildSlot[] = [
   'cpu',
@@ -43,7 +53,21 @@ export const BUILD_SLOTS: BuildSlot[] = [
   'storage',
   'psu',
   'case',
+  // Last and optional: many processors come with a cooler in the box.
+  'cooling',
 ]
+
+/**
+ * Slots a finished build can leave empty. A build is complete once every other
+ * slot is filled, so skipping the cooler still ends on "Everything fits".
+ */
+export const OPTIONAL_SLOTS: readonly BuildSlot[] = ['cooling']
+
+export const isOptionalSlot = (slot: BuildSlot) => OPTIONAL_SLOTS.includes(slot)
+
+/** Every required slot has a part. */
+export const isBuildComplete = (build: Partial<Record<BuildSlot, unknown>>) =>
+  BUILD_SLOTS.every((s) => isOptionalSlot(s) || Boolean(build[s]))
 
 export const SLOT_LABEL: Record<BuildSlot, string> = {
   cpu: 'processor',
@@ -53,6 +77,7 @@ export const SLOT_LABEL: Record<BuildSlot, string> = {
   psu: 'power supply',
   storage: 'drive',
   case: 'case',
+  cooling: 'CPU cooler',
 }
 
 /**
@@ -89,6 +114,8 @@ export type BuildPart = {
   /** motherboard: its own size. case: the largest board it takes. */
   formFactor?: 'ATX' | 'mATX' | 'ITX' | null
   connectors?: Psu['connectors']
+  /** cooling: sockets the shop's title names. */
+  coolerSockets?: string[] | null
 }
 
 export type Build = Partial<Record<BuildSlot, BuildPart>>
@@ -143,6 +170,11 @@ const asMotherboard = (p: BuildPart): Motherboard => ({
 const asCase = (p: BuildPart): Case => ({
   model: p.model,
   formFactor: p.formFactor ?? null,
+})
+
+const asCooler = (p: BuildPart): Cooler => ({
+  model: p.model,
+  sockets: p.coolerSockets ?? [],
 })
 
 const asRam = (p: BuildPart): Ram => ({
@@ -301,6 +333,17 @@ export function evaluateBuild(build: Build): BuildReport {
   // GPU ↔ PSU connector
   if (gpu && psu) checks.push(checkGpuPowerConnector(asGpu(gpu), asPsu(psu)))
 
+  // CPU ↔ cooler
+  const cooler = build.cooling
+  if (cpu && cooler) checks.push(checkCoolerSocket(asCpu(cpu), asCooler(cooler)))
+  else if (cooler && !cpu) {
+    pending.push({
+      id: 'cooler-socket',
+      needs: ['cpu'],
+      message: 'Add a processor and we’ll check the cooler supports its socket.',
+    })
+  }
+
   const filled = BUILD_SLOTS.filter((s) => build[s])
   const empty = BUILD_SLOTS.filter((s) => !build[s])
   const awaitingShop = filled.filter((s) => !build[s]?.shop)
@@ -362,13 +405,14 @@ export function rankCandidates<T extends BuildPart>(
 
 /** Which checks a given slot participates in. */
 const CHECKS_BY_SLOT: Record<BuildSlot, string[]> = {
-  cpu: ['cpu-socket', 'psu-wattage'],
+  cpu: ['cpu-socket', 'psu-wattage', 'cooler-socket'],
   motherboard: ['cpu-socket', 'ram-type', 'ram-fits', 'ram-speed', 'case-fit'],
   ram: ['ram-type', 'ram-fits', 'ram-speed'],
   gpu: ['psu-wattage', 'gpu-connector'],
   psu: ['psu-wattage', 'gpu-connector'],
   storage: [],
   case: ['case-fit'],
+  cooling: ['cooler-socket'],
 }
 
 export type Suggestion = {
@@ -452,6 +496,6 @@ export function nextEmptySlot(build: Build, after: BuildSlot): BuildSlot | null 
  */
 export const UNCHECKED_BY_DESIGN = [
   'Case clearance — whether the card and cooler physically fit',
-  'Cooler compatibility — socket support and height',
+  'Cooler sockets — only checked when the shop lists them',
   'Storage — connector type and available slots',
 ] as const

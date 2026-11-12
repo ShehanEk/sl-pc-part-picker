@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { extractConsole, extractLaptop, extractPeripheral } from './extract'
+import { coolerSockets, extractConsole, extractCooling, extractLaptop, extractPeripheral } from './extract'
 
 const id = (title: string, shelf?: string) => extractPeripheral(title, shelf)?.partId ?? null
 
@@ -137,4 +137,81 @@ test('consoles: dashes, brackets, bundles and Steam Machine', () => {
 
 test('peripherals: a "Controllers" shelf types a controller with no type in its name', () => {
   assert.equal(extractPeripheral('Razer Wolverine V3 Pro 8K PC', 'Accessories, Controllers, PC')?.peripheralType, 'gamepad')
+})
+
+// Cooling and lighting
+
+const cool = (title: string, shelf?: string) => extractCooling(title, shelf)
+
+test('cooling: each type is read from the title', () => {
+  assert.equal(cool('DeepCool AK400 CPU Cooler')?.coolingType, 'air')
+  assert.equal(cool('DeepCool LE500 All-in-One 240mm Liquid CPU Cooler')?.coolingType, 'aio')
+  assert.equal(cool('Arctic P12 PWM PST Case Fan Black')?.coolingType, 'fan')
+  assert.equal(cool('Arctic MX-6 Thermal Paste 4g')?.coolingType, 'paste')
+  assert.equal(cool('Thermal Grizzly Kryonaut 1g')?.coolingType, 'paste')
+  assert.equal(cool('Lian Li Strimer Plus V2 ARGB LED Strip')?.coolingType, 'lighting')
+  assert.equal(cool('Cooler Master ARGB LED Controller')?.coolingType, 'lighting')
+})
+
+test('cooling: an air cooler whose title says "fan" is still an air cooler', () => {
+  assert.equal(cool('DeepCool AG400 Single Tower 120mm Fan CPU Cooler')?.coolingType, 'air')
+})
+
+test('cooling: the shop shelf supplies the type when the title does not', () => {
+  assert.equal(cool('Thermalright Peerless Assassin 120 SE', 'AIR COOLERS')?.coolingType, 'air')
+  assert.equal(cool('Arctic Liquid Freezer III', 'LIQUID COOLERS')?.coolingType, 'aio')
+  assert.equal(cool('Corsair RS120', 'CASE FANS')?.coolingType, 'fan')
+  assert.equal(cool('DeepCool Mystery Model', '')?.coolingType, undefined)
+})
+
+test('cooling: a clean model, with colour dropped and the radiator size kept', () => {
+  assert.deepEqual(cool('DeepCool LE500 All-in-One 240mm Liquid CPU Cooler'), {
+    category: 'cooling',
+    partId: 'deepcool-le500-240',
+    brand: 'DeepCool',
+    model: 'LE500 240',
+    coolingType: 'aio',
+    coolerSockets: [],
+    radiatorMm: 240,
+  })
+  assert.equal(cool('DeepCool AK400 CPU Cooler White')?.partId, cool('DeepCool AK400 CPU Cooler')?.partId)
+  assert.equal(cool('DeepCool Mystique 360 ARGB Liquid Cooler')?.radiatorMm, 360)
+  assert.equal(cool('DeepCool AK400 CPU Cooler')?.radiatorMm, null)
+})
+
+test('cooling: sockets come from the title and only for CPU coolers', () => {
+  assert.deepEqual(cool('ID-Cooling SE-224-XTS CPU Cooler LGA1700 / AM5 / AM4')?.coolerSockets, [
+    'AM4',
+    'AM5',
+    'LGA1700',
+  ])
+  assert.deepEqual(coolerSockets('Supports Intel 1851, LGA 1200 and LGA1151'), [
+    'LGA115X',
+    'LGA1200',
+    'LGA1851',
+  ])
+  assert.deepEqual(cool('Arctic P12 PWM PST Case Fan AM5 lighting')?.coolerSockets ?? [], [])
+})
+
+test('cooling: laptop pads, drive and GPU coolers, cables and lamps are not PC cooling', () => {
+  for (const title of [
+    'DeepCool U PAL Laptop Cooling Pad',
+    'DeepCool N80 Notebook Cooler',
+    'Thermalright HR-09 M.2 SSD Cooler',
+    'Jonsbo NVMe Heatsink',
+    'Cooler Master VGA Holder ARGB',
+    'Lian Li Strimer ARGB VGA Extension Cable',
+    'DeepCool Magnetic Phone Cooler',
+    'Corsair RGB Desk Lamp',
+    'Cooler Master AM5 Mounting Kit',
+    'Corsair ARGB Hub (System Only)',
+  ]) {
+    assert.equal(cool(title), null, title)
+  }
+})
+
+test('cooling: unknown brands and a plain USB hub are dropped', () => {
+  assert.equal(cool('Generic 120mm RGB Case Fan'), null)
+  assert.equal(cool('Gamdias USB 3.0 Hub', 'USB & RGB HUBS'), null)
+  assert.equal(cool('Gamdias RGB Hub', 'USB & RGB HUBS')?.coolingType, 'lighting')
 })

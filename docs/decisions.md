@@ -830,6 +830,25 @@ it returns about 5 reviews per place.
 
 **Tone.** A shop is never rated poor. A bad pattern becomes a prompt to the buyer.
 
+### Cooling and lighting, with an optional cooler step (2026-11-12)
+
+**Decision.** One category, `cooling`, for air and liquid CPU coolers, case
+fans, thermal paste and RGB lighting (`cooling_type`). It is a build slot, but
+the last one and optional (`OPTIONAL_SLOTS`): many processors come with a
+cooler, so a build with every other part is complete and still ends on
+"Everything fits". Only air and AIO coolers appear in the builder and get
+"Add to build"; the other types are browse-only.
+
+**Fit check.** Socket only, from the shop's title. A cooler whose title names
+no socket is shown as unknown ("check with the shop"), never as a fit. Height
+against the case stays unchecked: no listing publishes clearance. A cooler
+that names other sockets is hidden from the step like any other blocked part,
+with the reason shown, rather than offered as "Add anyway".
+
+**Id clashes.** Part ids carry no category, so normalize now leaves a row
+unmatched, and logs it, when its id already belongs to a part of another
+category, rather than filing a cooler's price under a case.
+
 ### Tests are `node:test`, not a framework
 
 **Decision.** 46 tests run via `tsx --test`. No Jest, no Vitest.

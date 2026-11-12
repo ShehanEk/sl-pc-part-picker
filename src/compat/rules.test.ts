@@ -3,6 +3,7 @@ import { describe, it } from 'node:test'
 
 import {
   ASSUMED_CPU_WATTS,
+  checkCoolerSocket,
   checkCpuSocket,
   checkGpuAgainstPsu,
   checkGpuPowerConnector,
@@ -209,5 +210,24 @@ describe('cpu, board and memory rules', () => {
   it('is unknown when a spec is missing', () => {
     assert.equal(checkCpuSocket({ ...cpu, socket: null }, mb()).status, 'unknown')
     assert.equal(checkRamSpeed({ ...ram, speedMhz: null }, mb()).status, 'unknown')
+  })
+})
+
+describe('checkCoolerSocket', () => {
+  const ryzen: Cpu = { model: 'Ryzen 5 7600', socket: 'AM5', tdpWatts: 65, ramType: 'DDR5' }
+
+  it('passes when the cooler lists the processor socket, ignoring case', () => {
+    assert.equal(checkCoolerSocket(ryzen, { model: 'AK400', sockets: ['am4', 'am5'] }).status, 'pass')
+  })
+
+  it('fails when the cooler lists sockets and this one is not among them', () => {
+    const r = checkCoolerSocket(ryzen, { model: 'Old', sockets: ['AM4', 'LGA1200'] })
+    assert.equal(r.status, 'fail')
+    assert.match(r.message, /AM4, LGA1200/)
+  })
+
+  it('is unknown when the shop lists no sockets, or the processor has none', () => {
+    assert.equal(checkCoolerSocket(ryzen, { model: 'X', sockets: [] }).status, 'unknown')
+    assert.equal(checkCoolerSocket({ ...ryzen, socket: null }, { model: 'X', sockets: ['AM5'] }).status, 'unknown')
   })
 })

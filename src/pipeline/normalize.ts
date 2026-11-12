@@ -202,6 +202,14 @@ function toNewPart(identity: Identity, specs: ObservedSpecs | undefined): NewPar
         consoleType: identity.consoleType,
         platform: identity.platform,
       }
+    case 'cooling':
+      return {
+        ...base,
+        category: 'cooling',
+        coolingType: identity.coolingType,
+        coolerSockets: identity.coolerSockets,
+        radiatorMm: identity.radiatorMm,
+      }
   }
 }
 
@@ -358,7 +366,15 @@ export async function runNormalize(
     }
     let partId: string | null = identity?.partId ?? null
 
-    if (identity) {
+    // Part ids are brand + model with no category in them, so a cooler and a
+    // case from one maker could mint the same id. Attaching a listing to a part
+    // of another category would file its price under the wrong product, so the
+    // row is left unmatched instead.
+    const owner = identity ? catalog.get(identity.partId) : undefined
+    if (identity && owner && owner.category !== identity.category) {
+      log(`  id clash: "${row.rawTitle}" is ${identity.category} but ${identity.partId} is a ${owner.category}`)
+      partId = null
+    } else if (identity) {
       result.matchedDeterministic++
       if (!catalog.has(identity.partId) && !newParts.has(identity.partId)) {
         newParts.set(identity.partId, toNewPart(identity, specs))

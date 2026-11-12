@@ -45,6 +45,7 @@ const HEX: Record<Category, { tint: string; ink: string; strong: string }> = {
   peripherals: { tint: '#ffe5f0', ink: '#ae3a70', strong: '#972b5f' },
   laptops: { tint: '#e9eff6', ink: '#3b5876', strong: '#2e4a67' },
   consoles: { tint: '#ffe7d9', ink: '#bc541a', strong: '#9a3c00' },
+  cooling: { tint: '#eeebff', ink: '#6a53bd', strong: '#5c46a7' },
 }
 
 export const INK = '#151b24'

@@ -31,6 +31,8 @@ const CATEGORY_PATHS: Partial<Record<Category, string | string[]>> = {
   // children (commercial, macbook, used) answer 200 with a not-found page.
   laptops: 'laptops',
   consoles: 'consoles',
+  // Fans and RGB fans sit inside `coolers`; there is no lighting shelf.
+  cooling: ['coolers', 'thermal paste'],
 }
 
 type ChamaProduct = {

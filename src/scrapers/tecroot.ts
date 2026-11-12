@@ -31,5 +31,7 @@ export const tecroot = createWooScraper({
     ],
     // Includes retro mini-consoles, which match no console model and drop.
     consoles: { id: 227, label: 'Gaming Consoles' },
+    // Under Accessories. "Lights" (927) is desk and room lighting, not PC RGB.
+    cooling: { id: 6132, label: 'Cooling Fans' },
   },
 })

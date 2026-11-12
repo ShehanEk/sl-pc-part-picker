@@ -36,6 +36,15 @@ const CATEGORY_IDS: Partial<Record<Category, CategoryId | CategoryId[]>> = {
     { cat: 6, scat: 30, label: 'CONTROLLER' },
   ],
   laptops: { cat: 1, scat: 0, label: 'LAPTOPS' },
+  // cat=4 is Accessories. Not scat=33, "cooling pad", which is for laptops.
+  // scat=20 mixes USB hubs with RGB hubs; the extractor keeps only lighting.
+  cooling: [
+    { cat: 2, scat: 7, label: 'COOLER' },
+    { cat: 4, scat: 29, label: 'FAN' },
+    { cat: 4, scat: 24, label: 'THERMAL PASTE' },
+    { cat: 4, scat: 23, label: 'LED STRIP' },
+    { cat: 4, scat: 20, label: 'USB & RGB HUBS' },
+  ],
 }
 
 const b64 = (n: number) => Buffer.from(String(n), 'utf8').toString('base64')

@@ -5,6 +5,7 @@ import { getDb } from '@/db'
 import { listings, parts, priceHistory } from '@/db/schema'
 import type { BuildPart } from '@/compat/build'
 import { CATEGORIES, type Category } from '@/lib/site'
+import type { CoolingType } from '@/lib/specs'
 
 /**
  * The catalogue as the indexable pages need it.
@@ -51,6 +52,8 @@ export type SeoPart = Omit<BuildPart, 'category'> & {
   makerCode: string | null
   consoleType: 'console' | 'handheld' | null
   platform: string | null
+  coolingType: CoolingType | null
+  radiatorMm: number | null
   vramGb: number | null
   efficiencyRating: string | null
   offers: SeoOffer[]
@@ -162,6 +165,9 @@ async function _loadCategory(category: Category): Promise<SeoPart[]> {
       makerCode: p.makerCode,
       consoleType: p.consoleType,
       platform: p.platform,
+      coolingType: p.coolingType,
+      coolerSockets: p.coolerSockets,
+      radiatorMm: p.radiatorMm,
       offers,
       bestLkr: buyable.length ? Math.min(...buyable.map((o) => o.priceLkr)) : null,
       lowLkr: Math.min(...prices),

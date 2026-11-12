@@ -41,6 +41,8 @@ const CATEGORY_SLUGS: Record<Category, string | string[] | null> = {
   peripherals: ['mouse-keyboard-combo', 'controllers'],
   laptops: 'laptops',
   consoles: null,
+  // No paste or lighting shelf; any that turn up sit under coolers or fans.
+  cooling: ['coolers', 'fans'],
 }
 
 /**
@@ -67,6 +69,9 @@ const CATEGORY_MAP: Record<string, Category> = {
   // other way round.
   laptops: 'laptops',
   'gaming laptop': 'laptops',
+  // "Fans & Pc Cooling > COOLERS" (seen 2026-11-12). Laptop cooling pads share
+  // the parent; the extractor drops them.
+  'fans & pc cooling': 'cooling',
 }
 
 /**

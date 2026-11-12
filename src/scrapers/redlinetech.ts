@@ -62,6 +62,8 @@ export const redlinetech = createTynoScraper({
     // Not `keyboard-mouse`: despite the name it holds only combos.
     peripherals: ['mouse-keyboard-combo', 'controllers'],
     laptops: 'laptops',
+    // First page of each only (no pagination allowed), so coverage is partial.
+    cooling: ['coolers', 'fans'],
   },
   parsePrice,
 })

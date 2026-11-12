@@ -5,6 +5,7 @@ import {
   BUILD_SLOTS,
   buildPowerDraw,
   evaluateBuild,
+  isBuildComplete,
   nextEmptySlot,
   rankCandidates,
   suggestNextSlot,
@@ -250,5 +251,63 @@ describe('nextEmptySlot', () => {
       BUILD_SLOTS.map((s) => [s, { partId: s, category: s, brand: 'x', model: 'x' }]),
     ) as Build
     assert.equal(nextEmptySlot(full, 'cpu'), null)
+  })
+})
+
+describe('the optional cooler', () => {
+  const part = (s: string) => ({ partId: s, category: s, brand: 'x', model: 'x' }) as BuildPart
+  const cooler = (sockets: string[]): BuildPart => ({
+    partId: 'ak400',
+    category: 'cooling',
+    brand: 'DeepCool',
+    model: 'AK400',
+    coolerSockets: sockets,
+  })
+
+  it('is complete without a cooler, and an old saved build without the key still works', () => {
+    const noCooler = Object.fromEntries(
+      BUILD_SLOTS.filter((s) => s !== 'cooling').map((s) => [s, part(s)]),
+    ) as Build
+    assert.equal(isBuildComplete(noCooler), true)
+    assert.equal(isBuildComplete({ ...noCooler, gpu: undefined }), false)
+    const r = evaluateBuild(noCooler)
+    assert.ok(!r.checks.some((c) => c.id === 'cooler-socket'))
+    assert.ok(!r.pending.some((p) => p.id === 'cooler-socket'))
+  })
+
+  it('is the step after the case, and skipping it ends the build', () => {
+    const noCooler = Object.fromEntries(
+      BUILD_SLOTS.filter((s) => s !== 'cooling').map((s) => [s, part(s)]),
+    ) as Build
+    assert.equal(nextEmptySlot({ ...noCooler, case: undefined }, 'psu'), 'case')
+    assert.equal(nextEmptySlot(noCooler, 'case'), 'cooling')
+    assert.equal(nextEmptySlot(noCooler, 'cooling'), null)
+  })
+
+  it('checks the socket once both the processor and cooler are chosen', () => {
+    assert.equal(
+      evaluateBuild({ cpu: cpu(), cooling: cooler(['AM4', 'AM5']) }).checks.find((c) => c.id === 'cooler-socket')
+        ?.status,
+      'pass',
+    )
+    assert.equal(
+      evaluateBuild({ cpu: cpu(), cooling: cooler(['LGA1700']) }).checks.find((c) => c.id === 'cooler-socket')
+        ?.status,
+      'fail',
+    )
+    const pending = evaluateBuild({ cooling: cooler(['AM5']) }).pending.find((p) => p.id === 'cooler-socket')
+    assert.deepEqual(pending?.needs, ['cpu'])
+  })
+
+  it('ranks a cooler that does not fit as blocked, and an unlisted one as unknown', () => {
+    const [fits, wrong, unlisted] = rankCandidates({ cpu: cpu() }, 'cooling', [
+      cooler(['AM5']),
+      cooler(['LGA1700']),
+      cooler([]),
+    ])
+    assert.equal(fits.status, 'pass')
+    assert.equal(wrong.status, 'fail')
+    assert.match(wrong.blockedBy!, /LGA1700/)
+    assert.equal(unlisted.status, 'unknown')
   })
 })

@@ -366,6 +366,41 @@ export function checkCaseFitsBoard(mb: Motherboard, pcCase: Case): CheckResult {
       }
 }
 
+export type Cooler = {
+  model: string
+  /** Sockets the shop's title names. Empty when it names none. */
+  sockets: string[]
+}
+
+/**
+ * The cooler mounts on the processor's socket.
+ *
+ * Only as good as the listing: sockets come from the shop's title, and a title
+ * that names none is reported as unknown rather than guessed. Height against
+ * the case is not checked at all; no listing we read publishes clearance.
+ */
+export function checkCoolerSocket(cpu: Cpu, cooler: Cooler): CheckResult {
+  const id = 'cooler-socket'
+  if (!cpu.socket) {
+    return { id, status: 'unknown', message: "The processor's socket isn't listed." }
+  }
+  if (cooler.sockets.length === 0) {
+    return {
+      id,
+      status: 'unknown',
+      message: `The shop doesn't list this cooler's sockets — check it supports ${cpu.socket}.`,
+    }
+  }
+  const socket = cpu.socket.toUpperCase()
+  return cooler.sockets.some((s) => s.toUpperCase() === socket)
+    ? { id, status: 'pass', message: `The cooler supports ${cpu.socket}.` }
+    : {
+        id,
+        status: 'fail',
+        message: `This cooler lists ${cooler.sockets.join(', ')}, not the processor's ${cpu.socket}.`,
+      }
+}
+
 /** Every GPU↔PSU check, in the order a buyer cares about. */
 export function checkGpuAgainstPsu(gpu: Gpu, psu: Psu, cpu?: Cpu | null): CheckResult[] {
   return [checkPsuWattage(gpu, psu, cpu), checkGpuPowerConnector(gpu, psu)]

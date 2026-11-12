@@ -15,7 +15,7 @@ jobs:
       shop: tecroot.lk
       # No ram or storage: see src/scrapers/tecroot.ts. Listed anyway would only
       # be skipped, since the scraper has no mapping for them.
-      categories: gpu,psu,cpu,motherboard,case,peripherals,consoles
+      categories: gpu,psu,cpu,motherboard,case,peripherals,consoles,cooling
       # ~20 Store API requests at the 1.5s floor, about a minute.
       timeout_minutes: 15
     secrets: inherit

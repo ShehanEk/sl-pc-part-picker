@@ -171,7 +171,7 @@ Currently **25,308 points across 52 days** (2026-08-23 → 2026-10-17).
 |---|---|
 | **Warranty period** | Every shop states it differently — some in the title, some in a spec table, some not at all. Capturing it inconsistently would mean showing "1 year" for a part whose neighbour simply didn't say. No `warranty_months` column exists. pcbuilders.lk is the exception and states it on every product, in both the title and `short_description`; that text is kept in `raw_payload.specs` against the day a column exists, but nothing reads it. |
 | **Case internal clearance** (max GPU length, max cooler height) | Not published in local listings. Without it, card and cooler clearance cannot be checked, which is why it is named in `UNCHECKED_BY_DESIGN` on the page. |
-| **Cooler socket support and height** | Same reason. Coolers are not a tracked category. |
+| **Cooler height** | Same reason. Cooler sockets are read from titles since 2026-11-12, and only when a title names them. |
 | **Motherboard M.2 slot count and type** | Would be needed to check a drive actually has somewhere to go. Not in listings. |
 | **PCIe generation, VRM, chipset feature detail** | Beyond what the compatibility rules ask. |
 | **Any personal or account data** | The scrapers read public product pages only. |

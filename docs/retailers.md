@@ -43,6 +43,27 @@ all three.
   shop except nanotek, whose one shelf names all three, so a nanotek title
   that never says "mouse" or "keyboard" is dropped.
 
+## Cooling and lighting: source categories
+
+Added 2026-11-12. Air and liquid CPU coolers, case fans, thermal paste and RGB
+lighting share one category; the type comes from the title, then the shelf.
+
+| Shop | Source categories | Dropped by the extractor |
+|---|---|---|
+| gamestreet.lk | `cat=2, scat=7` COOLER; `cat=4` with `scat=29` FAN, `24` THERMAL PASTE, `23` LED STRIP, `20` USB & RGB HUBS | plain USB hubs; never `scat=33`, laptop cooling pads |
+| chamacomputers.lk | `coolers` (fans and RGB fans are inside it), `thermal paste` | laptop pads |
+| nanotek.lk | `cooling-lighting`, one shelf for all four types | SSD coolers, RGB VGA extension cables |
+| redlinetech.lk | `coolers`, `fans` (page 1 only) | laptop pads |
+| pcbuilders.lk | term ids 450 air, 451 liquid, 453 paste, 452 case fans, 1048 ARGB controllers | never 517 (laptop coolers) or 1044 (mini LED displays) |
+| winsoft.lk | `coolers`, `fans`; JSON-LD first segment `Fans & Pc Cooling` | laptop pads share the parent |
+| tecroot.lk | term 6132 Cooling Fans (under Accessories) | not 927 Lights, which is room lighting |
+
+- **Sockets** come only from titles (`AM4`, `AM5`, `LGA1700`, `LGA1851`,
+  `LGA1200`, `LGA115X`). A title that names none leaves the list empty, and
+  the builder reports the fit as unknown.
+- **Brands:** only the ones listed in `extractCooling`; unbranded fans and
+  strips are dropped, as with peripherals.
+
 ## Laptops and consoles: source categories
 
 Added 2026-10-23. Gamestreet, redlinetech and winsoft sell no consoles.

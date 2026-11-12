@@ -122,6 +122,13 @@ export const CATEGORY_COPY: Record<
     blurb:
       'PlayStation, Xbox and Nintendo consoles and handheld gaming PCs like the Steam Deck, ROG Ally and Legion Go, with the cheapest local price for each.',
   },
+  cooling: {
+    heading: 'CPU cooler, fan and RGB',
+    plural: 'coolers, fans and lighting',
+    singular: 'cooler, fan or light',
+    blurb:
+      'Air and liquid CPU coolers, case fans, thermal paste and RGB lighting, with the cheapest local price for each and which shop has it.',
+  },
 }
 
 /**

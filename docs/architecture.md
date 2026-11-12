@@ -76,7 +76,7 @@ without touching what a visitor sees.
 | `src/scrapers/` | One module per retailer. pcbuilders and tecroot read the WooCommerce Store API through the shared `woocommerce.ts`; the rest parse HTML. Emits `ScrapedRow` and nothing more — no part matching, no spec parsing. `tyno.ts` is a shared fetch flow for the two Tyno storefronts; their parsers stay separate. |
 | `src/lib/http.ts` | The only HTTP client. Serialises requests per host, 1.5s floor, bounded retries. |
 | `src/pipeline/scrape.ts` | Runs a scraper, sanity-checks the result, lands rows in `raw_listings`. |
-| `src/normalize/extract.ts` | Deterministic title → part identity for all ten categories. Returns `null` freely. Peripherals, laptops and consoles keep only the major brands listed in the file; laptops also need a maker code or a full config. |
+| `src/normalize/extract.ts` | Deterministic title → part identity for all eleven categories. Returns `null` freely. Peripherals, cooling, laptops and consoles keep only the brands listed in the file; laptops also need a maker code or a full config. |
 | `src/normalize/ai.ts` | The only model call in the codebase. Chooses among supplied candidates; never recalls specs. |
 | `src/catalog/platforms.ts` | Chipset → socket + memory generation. 33 rows cover every board and CPU in the catalogue. |
 | `src/catalog/*-specs.ts` | Curated, source-cited specs: 54 GPUs, 86 CPUs, 5 PSUs. |
@@ -87,7 +87,7 @@ without touching what a visitor sees.
 | `src/queries/build.ts` | Loads the whole catalogue for the PC builder, cached until the nightly refresh. |
 | `src/lib/search.ts` | Part search over the cached directory, by word. No index. |
 | `src/app/` | The public site: home (`/`), category pages, part pages, `/deals`, search (`/search`), the PC builder (`/build`) and `/privacy`. |
-| `src/lib/site.ts` | Site identity and per-category copy. `CATEGORIES` is every browsable category (the build slots plus `peripherals`, `laptops` and `consoles`); the builder uses `BUILD_SLOTS` from `src/compat/build.ts`. |
+| `src/lib/site.ts` | Site identity and per-category copy. `CATEGORIES` is every browsable category (the build slots plus `peripherals`, `laptops` and `consoles`); the builder uses `BUILD_SLOTS` from `src/compat/build.ts`, where `cooling` is last and in `OPTIONAL_SLOTS`. |
 | `src/app/components/CategoryList.tsx` | A category's list with its filters, sort and text filter, all in the browser. The text filter reuses `matchesQuery` from `src/lib/search.ts`. Which spec filters a category shows is the `FACETS` map in `src/app/[category]/page.tsx`. |
 | `src/lib/deals.ts` | Finds parts below their usual price from the cached directory and price index. Pure; no query of its own. Feeds `/deals` and the home page strip, rendered by `src/app/components/Deals.tsx`. |
 | `src/lib/og.tsx` + `opengraph-image.tsx` files | Share images (1200 × 630) for home, each category and each part, drawn by `next/og` with the site fonts in `assets/fonts/`. |
@@ -146,7 +146,7 @@ clears the tag through `/api/revalidate` when it finishes, and that is the only
 routine refresh: prices change only when the pipeline runs, and refreshing every
 30 minutes re-read the whole catalogue up to 48 times a day (see decisions).
 
-Share images: home and the ten category images are made at build. The 1,350
+Share images: home and the eleven category images are made at build. The 1,350
 part images are drawn on first request and cached, because prerendering them
 all would add minutes to every deploy for images that are mostly never fetched.
 

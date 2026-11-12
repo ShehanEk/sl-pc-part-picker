@@ -7,7 +7,7 @@ Last updated 23 October 2026.
 
 ## Live
 
-- **Site:** [pcprice.lk](https://pcprice.lk). Home, ten category pages with
+- **Site:** [pcprice.lk](https://pcprice.lk). Home, eleven category pages with
   filters and a text filter, ~1,500 part pages, `/deals`, search, the PC
   builder at `/build`, and `/privacy`.
 - **Deals:** parts at least 5% below their 30-day usual price, on `/deals`, as
@@ -28,6 +28,11 @@ Last updated 23 October 2026.
   config, so most come from chamacomputers, gamestreet and pcbuilders.
   Consoles come from nanotek, chamacomputers and pcbuilders. Neither is in the
   PC builder.
+- **Cooling and lighting** at `/cooling` (built 2026-11-12, needs migration
+  0008 and a scrape before it has data): air and liquid CPU coolers, case fans,
+  thermal paste and RGB lighting, filtered by type, socket and radiator. CPU
+  coolers are an optional last step in the PC builder with a socket check;
+  fans, paste and lighting are browse-only.
 - **Share images** for home, categories and parts (WhatsApp, Facebook, X, and
   the Product image Google reads from structured data).
 - **Favicon:** a processor with "Rs" on it. Regenerate with

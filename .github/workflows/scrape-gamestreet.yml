@@ -12,6 +12,6 @@ jobs:
     uses: ./.github/workflows/scrape.yml
     with:
       shop: gamestreet.lk
-      categories: gpu,psu,cpu,motherboard,ram,storage,case,peripherals,laptops,consoles
+      categories: gpu,psu,cpu,motherboard,ram,storage,case,peripherals,laptops,consoles,cooling
       timeout_minutes: 20
     secrets: inherit

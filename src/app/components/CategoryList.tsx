@@ -25,8 +25,11 @@ export type ListRow = {
   model: string
   brand: string
   specs: string
-  /** One value per entry in `facets`, in the same order; null when unknown. */
-  facets: (string | null)[]
+  /**
+   * One entry per `facets`, in the same order; null when unknown. A list when
+   * the part belongs under several values (a cooler that fits AM4 and AM5).
+   */
+  facets: (string | string[] | null)[]
   offers: ListOffer[]
 }
 
@@ -46,6 +49,7 @@ const FILTER_EXAMPLES: Record<Category, string> = {
   peripherals: 'G502 or DualSense',
   laptops: 'TUF or RTX 4060',
   consoles: 'PS5 or Switch',
+  cooling: 'AK400 or 360',
 }
 
 const rs = (n: number) => `Rs ${Math.round(n).toLocaleString('en-LK')}`
@@ -75,15 +79,15 @@ export function CategoryList({
 
   const brandCounts = useMemo(() => countBy(rows.map((r) => r.brand)), [rows])
   const facetCounts = useMemo(
-    () => facets.map((_, i) => countBy(rows.flatMap((r) => (r.facets[i] ? [r.facets[i]] : [])))),
+    () => facets.map((_, i) => countBy(rows.flatMap((r) => facetValues(r.facets[i])))),
     [rows, facets],
   )
 
   const shown = useMemo(() => {
     const priced = rows.flatMap((row) => {
-      if (query && !matchesQuery(`${row.brand} ${row.model} ${row.specs} ${row.facets.join(' ')}`, query)) return []
+      if (query && !matchesQuery(`${row.brand} ${row.model} ${row.specs} ${row.facets.flat().join(' ')}`, query)) return []
       if (brands.size && !brands.has(row.brand)) return []
-      if (picked.some((set, i) => set.size > 0 && !set.has(row.facets[i] ?? ''))) return []
+      if (picked.some((set, i) => set.size > 0 && !facetValues(row.facets[i]).some((v) => set.has(v)))) return []
       const offers = row.offers.filter((o) => shopsOn.has(o.shop))
       if (offers.length === 0) return []
       const buyable = offers.filter((o) => o.buyable)
@@ -376,6 +380,11 @@ export function CategoryList({
       </section>
     </div>
   )
+}
+
+/** A row's value(s) for one facet, as a list. */
+function facetValues(v: string | string[] | null): string[] {
+  return v === null ? [] : Array.isArray(v) ? v : [v]
 }
 
 function countBy(values: string[]): Record<string, number> {

@@ -6,7 +6,7 @@ import { CategoryList, type ListRow } from '@/app/components/CategoryList'
 import { CATEGORY_STYLE } from '@/app/components/PartIcons'
 import { SiteFooter, SiteHeader } from '@/app/components/SiteChrome'
 import { CATEGORIES, isBuildSlot, isCategory, type Category, CATEGORY_COPY, SITE_NAME, TRACKED_SHOPS, canonical, rupees, sentenceCase } from '@/lib/site'
-import { consoleTypeLabel, cpuFamily, peripheralLabel, sizeLabel, specSummary } from '@/lib/specs'
+import { COOLING_TYPE_ORDER, consoleTypeLabel, coolingLabel, cpuFamily, peripheralLabel, sizeLabel, specSummary } from '@/lib/specs'
 import { loadCategory, type SeoPart } from '@/queries/seo'
 
 /**
@@ -64,7 +64,8 @@ export async function generateMetadata({
 
 type Facet = {
   label: string
-  value: (p: SeoPart) => string | null
+  /** Several values when a part belongs under each, e.g. a cooler's sockets. */
+  value: (p: SeoPart) => string | string[] | null
   /** Display order when alphabetical or numeric order would be wrong. */
   order?: string[]
 }
@@ -133,6 +134,12 @@ const FACETS: Record<Category, Facet[]> = {
   consoles: [
     { label: 'Type', value: (p) => consoleTypeLabel(p.consoleType), order: ['Console', 'Handheld'] },
     { label: 'Platform', value: (p) => p.platform ?? null },
+  ],
+  cooling: [
+    { label: 'Type', value: (p) => coolingLabel(p.coolingType), order: COOLING_TYPE_ORDER },
+    // A cooler fits several sockets, so it is counted and matched under each.
+    { label: 'Socket', value: (p) => (p.coolerSockets?.length ? p.coolerSockets : null) },
+    { label: 'Radiator', value: (p) => (p.radiatorMm ? `${p.radiatorMm} mm` : null) },
   ],
 }
 

@@ -194,8 +194,8 @@ days.
 Each caller passes its shop key into the reusable `scrape.yml`. Runs are
 staggered so the shops are never hit at once, and each has a `concurrency`
 group so two runs for the same shop never overlap. Every caller scrapes all
-ten categories: `peripherals` since 2026-10-22, `laptops` and `consoles`
-since 2026-10-23.
+eleven categories: `peripherals` since 2026-10-22, `laptops` and `consoles`
+since 2026-10-23, `cooling` since 2026-11-12.
 
 gamestreet, chamacomputers and pcbuilders block GitHub's runners, so they have
 no schedule here: the desktop app runs them at the slot in `SHOP_SCHEDULE`

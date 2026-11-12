@@ -4,7 +4,7 @@ import { CATEGORIES, canonical } from '@/lib/site'
 import { listIndexableParts, loadDirectory } from '@/queries/seo'
 
 /**
- * Every indexable URL: the home page, the PC builder, eight category pages,
+ * Every indexable URL: the home page, the PC builder, every category page,
  * and one page per part.
  *
  * `lastModified` is the day that part's price was last confirmed rather than the

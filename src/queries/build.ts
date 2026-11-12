@@ -4,6 +4,7 @@ import { and, eq, gte, sql } from 'drizzle-orm'
 import { getDb } from '@/db'
 import { listings, parts } from '@/db/schema'
 import { BUILD_SLOTS, type BuildPart, type BuildSlot } from '@/compat/build'
+import { isCpuCooler } from '@/lib/specs'
 
 /**
  * Catalogue for the configurator.
@@ -32,6 +33,7 @@ export type PartOffer = BuildPart & {
   /** Display only, never used by a rule. */
   vramGb: number | null
   efficiencyRating: string | null
+  radiatorMm: number | null
 }
 
 export type Catalogue = Record<BuildSlot, PartOffer[]>
@@ -66,11 +68,13 @@ async function _loadCatalogue(): Promise<Catalogue> {
   }
 
   const empty: Catalogue = {
-    cpu: [], motherboard: [], ram: [], gpu: [], storage: [], psu: [], case: [],
+    cpu: [], motherboard: [], ram: [], gpu: [], storage: [], psu: [], case: [], cooling: [],
   }
 
   for (const p of allParts) {
     if (!BUILD_SLOTS.includes(p.category as BuildSlot)) continue
+    // The cooling slot is for CPU coolers; fans, paste and lighting are browse-only.
+    if (p.category === 'cooling' && !isCpuCooler(p.coolingType)) continue
     const offers = byPart.get(p.partId)
     if (!offers) continue
 
@@ -104,6 +108,8 @@ async function _loadCatalogue(): Promise<Catalogue> {
       connectors: p.connectors,
       vramGb: p.vramGb,
       efficiencyRating: p.efficiencyRating,
+      coolerSockets: p.coolerSockets,
+      radiatorMm: p.radiatorMm,
       offers,
     })
   }

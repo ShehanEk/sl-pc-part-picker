@@ -57,7 +57,29 @@ type SpecSource = Omit<BuildPart, 'category'> & {
   makerCode?: string | null
   consoleType?: 'console' | 'handheld' | null
   platform?: string | null
+  coolingType?: CoolingType | null
+  radiatorMm?: number | null
 }
+
+export type CoolingType = 'air' | 'aio' | 'fan' | 'paste' | 'lighting'
+
+const COOLING_LABEL: Record<CoolingType, string> = {
+  air: 'Air cooler',
+  aio: 'Liquid (AIO)',
+  fan: 'Case fan',
+  paste: 'Thermal paste',
+  lighting: 'RGB lighting',
+}
+
+/** The cooling Type filter and spec row share these labels, in this order. */
+export const COOLING_TYPE_ORDER = Object.values(COOLING_LABEL)
+
+export function coolingLabel(t: CoolingType | null | undefined): string | null {
+  return t ? COOLING_LABEL[t] : null
+}
+
+/** Only CPU coolers go in a build; fans, paste and lighting are browse-only. */
+export const isCpuCooler = (t: CoolingType | null | undefined) => t === 'air' || t === 'aio'
 
 export function specLines(part: SpecSource): SpecLine[] {
   const out: SpecLine[] = []
@@ -124,6 +146,11 @@ export function specLines(part: SpecSource): SpecLine[] {
     case 'consoles':
       push('Type', consoleTypeLabel(part.consoleType))
       push('Platform', part.platform)
+      break
+    case 'cooling':
+      push('Type', coolingLabel(part.coolingType))
+      push('Sockets', part.coolerSockets?.length ? part.coolerSockets.join(', ') : null)
+      push('Radiator', part.radiatorMm ? `${part.radiatorMm} mm` : null)
       break
   }
 
@@ -223,6 +250,11 @@ export function fitNote(part: SpecSource): string | null {
       return part.formFactor
         ? `Accepts ${part.formFactor} motherboards and anything smaller.`
         : null
+    case 'cooling':
+      if (!isCpuCooler(part.coolingType)) return null
+      return part.coolerSockets?.length
+        ? `Fits ${part.coolerSockets.join(', ')} processors, by the shop's listing. Check it clears your case.`
+        : "The shop doesn't list which sockets it fits, so check before you buy."
     default:
       return null
   }

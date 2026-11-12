@@ -60,6 +60,9 @@ export const nanotek = createTynoScraper({
     // MacBooks are not under `laptop` but `apple`, among Mac minis and docks.
     laptops: ['laptop', 'apple'],
     consoles: 'console-handheld-gaming',
+    // One shelf for all four types, plus SSD coolers and RGB cables the
+    // extractor drops, so the type comes from the title.
+    cooling: 'cooling-lighting',
   },
   parsePrice,
 })

@@ -53,5 +53,14 @@ export const pcbuilders = createWooScraper({
       { id: 1570, label: 'GAMING CONSOLES' },
       { id: 1571, label: 'HANDHELD GAMING' },
     ],
+    // Children of CPU Cooling (62) and PC Lighting (1567). Not 517, Laptop
+    // Coolers, nor 1044, Mini LED Displays, which are screens, not lighting.
+    cooling: [
+      { id: 450, label: 'AIR COOLERS' },
+      { id: 451, label: 'LIQUID COOLERS' },
+      { id: 453, label: 'THERMAL PASTE' },
+      { id: 452, label: 'CASE FANS' },
+      { id: 1048, label: 'ARGB CONTROLLERS' },
+    ],
   },
 })

@@ -27,9 +27,15 @@ export const categoryEnum = pgEnum('category', [
   'peripherals',
   'laptops',
   'consoles',
+  // An optional build slot (CPU coolers only); fans, paste and lighting are
+  // browse-only within it.
+  'cooling',
 ])
 
 export const peripheralTypeEnum = pgEnum('peripheral_type', ['keyboard', 'mouse', 'gamepad'])
+
+/** air and aio are CPU coolers and can go in a build; the rest are browse-only. */
+export const coolingTypeEnum = pgEnum('cooling_type', ['air', 'aio', 'fan', 'paste', 'lighting'])
 
 export const consoleTypeEnum = pgEnum('console_type', ['console', 'handheld'])
 
@@ -124,6 +130,12 @@ export const parts = pgTable(
     // consoles
     consoleType: consoleTypeEnum('console_type'),
     platform: text('platform'),
+
+    // cooling. `coolerSockets` is what the shop's title names ("AM4", "LGA1700");
+    // empty or null means it named none, which the builder reports as unknown.
+    coolingType: coolingTypeEnum('cooling_type'),
+    coolerSockets: text('cooler_sockets').array(),
+    radiatorMm: integer('radiator_mm'),
 
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()

@@ -24,9 +24,10 @@ export default function Image() {
           <span>Find the cheapest place</span>
           <span>to buy any PC part</span>
         </div>
-        <div style={{ display: 'flex', gap: 18 }}>
+        {/* Eleven tiles at 80px with 14px gaps is 1,020px, inside the 1,200px image. */}
+        <div style={{ display: 'flex', gap: 14 }}>
           {CATEGORIES.map((slot) => (
-            <CategoryTile key={slot} slot={slot} size={96} />
+            <CategoryTile key={slot} slot={slot} size={80} />
           ))}
         </div>
       </div>
